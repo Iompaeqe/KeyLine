@@ -1,0 +1,111 @@
+<Window x:Class="KeySpammer.TextInputWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add Text"
+        Width="400" Height="220"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height"          Value="32"/>
+            <Setter Property="Padding"         Value="16,0"/>
+            <Setter Property="Foreground"      Value="#C8D8EC"/>
+            <Setter Property="FontWeight"      Value="SemiBold"/>
+            <Setter Property="FontFamily"      Value="Segoe UI"/>
+            <Setter Property="FontSize"        Value="12"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.78"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                <Setter TargetName="Root" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="0.97" ScaleY="0.97"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="10" CornerRadius="14"
+            Background="#06090F"
+            BorderBrush="#0E1C30" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="32" ShadowDepth="0" Opacity="0.9" Color="#000000"/>
+        </Border.Effect>
+
+        <Grid Margin="18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel>
+                    <TextBlock Text="Add Text Step"
+                               Foreground="#D8E4F0" FontSize="15" FontWeight="Bold"
+                               FontFamily="Segoe UI"/>
+                    <TextBlock Text="Text will be typed into the selected target window."
+                               Foreground="#3D5470" FontSize="11" FontFamily="Segoe UI"
+                               Margin="0,3,0,12"/>
+                </StackPanel>
+                <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Width="28" Height="26"
+                        Background="Transparent" BorderBrush="Transparent"
+                        Foreground="#3D5470" FontSize="11"
+                        Click="CancelButton_Click"/>
+            </Grid>
+
+            <!-- Text input -->
+            <Border Grid.Row="1" CornerRadius="8"
+                    Background="#060B15" BorderBrush="#162035" BorderThickness="1">
+                <TextBox x:Name="InputTextBox"
+                         MinHeight="72"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         Background="Transparent"
+                         Foreground="#D8E4F0"
+                         BorderBrush="Transparent"
+                         BorderThickness="0"
+                         Padding="10"
+                         FontFamily="Segoe UI"
+                         FontSize="12"
+                         CaretBrush="#0EA5C9"
+                         VerticalContentAlignment="Top"/>
+            </Border>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                        HorizontalAlignment="Right" Margin="0,12,0,0">
+                <Button Width="82" Content="Cancel" Margin="0,0,8,0"
+                        Background="#0C1220" BorderBrush="#162035"
+                        Click="CancelButton_Click"/>
+                <Button Width="82" Content="Add"
+                        Background="#150E40" BorderBrush="#2D1EA8"
+                        Foreground="#A5B4FC"
+                        Click="AddButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
