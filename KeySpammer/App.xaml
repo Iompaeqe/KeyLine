@@ -4,6 +4,16 @@
              xmlns:local="clr-namespace:KeySpammer"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="UI/Styles/Colors.xaml" />
+                <ResourceDictionary Source="UI/Styles/TextBlocks.xaml" />
+                <ResourceDictionary Source="UI/Styles/Buttons.xaml" />
+                <ResourceDictionary Source="UI/Styles/TextBoxes.xaml" />
+                <ResourceDictionary Source="UI/Styles/CheckBoxes.xaml" />
+                <ResourceDictionary Source="UI/Styles/ScrollBars.xaml" />
+                <ResourceDictionary Source="UI/Styles/ComboBoxes.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

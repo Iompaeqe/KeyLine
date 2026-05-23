@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="UI\" />
+      <Folder Include="UI\TextInput\" />
     </ItemGroup>
 
 </Project>
