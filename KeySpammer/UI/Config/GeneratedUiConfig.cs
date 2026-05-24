@@ -30,11 +30,6 @@ public sealed class TimelineUiConfig
     public double HeaderTopExtra { get; init; } = 28;
     public double HeaderBottomExtra { get; init; } = 30;
 
-    public double WindowBaseHeight { get; init; } = 276;
-    public double WindowExtraTimelineHeight { get; init; } = 52;
-
-    public CornerRadius HeaderBackplateCornerRadius { get; init; } = new(8, 0, 0, 8);
-    public Thickness HeaderBackplateBorderThickness { get; init; } = new(1);
     public CornerRadius HeaderCornerRadiusFirst { get; init; } = new(8, 0, 0, 0);
     public CornerRadius HeaderCornerRadiusMiddle { get; init; } = new(0);
     public CornerRadius HeaderCornerRadiusLast { get; init; } = new(0, 0, 0, 8);
@@ -150,7 +145,7 @@ public sealed class DragUiConfig
     public double GhostFollowStrength { get; init; } = 0.65;
 
     public double GhostCursorOffsetX { get; init; } = 0;
-    public double GhostCursorOffsetY { get; init; } = 0;
+    public double GhostCursorOffsetY { get; init; } = 25;
 
     // Drag preview does not need to recalculate insertion slots for every single mouse pixel.
     // The ghost still follows the cursor every frame; this only throttles expensive preview math.

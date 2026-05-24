@@ -102,3 +102,17 @@ logs/
 # Installer output, if using Inno Setup later
 Output/
 *.iss.user
+
+bin/
+obj/
+.vs/
+.idea/
+
+*.user
+*.suo
+*.rsuser
+*.DotSettings.user
+
+*.pdb
+*.cache
+*.log

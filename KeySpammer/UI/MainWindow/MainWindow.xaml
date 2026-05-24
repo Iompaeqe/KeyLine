@@ -48,7 +48,6 @@
                     <RowDefinition Height="96" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="52" />
-                    <RowDefinition Height="24" />
                 </Grid.RowDefinitions>
 
                 <!-- ── Title bar ───────────────────────────────────── -->
@@ -68,13 +67,12 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="—" Width="30" MinWidth="30" Height="22"
-                                Background="Transparent" BorderBrush="Transparent"
-                                Foreground="{StaticResource Muted}" FontSize="13"
+                        <Button Content="─"
+                                Style="{StaticResource TitleGlyphButton}"
                                 Click="MinimizeButton_Click" />
-                        <Button Content="✕" Width="30" MinWidth="30" Height="22"
-                                Background="Transparent" BorderBrush="Transparent"
-                                Foreground="{StaticResource Muted}" FontSize="11"
+
+                        <Button Content="×"
+                                Style="{StaticResource TitleCloseGlyphButton}"
                                 Click="CloseButton_Click" />
                     </StackPanel>
                     <Border Height="1" VerticalAlignment="Bottom" Margin="-14,0"
@@ -400,16 +398,6 @@
                         </Popup>
                     </Grid>
                 </Border>
-
-                <!-- ── Footer ──────────────────────────────────────── -->
-                <DockPanel Grid.Row="4" Margin="16,0,16,0" VerticalAlignment="Center">
-                    <Ellipse Width="5" Height="5" Fill="#059669"
-                             Margin="0,0,5,0" DockPanel.Dock="Left" VerticalAlignment="Center" />
-                    <TextBlock Text="Ready" Foreground="#059669" FontSize="11"
-                               DockPanel.Dock="Left" VerticalAlignment="Center" />
-                    <TextBlock Text="Delete = remove selected step/timeline  ·  Esc = stop recording"
-                               Style="{StaticResource Dim}" FontSize="10" HorizontalAlignment="Right" />
-                </DockPanel>
             </Grid>
         </Border>
     </Grid>

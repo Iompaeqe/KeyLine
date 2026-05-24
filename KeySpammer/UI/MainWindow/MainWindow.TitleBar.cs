@@ -42,7 +42,7 @@ public partial class MainWindow
     private void MinimizeButton_Click(object sender, RoutedEventArgs e) => 
         this.WindowState = this.WindowState == System.Windows.WindowState.Maximized
             ? System.Windows.WindowState.Normal
-            : System.Windows.WindowState.Maximized;
+            : System.Windows.WindowState.Minimized;
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 }

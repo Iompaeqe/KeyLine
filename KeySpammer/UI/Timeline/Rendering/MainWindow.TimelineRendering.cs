@@ -7,6 +7,7 @@ using KeySpammer.Domain;
 using KeySpammer.Services.Macro;
 using KeySpammer.Services.Timeline;
 using KeySpammer.State;
+using KeySpammer.UI.Config;
 using KeySpammer.UI.Controls;
 
 namespace KeySpammer;
@@ -24,19 +25,21 @@ public partial class MainWindow
         public double CenterX => Left + (Size.Width / 2.0);
     }
 
-    private const double TimelineRowHeight = 72;
-    private const double TimelineRowGap = 30;
-    private const double TimelineHeaderWidth = 56;
-
-    private const double TimelineFirstItemLeft = 12;
-    private const double TimelineItemGap = 0;
-    private const double TimelineRightPadding = 32;
-
-    private const double TimelineConnectorY = 36;
-    private const double TimelineConnectorThickness = 2;
+    private static TimelineUiConfig TimelineUi => GeneratedUiConfig.Timeline;
     
-    private const double TimelineHeaderTopExtra = 28;
-    private const double TimelineHeaderBottomExtra = 30;
+    private static double TimelineRowHeight => TimelineUi.RowHeight;
+    private static double TimelineRowGap => TimelineUi.RowGap;
+    private static double TimelineHeaderWidth => TimelineUi.HeaderWidth;
+
+    private static double TimelineFirstItemLeft => TimelineUi.FirstItemLeft;
+    private static double TimelineItemGap => TimelineUi.ItemGap;
+    private static double TimelineRightPadding => TimelineUi.RightPadding;
+
+    private static double TimelineConnectorY => TimelineUi.ConnectorY;
+    private static double TimelineConnectorThickness => TimelineUi.ConnectorThickness;
+    
+    private static double TimelineHeaderTopExtra => TimelineUi.HeaderTopExtra;
+    private static double TimelineHeaderBottomExtra => TimelineUi.HeaderBottomExtra;
 
     private sealed class TimelineRowRenderState
     {
@@ -176,11 +179,7 @@ public partial class MainWindow
         TimelineHeaderGrid.Children.Add(headerColumnBackplate);
     }
     
-    private void AddTimelineHeaderToGrid(
-        MacroTimeline timeline,
-        int timelineIndex,
-        bool isActive,
-        bool isSelected)
+    private void AddTimelineHeaderToGrid(MacroTimeline timeline, int timelineIndex, bool isActive, bool isSelected)
     {
         var isFirst = timelineIndex == 0;
         var isLast = timelineIndex == _document.Timelines.Count - 1;
@@ -291,8 +290,7 @@ public partial class MainWindow
         return Math.Max(0, viewportWidth - 20);
     }
 
-    private double CalculateSimpleTimelineCanvasWidth(
-        Dictionary<MacroTimeline, List<MacroStep>> visibleStepsByTimeline)
+    private double CalculateSimpleTimelineCanvasWidth(Dictionary<MacroTimeline, List<MacroStep>> visibleStepsByTimeline)
     {
         var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
             ? TimelineScrollViewer.ViewportWidth
@@ -323,12 +321,7 @@ public partial class MainWindow
         return Math.Max(Math.Max(0, viewportWidth - 20), maxContentWidth);
     }
 
-    private UIElement CreateTimelineRow(
-        MacroTimeline timeline,
-        IReadOnlyList<MacroStep> visibleSteps,
-        double canvasWidth,
-        bool isFirstRow,
-        bool isLastRow)
+    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps, double canvasWidth, bool isFirstRow, bool isLastRow)
     {
         var row = new Grid
         {
@@ -363,9 +356,7 @@ public partial class MainWindow
         return row;
     }
     
-    private List<TimelineVisualItem> BuildTimelineVisualItems(
-        MacroTimeline timeline,
-        IReadOnlyList<MacroStep> visibleSteps)
+    private List<TimelineVisualItem> BuildTimelineVisualItems(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps)
     {
         var visualItems = new List<TimelineVisualItem>();
         var currentLeft = TimelineFirstItemLeft;
@@ -525,11 +516,7 @@ public partial class MainWindow
         return connector;
     }
 
-    private void RegisterTimelineRowState(
-        MacroTimeline timeline,
-        Canvas canvas,
-        Border? connector,
-        IReadOnlyList<TimelineVisualItem> visualItems)
+    private void RegisterTimelineRowState(MacroTimeline timeline, Canvas canvas, Border? connector, IReadOnlyList<TimelineVisualItem> visualItems)
     {
         if (visualItems.Count == 0)
             return;
@@ -583,9 +570,7 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
     }
 
-    private void AppendRecordedStepsToTimelineRow(
-        MacroTimeline timeline,
-        IReadOnlyList<MacroStep> addedRawSteps)
+    private void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> addedRawSteps)
     {
         if (addedRawSteps.Count == 0)
             return;
@@ -781,12 +766,7 @@ public partial class MainWindow
         return Math.Max(Math.Max(0, viewportWidth - 20), contentWidth);
     }
 
-    private Border CreateTimelineHeader(
-        MacroTimeline timeline,
-        bool isActive,
-        bool isSelected,
-        bool isFirst,
-        bool isLast)
+    private Border CreateTimelineHeader(MacroTimeline timeline, bool isActive, bool isSelected, bool isFirst, bool isLast)
     {
         var backgroundColor = isActive
             ? Color.FromRgb(10, 52, 84)
@@ -1026,7 +1006,7 @@ public partial class MainWindow
             ((timelineCount - 1) * TimelineRowGap) +
             52;
 
-        var wantedHeight = 276 + timelineAreaHeight;
+        var wantedHeight = 252 + timelineAreaHeight;
 
         LockWindowHeight(Math.Max(420, wantedHeight));
     }
@@ -1098,24 +1078,5 @@ public partial class MainWindow
         }
 
         _timelineVisualPositions[item.AnimationKey] = targetPosition;
-    }
-
-    private static double GetElementDesiredHeight(UIElement element)
-    {
-        if (element is FrameworkElement frameworkElement)
-        {
-            if (!double.IsNaN(frameworkElement.Height) && frameworkElement.Height > 0)
-                return frameworkElement.Height;
-
-            if (frameworkElement.ActualHeight > 0)
-                return frameworkElement.ActualHeight;
-        }
-
-        element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-
-        if (element.DesiredSize.Height > 0)
-            return element.DesiredSize.Height;
-
-        return 48;
     }
 }

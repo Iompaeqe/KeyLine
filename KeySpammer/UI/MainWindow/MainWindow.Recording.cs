@@ -51,13 +51,6 @@ public partial class MainWindow
         if (!_recorder.IsRecording)
             return;
 
-        if (e.Key == Key.Escape)
-        {
-            StopRecording();
-            e.Handled = true;
-            return;
-        }
-
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
         var addedSteps = _recorder.RecordKeyDown(e, timeline.Steps.Count > 0).ToList();
 
