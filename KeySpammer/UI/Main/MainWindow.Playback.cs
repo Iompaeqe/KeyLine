@@ -10,19 +10,6 @@ public partial class MainWindow
     private int GetStandardDelayMs() =>
         int.TryParse(StandardDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
 
-    private void ClearButton_Click(object sender, RoutedEventArgs e)
-    {
-        CancelTimelineDragState();
-        
-        var timeline = _selection.SelectedTimeline ?? _document.ActiveTimeline;
-
-        timeline.Steps.Clear();
-        _selection.Clear();
-
-        SelectTimeline(timeline);
-        RefreshTimeline();
-    }
-
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
         if (_runners.Values.Any(runner => runner.IsRunning))

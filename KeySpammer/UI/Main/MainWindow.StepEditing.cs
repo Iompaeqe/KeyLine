@@ -1,3 +1,7 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using KeySpammer.Domain;
 using KeySpammer.State;
 
@@ -7,6 +11,8 @@ public partial class MainWindow
 {
     private void DeleteSelectedItem()
     {
+        ResetClearConfirmation();
+
         if (_selection.HasStepSelection)
         {
             DeleteSelectedStep();
@@ -62,6 +68,85 @@ public partial class MainWindow
             return;
 
         step.Text = dialog.ResultText;
+        SelectTimeline(timeline);
+        RefreshTimeline();
+    }
+    
+    private void ClearButton_Click(object sender, RoutedEventArgs e)
+    {
+        CancelTimelineDragState();
+
+        if (!_isClearConfirmationActive)
+        {
+            BeginClearConfirmation(_document.ActiveTimeline);
+            return;
+        }
+
+        if (_pendingClearTimeline == null)
+        {
+            ResetClearConfirmation();
+            return;
+        }
+
+        ClearTimeline(_pendingClearTimeline);
+        ResetClearConfirmation();
+    }
+    
+
+    private void BeginClearConfirmation(MacroTimeline timeline)
+    {
+        _pendingClearTimeline = timeline;
+        _isClearConfirmationActive = true;
+
+        var confirmText = new TextBlock
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        confirmText.Inlines.Add(new Run(timeline.Name)
+        {
+            FontWeight = FontWeights.Black,
+            FontSize = 14
+        });
+
+        confirmText.Inlines.Add(new Run(" - Confirm")
+        {
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 12
+        });
+
+        ClearButton.Content = confirmText;
+        ClearButton.Background = new SolidColorBrush(Color.FromRgb(127, 29, 29));
+        ClearButton.BorderBrush = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+        ClearButton.Foreground = new SolidColorBrush(Color.FromRgb(254, 202, 202));
+    }
+
+    private void ResetClearConfirmation()
+    {
+        _pendingClearTimeline = null;
+        _isClearConfirmationActive = false;
+
+        ClearButton.Content = "Clear";
+
+        ClearButton.ClearValue(BackgroundProperty);
+        ClearButton.ClearValue(BorderBrushProperty);
+        ClearButton.ClearValue(ForegroundProperty);
+    }
+
+    private void ClearTimeline(MacroTimeline timeline)
+    {
+        if (_runners.TryGetValue(timeline, out var runner))
+            runner.Stop();
+
+        if (ReferenceEquals(_recordingTimeline, timeline))
+            StopRecording();
+
+        timeline.Steps.Clear();
+
+        if (ReferenceEquals(_selection.SelectedTimeline, timeline))
+            _selection.Clear();
+
         SelectTimeline(timeline);
         RefreshTimeline();
     }

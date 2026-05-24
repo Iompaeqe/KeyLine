@@ -24,17 +24,14 @@ public partial class MainWindow
     }
 
     private const double TimelineRowHeight = 88;
-    private const double TimelineRowGap = 5;
-    private const double TimelineHeaderWidth = 44;
+    private const double TimelineRowGap = 8;
+    private const double TimelineHeaderWidth = 48;
 
     private const double TimelineFirstItemLeft = 12;
-    private const double TimelineItemGap = 18;
+    private const double TimelineItemGap = 0;
     private const double TimelineRightPadding = 32;
 
-    private const double TimelineStepTop = 4;
-    private const double TimelineAddTop = 12;
-
-    private const double TimelineConnectorY = 44;
+    private const double TimelineConnectorY = 28;
     private const double TimelineConnectorThickness = 2;
 
     private void RefreshTimeline(object? sender = null, RoutedEventArgs? e = null)
@@ -56,12 +53,15 @@ public partial class MainWindow
 
         var canvasWidth = CalculateSimpleTimelineCanvasWidth(visibleStepsByTimeline);
 
-        foreach (var timeline in _document.Timelines)
+        for (var i = 0; i < _document.Timelines.Count; i++)
         {
+            var timeline = _document.Timelines[i];
+
             TimelineRowsPanel.Children.Add(CreateTimelineRow(
                 timeline,
                 visibleStepsByTimeline[timeline],
-                canvasWidth));
+                canvasWidth,
+                i == 0));
         }
 
         UpdateTimelineOptionsPagerVisibility();
@@ -101,7 +101,8 @@ public partial class MainWindow
         var replacementRow = CreateTimelineRow(
             timeline,
             visibleSteps,
-            existingCanvasWidth);
+            existingCanvasWidth,
+            rowIndex == 0);
 
         TimelineRowsPanel.Children.RemoveAt(rowIndex);
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
@@ -160,18 +161,16 @@ public partial class MainWindow
         return Math.Max(Math.Max(0, viewportWidth - 20), maxContentWidth);
     }
 
-    private UIElement CreateTimelineRow(
-        MacroTimeline timeline,
-        IReadOnlyList<MacroStep> visibleSteps,
-        double canvasWidth)
+    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps, double canvasWidth, bool isFirstRow)
     {
         var showTimelineHeaders = _document.Timelines.Count > 1;
 
         var row = new Grid
         {
             Height = TimelineRowHeight,
-            Margin = new Thickness(0, 0, 0, showTimelineHeaders ? TimelineRowGap : 0),
-            Tag = timeline
+            Margin = new Thickness(0, isFirstRow ? 14 : 0, 0, showTimelineHeaders ? TimelineRowGap : 0),
+            Tag = timeline,
+            VerticalAlignment = VerticalAlignment.Top
         };
 
         row.ColumnDefinitions.Add(new ColumnDefinition
@@ -196,7 +195,8 @@ public partial class MainWindow
             Width = canvasWidth,
             Height = TimelineRowHeight,
             Background = Brushes.Transparent,
-            Tag = timeline
+            Tag = timeline,
+            VerticalAlignment = VerticalAlignment.Top
         };
 
         Grid.SetColumn(canvas, 1);
@@ -379,13 +379,15 @@ public partial class MainWindow
         var border = new Border
         {
             Width = 36,
-            Height = 46,
-            Margin = new Thickness(0, 21, 8, 0),
+            Height = 44,
+            Margin = new Thickness(0, 6, 8, 6),
             CornerRadius = new CornerRadius(8),
             Background = new SolidColorBrush(isActive ? Color.FromRgb(18, 58, 90) : Color.FromRgb(15, 23, 42)),
             BorderBrush = new SolidColorBrush(isSelected ? Color.FromRgb(248, 250, 252) : Color.FromRgb(37, 99, 235)),
             BorderThickness = new Thickness(isSelected ? 2 : 1),
             Cursor = System.Windows.Input.Cursors.SizeAll,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
             Tag = timeline
         };
 
@@ -393,7 +395,7 @@ public partial class MainWindow
         {
             Text = timeline.Name,
             FontWeight = FontWeights.Bold,
-            FontSize = 12,
+            FontSize = 11,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Foreground = new SolidColorBrush(isActive ? Color.FromRgb(186, 230, 253) : Color.FromRgb(148, 163, 184))
@@ -500,6 +502,9 @@ public partial class MainWindow
 
     private void SelectTimeline(MacroTimeline timeline)
     {
+        if (_isClearConfirmationActive && !ReferenceEquals(_pendingClearTimeline, timeline))
+            ResetClearConfirmation();
+        
         _document.SelectTimeline(timeline);
         SyncOptionsFromActiveTimeline();
     }
@@ -587,7 +592,14 @@ public partial class MainWindow
 
     private void UpdateWindowHeightForTimelineCount()
     {
-        var wantedHeight = 342 + (_document.Timelines.Count * 100);
+        var timelineCount = Math.Max(1, _document.Timelines.Count);
+
+        var timelineAreaHeight =
+            (timelineCount * TimelineRowHeight) +
+            ((timelineCount - 1) * TimelineRowGap) +
+            36; // header/footer/padding inside the timeline card
+
+        var wantedHeight = 356 + (_document.Timelines.Count * 100);
         Height = Math.Max(MinHeight, wantedHeight);
     }
 

@@ -272,7 +272,7 @@
                         <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="102" />
+                        <ColumnDefinition Width="150" />
                     </Grid.ColumnDefinitions>
 
                     <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="104"
@@ -286,16 +286,17 @@
                                Style="{StaticResource Dim}" Margin="0,0,8,0" />
                     <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
 
-                    <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="66"
+                    <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="100"
                             Click="ClearButton_Click" />
 
                     <Grid Grid.Column="8">
                         <Button x:Name="StartStopButton" Content="▶  Start"
                                 Background="#31205F" BorderBrush="#6D4AFF"
-                                Foreground="#DDD6FE" Click="StartStopButton_Click" />
+                                Foreground="#DDD6FE"  Width="130" 
+                                Click="StartStopButton_Click"/>
                         <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
                                 Background="#2A0808" BorderBrush="#7F1D1D"
-                                Foreground="#FCA5A5" Visibility="Collapsed"
+                                Foreground="#FCA5A5" Visibility="Collapsed" Width="130"
                                 Click="RecordStopButton_Click" />
                     </Grid>
 

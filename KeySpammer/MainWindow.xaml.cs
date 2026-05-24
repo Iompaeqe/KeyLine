@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private MacroTimeline? _recordingTimeline;
     private MacroTimeline? _popupTimeline;
     private bool _isSyncingOptions;
+    
+    private MacroTimeline? _pendingClearTimeline;
+    private bool _isClearConfirmationActive;
 
     public MainWindow()
     {
