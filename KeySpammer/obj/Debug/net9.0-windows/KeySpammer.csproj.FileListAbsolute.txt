@@ -3,8 +3,6 @@ C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\bin\Debug\net9.0-windows\KeyS
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\bin\Debug\net9.0-windows\KeySpammer.runtimeconfig.json
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\bin\Debug\net9.0-windows\KeySpammer.dll
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\bin\Debug\net9.0-windows\KeySpammer.pdb
-C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\MainWindow.baml
-C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\MainWindow.g.cs
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\App.g.cs
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\KeySpammer_MarkupCompile.cache
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\KeySpammer.g.resources
@@ -17,8 +15,6 @@ C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\refi
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\KeySpammer.pdb
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\KeySpammer.genruntimeconfig.cache
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\ref\KeySpammer.dll
-C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\TextInputWindow.baml
-C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\TextInputWindow.g.cs
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Styles\Buttons.baml
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Styles\CheckBoxes.baml
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Styles\Colors.baml
@@ -36,3 +32,7 @@ C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\C
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Controls\DelayStepControl.g.cs
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Controls\KeyStepControl.g.cs
 C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\Controls\TextStepControl.g.cs
+C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\MainWindow\MainWindow.baml
+C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\TextInput\TextInputWindow.baml
+C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\MainWindow\MainWindow.g.cs
+C:\Users\meteh\RiderProjects\KeySpammer\KeySpammer\obj\Debug\net9.0-windows\UI\TextInput\TextInputWindow.g.cs

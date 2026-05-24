@@ -9,15 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Page Update="TextInputWindow.xaml">
+      <Page Update="UI\TextInput\TextInputWindow.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="UI\TextInput\" />
+      <Page Update="UI\MainWindow\MainWindow.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
     </ItemGroup>
 
 </Project>

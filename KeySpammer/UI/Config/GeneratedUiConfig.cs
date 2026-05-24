@@ -147,4 +147,11 @@ public sealed class DragUiConfig
     public double GhostOpacity { get; init; } = 0.86;
     public double GhostScale { get; init; } = 1.04;
     public double GhostFollowStrength { get; init; } = 0.65;
+
+    // Adjusts where the dragged node ghost appears compared to the cursor.
+    // X: positive moves the ghost right, negative moves it left.
+    // Y: positive moves the ghost down, negative moves it up.
+    // Default 0 keeps the previous behavior.
+    public double GhostCursorOffsetX { get; init; } = 0;
+    public double GhostCursorOffsetY { get; init; } = 30;
 }
