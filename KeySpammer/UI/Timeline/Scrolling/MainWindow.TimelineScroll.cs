@@ -101,22 +101,22 @@ public partial class MainWindow
             : TimelineScrollViewer.HorizontalOffset / maxOffset * maxThumbLeft;
     }
 
-    private void TimelineScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void TimelineGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (IsInsideInteractiveTimelineElement(e.OriginalSource as DependencyObject))
+        if (!CanStartTimelineBackgroundPan(e))
             return;
 
         _drag.BeginTimelinePan(
             e.GetPosition(TimelineScrollViewer),
             TimelineScrollViewer.HorizontalOffset);
 
-        TimelineScrollViewer.CaptureMouse();
-        TimelineScrollViewer.Cursor = Cursors.SizeWE;
+        TimelineGrid.CaptureMouse();
+        TimelineGrid.Cursor = Cursors.SizeWE;
 
         e.Handled = true;
     }
 
-    private void TimelineScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
+    private void TimelineGrid_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (!_drag.IsTimelinePanning)
             return;
@@ -130,7 +130,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    private void TimelineScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void TimelineGrid_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (!_drag.IsTimelinePanning)
             return;
@@ -139,7 +139,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    private void TimelineScrollViewer_MouseLeave(object sender, MouseEventArgs e)
+    private void TimelineGrid_MouseLeave(object sender, MouseEventArgs e)
     {
         if (!_drag.IsTimelinePanning)
             return;
@@ -155,12 +155,36 @@ public partial class MainWindow
 
         _drag.EndTimelinePan();
 
-        if (TimelineScrollViewer.IsMouseCaptured)
-            TimelineScrollViewer.ReleaseMouseCapture();
+        if (TimelineGrid.IsMouseCaptured)
+            TimelineGrid.ReleaseMouseCapture();
 
-        TimelineScrollViewer.Cursor = Cursors.Arrow;
+        TimelineGrid.Cursor = Cursors.Arrow;
+    }
+    
+    private bool CanStartTimelineBackgroundPan(MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed)
+            return false;
+
+        if (IsInsideInteractiveTimelineElement(e.OriginalSource as DependencyObject))
+            return false;
+
+        return IsInsideScrollableTimelineContent(e.GetPosition(TimelineGrid));
     }
 
+    private bool IsInsideScrollableTimelineContent(Point positionInTimelineGrid)
+    {
+        if (TimelineGrid == null || TimelineScrollViewer == null)
+            return false;
+
+        var scrollViewerTopLeft = TimelineScrollViewer.TranslatePoint(new Point(0, 0), TimelineGrid);
+
+        return positionInTimelineGrid.X >= scrollViewerTopLeft.X &&
+               positionInTimelineGrid.Y >= scrollViewerTopLeft.Y &&
+               positionInTimelineGrid.X <= scrollViewerTopLeft.X + TimelineScrollViewer.ActualWidth &&
+               positionInTimelineGrid.Y <= scrollViewerTopLeft.Y + TimelineScrollViewer.ActualHeight;
+    }
+    
     private static bool IsInsideInteractiveTimelineElement(DependencyObject? source)
     {
         while (source != null)
@@ -172,8 +196,11 @@ public partial class MainWindow
                 return true;
             }
 
-            if (source is FrameworkElement fe && (fe.Tag is MacroStep || fe.Tag is MacroTimeline))
+            if (source is FrameworkElement fe &&
+                (fe.Tag is MacroStep || fe.Tag is MacroTimeline))
+            {
                 return true;
+            }
 
             source = VisualTreeHelper.GetParent(source);
         }

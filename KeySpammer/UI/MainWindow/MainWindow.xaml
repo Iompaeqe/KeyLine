@@ -202,7 +202,11 @@
                     so T1 can reach the top and the last timeline can reach the bottom.
                 -->
                     <Grid x:Name="TimelineGrid"
-                          ClipToBounds="True">
+                          ClipToBounds="True"
+                          PreviewMouseLeftButtonDown="TimelineGrid_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="TimelineGrid_PreviewMouseMove"
+                          PreviewMouseLeftButtonUp="TimelineGrid_PreviewMouseLeftButtonUp"
+                          MouseLeave="TimelineGrid_MouseLeave">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="24" />
                             <RowDefinition Height="*" />
@@ -241,11 +245,7 @@
                                       Background="Transparent"
                                       Loaded="TimelineScrollViewer_Loaded"
                                       ScrollChanged="TimelineScrollViewer_ScrollChanged"
-                                      SizeChanged="TimelineScrollViewer_SizeChanged"
-                                      PreviewMouseLeftButtonDown="TimelineScrollViewer_PreviewMouseLeftButtonDown"
-                                      PreviewMouseMove="TimelineScrollViewer_PreviewMouseMove"
-                                      PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
-                                      MouseLeave="TimelineScrollViewer_MouseLeave">
+                                      SizeChanged="TimelineScrollViewer_SizeChanged">
 
                             <StackPanel x:Name="TimelineRowsPanel"
                                         Orientation="Vertical"

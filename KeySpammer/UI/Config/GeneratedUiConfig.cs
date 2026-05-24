@@ -115,9 +115,9 @@ public sealed class TextStepUiConfig
     public double WidthPadding { get; init; } = 34;
     public int MaxPreviewCharacters { get; init; } = 18;
 
-    public Color Background { get; init; } = Color.FromRgb(27, 45, 74);
-    public Color Border { get; init; } = Color.FromRgb(96, 165, 250);
-    public Color Text { get; init; } = Color.FromRgb(226, 238, 255);
+    public Color Background { get; init; } = Color.FromRgb(80, 50, 20);
+    public Color Border { get; init; } = Color.FromRgb(251, 146, 60);
+    public Color Text { get; init; } = Color.FromRgb(255, 237, 213);
 
     public Color BorderSelected { get; init; } = Color.FromRgb(248, 250, 252);
     public Color TextSelected { get; init; } = Color.FromRgb(255, 255, 255);

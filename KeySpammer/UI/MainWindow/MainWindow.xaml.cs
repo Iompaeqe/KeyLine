@@ -29,7 +29,6 @@ public partial class MainWindow : Window
     private bool _isClearConfirmationActive;
 
     private bool _didInitialTimelineRefresh;
-    private bool _timelineScrollIndicatorUpdateQueued;
 
     public MainWindow()
     {

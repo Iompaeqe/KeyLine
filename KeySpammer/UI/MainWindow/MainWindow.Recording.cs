@@ -59,6 +59,7 @@ public partial class MainWindow
 
         e.Handled = true;
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
+        ScrollToTimelineEndAfterRecordingAppend();
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -74,5 +75,17 @@ public partial class MainWindow
 
         e.Handled = true;
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
+        ScrollToTimelineEndAfterRecordingAppend();
+    }
+
+    private void ScrollToTimelineEndAfterRecordingAppend()
+    {
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Background,
+            new Action(() =>
+            {
+                TimelineScrollViewer.ScrollToRightEnd();
+                UpdateTimelineScrollIndicator();
+            }));
     }
 }
