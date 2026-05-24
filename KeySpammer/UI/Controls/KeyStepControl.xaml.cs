@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using KeySpammer.Domain;
+using KeySpammer.UI.Config;
+using KeySpammer.UI.Timeline;
 
 namespace KeySpammer.UI.Controls;
 
@@ -56,54 +58,48 @@ public partial class KeyStepControl : UserControl
         if (step == null)
             return;
 
-        var keyText = step.KeyName;
-        var isComboKey = keyText.Contains('+');
+        var ui = GeneratedUiConfig.KeyStep;
+        var keyText = StepDisplayFormatter.GetKeyText(step);
+        var isComboKey = StepDisplayFormatter.IsComboKey(keyText);
 
         KeyTextBlock.Text = keyText;
-        KeyTextBlock.FontSize = isComboKey ? 16 : 22;
+        KeyTextBlock.FontSize = isComboKey ? ui.ComboFontSize : ui.NormalFontSize;
 
-        KeyBorder.MinWidth = isComboKey ? 110 : 62;
-        KeyBorder.Padding = isComboKey
-            ? new Thickness(12, 0, 12, 0)
-            : new Thickness(10, 0, 10, 0);
+        KeyBorder.MinWidth = isComboKey ? ui.ComboMinWidth : ui.NormalMinWidth;
+        KeyBorder.Padding = isComboKey ? ui.ComboPadding : ui.NormalPadding;
 
         if (ShowKeyUpDown)
         {
-            Margin = isComboKey
-                ? new Thickness(7, 0, 7, 0)
-                : new Thickness(8, 0, 8, 0);
+            Margin = isComboKey ? ui.ComboArrowMargin : ui.NormalArrowMargin;
 
             UpArrow.Visibility = step.Type == MacroStepType.KeyUp ? Visibility.Visible : Visibility.Collapsed;
             DownArrow.Visibility = step.Type == MacroStepType.KeyDown ? Visibility.Visible : Visibility.Collapsed;
         }
         else
         {
-            Margin = new Thickness(8, 12, 8, 12);
+            Margin = ui.NoArrowMargin;
             UpArrow.Visibility = Visibility.Collapsed;
             DownArrow.Visibility = Visibility.Collapsed;
         }
 
         var (bg, border, fg) = step.Type switch
         {
-            MacroStepType.KeyDown =>
-                (Color.FromRgb(20, 52, 96), Color.FromRgb(80, 150, 255), Color.FromRgb(230, 243, 255)),
-
-            MacroStepType.KeyUp =>
-                (Color.FromRgb(35, 45, 98), Color.FromRgb(125, 115, 255), Color.FromRgb(238, 236, 255)),
-
-            _ =>
-                (Color.FromRgb(30, 41, 59), Color.FromRgb(100, 116, 139), Color.FromRgb(226, 232, 240))
+            MacroStepType.KeyDown => (ui.KeyDownBackground, ui.KeyDownBorder, ui.KeyDownText),
+            MacroStepType.KeyUp => (ui.KeyUpBackground, ui.KeyUpBorder, ui.KeyUpText),
+            _ => (ui.FallbackBackground, ui.FallbackBorder, ui.FallbackText)
         };
 
         if (IsSelected)
         {
-            border = Color.FromRgb(248, 250, 252);
-            fg = Color.FromRgb(255, 255, 255);
+            border = ui.SelectedBorder;
+            fg = ui.SelectedText;
         }
 
         KeyBorder.Background = new SolidColorBrush(bg);
         KeyBorder.BorderBrush = new SolidColorBrush(border);
-        KeyBorder.BorderThickness = IsSelected ? new Thickness(2) : new Thickness(1);
+        KeyBorder.BorderThickness = IsSelected
+            ? ui.SelectedBorderThickness
+            : ui.NormalBorderThickness;
         KeyTextBlock.Foreground = new SolidColorBrush(fg);
         UpArrow.Foreground = new SolidColorBrush(fg);
         DownArrow.Foreground = new SolidColorBrush(fg);

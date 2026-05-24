@@ -5,17 +5,13 @@ using System.Windows.Media;
 using KeySpammer.Domain;
 using KeySpammer.Services.Timeline;
 using KeySpammer.State;
+using KeySpammer.UI.Config;
+using KeySpammer.UI.Timeline;
 
 namespace KeySpammer;
 
 public partial class MainWindow
 {
-    private sealed class StepDragTarget
-    {
-        public required MacroStep RawInsertAnchor { get; init; }
-        public required double CenterX { get; init; }
-    }
-
     private readonly List<StepDragTarget> _stepDragTargets = new();
 
     private readonly List<MacroStep> _stepDragPreviewRawSteps = new();
@@ -41,8 +37,10 @@ public partial class MainWindow
     private bool _isDragGhostAnimating;
     private bool _timelineDragGlobalHandlersAttached;
 
-    private const double StepDragThreshold = 6;
-    private const double TimelineHeaderDragThreshold = 6;
+    private static DragUiConfig DragUi => GeneratedUiConfig.Drag;
+
+    private static double StepDragThreshold => DragUi.StepDragThreshold;
+    private static double TimelineHeaderDragThreshold => DragUi.TimelineHeaderDragThreshold;
 
     private void AttachStepMouseHandlers(FrameworkElement element, MacroTimeline timeline, MacroStep step)
     {
@@ -122,11 +120,11 @@ public partial class MainWindow
             return;
 
         ghostElement.IsHitTestVisible = false;
-        ghostElement.Opacity = 0.86;
+        ghostElement.Opacity = DragUi.GhostOpacity;
         ghostElement.RenderTransformOrigin = new Point(0.5, 0.5);
 
         var transformGroup = new TransformGroup();
-        transformGroup.Children.Add(new ScaleTransform(1.04, 1.04));
+        transformGroup.Children.Add(new ScaleTransform(DragUi.GhostScale, DragUi.GhostScale));
 
         _draggedStepGhostTransform = new TranslateTransform();
         transformGroup.Children.Add(_draggedStepGhostTransform);
@@ -201,7 +199,7 @@ public partial class MainWindow
 
         UpdateDraggedStepGhostTargetPosition();
 
-        const double followStrength = 0.65;
+        var followStrength = DragUi.GhostFollowStrength;
 
         var dx = _dragGhostTargetPosition.X - _dragGhostCurrentPosition.X;
         var dy = _dragGhostTargetPosition.Y - _dragGhostCurrentPosition.Y;
@@ -244,13 +242,6 @@ public partial class MainWindow
 
         _dragGhostCurrentPosition = default;
         _dragGhostTargetPosition = default;
-    }
-
-    private sealed class StepPreviewSlot
-    {
-        public required List<MacroStep> RawItems { get; init; }
-        public required double CenterX { get; init; }
-        public required bool IsDraggedSlot { get; init; }
     }
 
     private void BeginStepDragPreviewModel(MacroTimeline timeline, MacroStep draggedStep)

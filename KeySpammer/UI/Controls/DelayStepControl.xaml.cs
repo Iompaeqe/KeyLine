@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using KeySpammer.Domain;
 using KeySpammer.Services.Timeline;
+using KeySpammer.UI.Config;
 
 namespace KeySpammer.UI.Controls;
 
@@ -50,28 +51,19 @@ public partial class DelayStepControl : UserControl
         ValueTextBox.Text = value;
         UnitTextBlock.Text = unit;
 
-        var bg = IsSelected
-            ? Color.FromRgb(30, 41, 59)
-            : Color.FromRgb(20, 28, 40);
+        var ui = GeneratedUiConfig.DelayStep;
 
-        var border = IsSelected
-            ? Color.FromRgb(248, 250, 252)
-            : Color.FromRgb(71, 85, 105);
-
-        var valueColor = IsSelected
-            ? Color.FromRgb(255, 251, 235)
-            : Color.FromRgb(125, 211, 252);
-
-        var unitColor = IsSelected
-            ? Color.FromRgb(253, 230, 138)
-            : Color.FromRgb(148, 163, 184);
+        var bg = IsSelected ? ui.BackgroundSelected : ui.Background;
+        var border = IsSelected ? ui.BorderSelected : ui.Border;
+        var valueColor = IsSelected ? ui.ValueTextSelected : ui.ValueText;
+        var unitColor = IsSelected ? ui.UnitTextSelected : ui.UnitText;
 
         RootBorder.Background = new SolidColorBrush(bg);
         RootBorder.BorderBrush = new SolidColorBrush(border);
         ValueTextBox.Foreground = new SolidColorBrush(valueColor);
         UnitTextBlock.Foreground = new SolidColorBrush(unitColor);
         Divider.Background = new SolidColorBrush(border);
-        Divider.Opacity = IsSelected ? 0.9 : 0.65;
+        Divider.Opacity = IsSelected ? ui.DividerOpacitySelected : ui.DividerOpacity;
     }
 
     private void ValueTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)

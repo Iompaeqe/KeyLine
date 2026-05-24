@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using KeySpammer.Domain;
+using KeySpammer.UI.Config;
+using KeySpammer.UI.Timeline;
 
 namespace KeySpammer.UI.Controls;
 
@@ -42,33 +44,26 @@ public partial class TextStepControl : UserControl
         if (step == null)
             return;
 
-        var preview = GetTextPreview(step.Text);
-        RootBorder.Width = Math.Max(110, Math.Min(220, (preview.Length * 8) + 34));
+        var ui = GeneratedUiConfig.TextStep;
+        var preview = StepDisplayFormatter.GetTextPreview(step);
+
+        RootBorder.Width = Math.Max(
+            ui.MinWidth,
+            Math.Min(ui.MaxWidth, (preview.Length * ui.WidthPerCharacter) + ui.WidthPadding));
+
         RootBorder.ToolTip = step.Text;
         PreviewTextBlock.Text = preview;
 
-        var bg = Color.FromRgb(27, 45, 74);
-        var border = Color.FromRgb(96, 165, 250);
-        var fg = Color.FromRgb(226, 238, 255);
-
-        if (IsSelected)
-        {
-            border = Color.FromRgb(248, 250, 252);
-            fg = Color.FromRgb(255, 255, 255);
-        }
+        var bg = ui.Background;
+        var border = IsSelected ? ui.BorderSelected : ui.Border;
+        var fg = IsSelected ? ui.TextSelected : ui.Text;
 
         RootBorder.Background = new SolidColorBrush(bg);
         RootBorder.BorderBrush = new SolidColorBrush(border);
-        RootBorder.BorderThickness = IsSelected ? new Thickness(2) : new Thickness(1);
+        RootBorder.BorderThickness = IsSelected
+            ? ui.SelectedBorderThickness
+            : ui.NormalBorderThickness;
         PreviewTextBlock.Foreground = new SolidColorBrush(fg);
     }
 
-    private static string GetTextPreview(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return "TXT";
-
-        text = text.Replace("\r", " ").Replace("\n", " ");
-        return text.Length <= 18 ? text : text[..18] + "…";
-    }
 }
