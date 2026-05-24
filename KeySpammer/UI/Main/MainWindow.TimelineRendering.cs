@@ -58,9 +58,7 @@ public partial class MainWindow
         HideEmptyTimelineState();
         SyncOptionsFromActiveTimeline();
         
-        TimelineRowsPanel.Margin = _document.Timelines.Count > 1
-            ? new Thickness(0, TimelineHeaderTopExtra, 0, 0)
-            : new Thickness(0, 10, 0, 0);
+        TimelineRowsPanel.Margin = new Thickness(0, TimelineHeaderTopExtra, 0, 0);
 
         var visibleStepsByTimeline = _document.Timelines.ToDictionary(
             timeline => timeline,
