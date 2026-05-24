@@ -1,56 +1,129 @@
 ﻿using System.Collections.ObjectModel;
-using KeySpammer.Domain;
 
 namespace KeySpammer.State;
 
 public sealed class MacroDocument
 {
-    public ObservableCollection<MacroStep> Steps { get; } = new();
+    public ObservableCollection<MacroTimeline> Timelines { get; } = new();
 
-    public bool HasSteps => Steps.Count > 0;
+    public int ActiveTimelineIndex { get; private set; }
 
-    public void Add(MacroStep step)
+    public MacroTimeline ActiveTimeline
     {
-        Steps.Add(step);
+        get
+        {
+            EnsureTimeline();
+            return Timelines[ActiveTimelineIndex];
+        }
     }
 
-    public void AddRange(IEnumerable<MacroStep> steps)
+    public MacroDocument()
     {
-        foreach (var step in steps)
-            Steps.Add(step);
+        EnsureTimeline();
     }
 
-    public void Remove(MacroStep step)
+    public void EnsureTimeline()
     {
-        Steps.Remove(step);
+        if (Timelines.Count == 0)
+            Timelines.Add(CreateTimeline());
+
+        if (ActiveTimelineIndex < 0)
+            ActiveTimelineIndex = 0;
+
+        if (ActiveTimelineIndex >= Timelines.Count)
+            ActiveTimelineIndex = Timelines.Count - 1;
+
+        RenameTimelines();
     }
 
-    public void Clear()
+    public MacroTimeline AddTimeline()
     {
-        Steps.Clear();
+        var timeline = CreateTimeline();
+        Timelines.Add(timeline);
+        ActiveTimelineIndex = Timelines.Count - 1;
+        RenameTimelines();
+        return timeline;
     }
 
-    public List<MacroStep> ToPlaybackList()
+    public void SelectTimeline(MacroTimeline timeline)
     {
-        return Steps.ToList();
+        var index = Timelines.IndexOf(timeline);
+        if (index >= 0)
+            ActiveTimelineIndex = index;
     }
 
-    public int IndexOf(MacroStep step)
+    public void SelectTimeline(int index)
     {
-        return Steps.IndexOf(step);
-    }
-
-    public void Move(int oldIndex, int newIndex)
-    {
-        if (oldIndex < 0 || oldIndex >= Steps.Count)
+        if (index < 0 || index >= Timelines.Count)
             return;
 
-        if (newIndex < 0 || newIndex >= Steps.Count)
+        ActiveTimelineIndex = index;
+    }
+
+    public void SelectNextTimeline()
+    {
+        if (Timelines.Count == 0)
             return;
+
+        ActiveTimelineIndex = (ActiveTimelineIndex + 1) % Timelines.Count;
+    }
+
+    public void SelectPreviousTimeline()
+    {
+        if (Timelines.Count == 0)
+            return;
+
+        ActiveTimelineIndex = (ActiveTimelineIndex - 1 + Timelines.Count) % Timelines.Count;
+    }
+
+    public void RemoveTimeline(MacroTimeline timeline)
+    {
+        var index = Timelines.IndexOf(timeline);
+        if (index < 0)
+            return;
+
+        if (Timelines.Count == 1)
+        {
+            timeline.Steps.Clear();
+            ActiveTimelineIndex = 0;
+            return;
+        }
+
+        Timelines.RemoveAt(index);
+
+        if (ActiveTimelineIndex >= Timelines.Count)
+            ActiveTimelineIndex = Timelines.Count - 1;
+
+        RenameTimelines();
+    }
+
+    public void MoveTimeline(MacroTimeline timeline, int newIndex)
+    {
+        var oldIndex = Timelines.IndexOf(timeline);
+        if (oldIndex < 0)
+            return;
+
+        newIndex = Math.Clamp(newIndex, 0, Timelines.Count - 1);
 
         if (oldIndex == newIndex)
             return;
 
-        Steps.Move(oldIndex, newIndex);
+        Timelines.Move(oldIndex, newIndex);
+        ActiveTimelineIndex = newIndex;
+        RenameTimelines();
+    }
+
+    private MacroTimeline CreateTimeline()
+    {
+        return new MacroTimeline
+        {
+            Name = $"T{Timelines.Count + 1}"
+        };
+    }
+
+    private void RenameTimelines()
+    {
+        for (var i = 0; i < Timelines.Count; i++)
+            Timelines[i].Name = $"T{i + 1}";
     }
 }

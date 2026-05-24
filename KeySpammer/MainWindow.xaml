@@ -19,7 +19,6 @@
                 <ResourceDictionary Source="UI/Styles/Colors.xaml" />
                 <ResourceDictionary Source="UI/Styles/TextBlocks.xaml" />
                 <ResourceDictionary Source="UI/Styles/Buttons.xaml" />
-                <ResourceDictionary Source="UI/Styles/TextBlocks.xaml" />
                 <ResourceDictionary Source="UI/Styles/CheckBoxes.xaml" />
                 <ResourceDictionary Source="UI/Styles/ScrollBars.xaml" />
                 <ResourceDictionary Source="UI/Styles/ComboBoxes.xaml" />
@@ -54,7 +53,6 @@
                   Background="Transparent"
                   PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Bar-chart logo mark -->
                     <Canvas Width="18" Height="18" Margin="0,0,9,0" VerticalAlignment="Center">
                         <Rectangle Canvas.Left="0" Canvas.Top="8" Width="4" Height="10" Fill="#0EA5C9" RadiusX="1" RadiusY="1" />
                         <Rectangle Canvas.Left="5" Canvas.Top="3" Width="4" Height="15" Fill="#2563EB" RadiusX="1" RadiusY="1" />
@@ -117,7 +115,7 @@
                 </Grid>
 
                 <Border Grid.Column="2"
-                        Width="280"
+                        Width="300"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         CornerRadius="8"
@@ -126,13 +124,43 @@
                         BorderThickness="1"
                         Padding="13,8">
                     <StackPanel>
-                        <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" />
+                        <Grid Margin="0,0,0,5">
+                            <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top">
+                                <Button x:Name="PreviousTimelineOptionsButton"
+                                        Content="‹"
+                                        Width="24"
+                                        MinWidth="24"
+                                        Height="18"
+                                        Padding="0"
+                                        FontSize="13"
+                                        Click="PreviousTimelineOptionsButton_Click" />
+                                <TextBlock x:Name="ActiveTimelineTextBlock"
+                                           Text="T1/1"
+                                           Width="44"
+                                           TextAlignment="Center"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource Muted}"
+                                           VerticalAlignment="Center" />
+                                <Button x:Name="NextTimelineOptionsButton"
+                                        Content="›"
+                                        Width="24"
+                                        MinWidth="24"
+                                        Height="18"
+                                        Padding="0"
+                                        FontSize="13"
+                                        Click="NextTimelineOptionsButton_Click" />
+                            </StackPanel>
+                        </Grid>
 
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <CheckBox x:Name="UseStandardDelayCheckBox"
                                       Content="Std delay"
-                                      Checked="RefreshTimeline"
-                                      Unchecked="RefreshTimeline"
+                                      Checked="OptionsControl_Changed"
+                                      Unchecked="OptionsControl_Changed"
                                       Margin="0,0,14,0" />
 
                             <TextBlock Text="ms"
@@ -141,7 +169,8 @@
 
                             <TextBox x:Name="StandardDelayTextBox"
                                      Text="50"
-                                     Width="50" />
+                                     Width="50"
+                                     TextChanged="StandardDelayTextBox_TextChanged" />
 
                             <Border x:Name="ShowKeyUpDownCheckSeparator"
                                     Width="1"
@@ -153,8 +182,8 @@
                                       Margin="0,0,10,0"
                                       Content="Show ↑↓"
                                       IsChecked="True"
-                                      Checked="RefreshTimeline"
-                                      Unchecked="RefreshTimeline" />
+                                      Checked="OptionsControl_Changed"
+                                      Unchecked="OptionsControl_Changed" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -169,13 +198,14 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <DockPanel Margin="12,5,12,0">
-                        <TextBlock Text="TIMELINE" Style="{StaticResource Cap}"
+                        <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
                                    Margin="0" DockPanel.Dock="Left" />
-                        <TextBlock Text="drag to reorder  ·  right-click text to edit"
+                        <TextBlock Text="drag T headers to reorder  ·  Delete = remove selected"
                                    Style="{StaticResource Dim}" FontSize="10"
                                    HorizontalAlignment="Right" />
                     </DockPanel>
                     <Grid Grid.Row="1">
+                        <Grid>
                         <ScrollViewer x:Name="TimelineScrollViewer"
                                       HorizontalScrollBarVisibility="Hidden"
                                       VerticalScrollBarVisibility="Disabled"
@@ -189,11 +219,17 @@
                                       PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
                                       MouseLeave="TimelineScrollViewer_MouseLeave">
 
-                            <StackPanel x:Name="TimelinePanel"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
+                            <StackPanel x:Name="TimelineRowsPanel"
+                                        Orientation="Vertical"
                                         Background="Transparent"/>
                         </ScrollViewer>
+                            
+
+                            <Canvas x:Name="TimelineDragOverlayCanvas"
+                                    IsHitTestVisible="False"
+                                    ClipToBounds="False"
+                                    Panel.ZIndex="999"/>
+                        </Grid>
 
                         <!-- Fake non-clickable scroll indicator -->
                         <Canvas x:Name="TimelineScrollIndicator"
@@ -239,9 +275,9 @@
                         <ColumnDefinition Width="102" />
                     </Grid.ColumnDefinitions>
 
-                    <Button x:Name="AddButton" Content="＋  Add" Width="82"
+                    <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="104"
                             Background="#123A5A" BorderBrush="#256D9D"
-                            Foreground="#BAE6FD" Click="AddButton_Click" />
+                            Foreground="#BAE6FD" Click="AddTimelineButton_Click" />
 
                     <TextBlock x:Name="StatusText" Grid.Column="2"
                                Text="Stopped" Style="{StaticResource Dim}" />
@@ -264,7 +300,6 @@
                     </Grid>
 
                     <Popup x:Name="AddPopup"
-                           PlacementTarget="{Binding ElementName=AddButton}"
                            Placement="Top" StaysOpen="False" AllowsTransparency="True">
                         <Border Background="#05080F" BorderBrush="#162035" BorderThickness="1"
                                 CornerRadius="9" Padding="5" Margin="0,0,0,6">
@@ -291,7 +326,7 @@
                          Margin="0,0,5,0" DockPanel.Dock="Left" VerticalAlignment="Center" />
                 <TextBlock Text="Ready" Foreground="#059669" FontSize="11"
                            DockPanel.Dock="Left" VerticalAlignment="Center" />
-                <TextBlock Text="Delete = remove selected  ·  Esc = stop recording"
+                <TextBlock Text="Delete = remove selected step/timeline  ·  Esc = stop recording"
                            Style="{StaticResource Dim}" FontSize="10" HorizontalAlignment="Right" />
             </DockPanel>
         </Grid>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using KeySpammer.Domain;
+using KeySpammer.State;
 
 namespace KeySpammer;
 
@@ -168,7 +169,7 @@ public partial class MainWindow
                 return true;
             }
 
-            if (source is FrameworkElement fe && fe.Tag is MacroStep)
+            if (source is FrameworkElement fe && (fe.Tag is MacroStep || fe.Tag is MacroTimeline))
                 return true;
 
             source = VisualTreeHelper.GetParent(source);
