@@ -58,12 +58,12 @@ public partial class TextStepControl : UserControl
         var border = IsSelected ? ui.BorderSelected : ui.Border;
         var fg = IsSelected ? ui.TextSelected : ui.Text;
 
-        RootBorder.Background = new SolidColorBrush(bg);
-        RootBorder.BorderBrush = new SolidColorBrush(border);
+        RootBorder.Background = UiBrushes.Get(bg);
+        RootBorder.BorderBrush = UiBrushes.Get(border);
         RootBorder.BorderThickness = IsSelected
             ? ui.SelectedBorderThickness
             : ui.NormalBorderThickness;
-        PreviewTextBlock.Foreground = new SolidColorBrush(fg);
+        PreviewTextBlock.Foreground = UiBrushes.Get(fg);
     }
 
 }

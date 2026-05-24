@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 using KeySpammer.Domain;
+using System.Windows.Media;
 using KeySpammer.UI.Config;
 
 namespace KeySpammer;
@@ -16,6 +16,7 @@ public partial class MainWindow
     // whether the placeholder should move. That is the main performance killer.
     private readonly Dictionary<MacroStep, double> _stepDragPreviewWidthByFirstRawItem = new();
     private double _stepDragPreviewContentLeftX;
+    private Point? _lastStepDragPreviewMousePoint;
 
     private FrameworkElement? _draggedStepGhost;
     private TranslateTransform? _draggedStepGhostTransform;

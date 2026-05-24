@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using KeySpammer.Domain;
 using KeySpammer.Services.Timeline;
 using KeySpammer.UI.Config;
@@ -47,22 +46,22 @@ public partial class DelayStepControl : UserControl
         if (step == null)
             return;
 
+        var ui = GeneratedUiConfig.DelayStep;
         var (value, unit) = DelayFormatter.Split(step.DelayMs);
+
         ValueTextBox.Text = value;
         UnitTextBlock.Text = unit;
-
-        var ui = GeneratedUiConfig.DelayStep;
 
         var bg = IsSelected ? ui.BackgroundSelected : ui.Background;
         var border = IsSelected ? ui.BorderSelected : ui.Border;
         var valueColor = IsSelected ? ui.ValueTextSelected : ui.ValueText;
         var unitColor = IsSelected ? ui.UnitTextSelected : ui.UnitText;
 
-        RootBorder.Background = new SolidColorBrush(bg);
-        RootBorder.BorderBrush = new SolidColorBrush(border);
-        ValueTextBox.Foreground = new SolidColorBrush(valueColor);
-        UnitTextBlock.Foreground = new SolidColorBrush(unitColor);
-        Divider.Background = new SolidColorBrush(border);
+        RootBorder.Background = UiBrushes.Get(bg);
+        RootBorder.BorderBrush = UiBrushes.Get(border);
+        ValueTextBox.Foreground = UiBrushes.Get(valueColor);
+        UnitTextBlock.Foreground = UiBrushes.Get(unitColor);
+        Divider.Background = UiBrushes.Get(border);
         Divider.Opacity = IsSelected ? ui.DividerOpacitySelected : ui.DividerOpacity;
     }
 

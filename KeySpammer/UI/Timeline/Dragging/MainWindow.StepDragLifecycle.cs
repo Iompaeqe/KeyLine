@@ -31,6 +31,7 @@ public partial class MainWindow
         _stepDragPreviewRawSteps.Clear();
         _stepDragRawItems.Clear();
         _stepDragPreviewWidthByFirstRawItem.Clear();
+        _lastStepDragPreviewMousePoint = null;
 
         _drag.EndStepDrag();
         _drag.EndTimelineHeaderDrag();

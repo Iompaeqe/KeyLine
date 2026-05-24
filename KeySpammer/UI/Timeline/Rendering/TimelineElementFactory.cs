@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using KeySpammer.Domain;
-using KeySpammer.State;
 using KeySpammer.UI.Config;
 using KeySpammer.UI.Controls;
 
@@ -82,8 +81,8 @@ public static class TimelineElementFactory
             Height = size.Height,
             CornerRadius = TimelineUi.DropPlaceholderCornerRadius,
             BorderThickness = TimelineUi.DropPlaceholderBorderThickness,
-            BorderBrush = new SolidColorBrush(TimelineUi.DropPlaceholderBorder),
-            Background = new SolidColorBrush(TimelineUi.DropPlaceholderBackground),
+            BorderBrush = UiBrushes.Get(TimelineUi.DropPlaceholderBorder),
+            Background = UiBrushes.Get(TimelineUi.DropPlaceholderBackground),
             Opacity = 1.0,
             IsHitTestVisible = false
         };
@@ -96,7 +95,7 @@ public static class TimelineElementFactory
             Width = Math.Max(0, width),
             Height = TimelineUi.ConnectorThickness,
             CornerRadius = new CornerRadius(TimelineUi.ConnectorThickness / 2.0),
-            Background = new SolidColorBrush(TimelineUi.ConnectorColor),
+            Background = UiBrushes.Get(TimelineUi.ConnectorColor),
             Opacity = 0.85,
             IsHitTestVisible = false
         };
@@ -124,8 +123,8 @@ public static class TimelineElementFactory
             Width = TimelineUi.HeaderWidth,
             Margin = new Thickness(0),
             CornerRadius = GetHeaderCornerRadius(isFirst, isLast),
-            Background = new SolidColorBrush(backgroundColor),
-            BorderBrush = new SolidColorBrush(borderColor),
+            Background = UiBrushes.Get(backgroundColor),
+            BorderBrush = UiBrushes.Get(borderColor),
             BorderThickness = TimelineUi.HeaderBorderThickness,
             Cursor = Cursors.SizeAll,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -140,7 +139,7 @@ public static class TimelineElementFactory
             FontSize = TimelineUi.HeaderFontSize,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = new SolidColorBrush(isActive
+            Foreground = UiBrushes.Get(isActive
                 ? TimelineUi.HeaderTextActive
                 : TimelineUi.HeaderText)
         };

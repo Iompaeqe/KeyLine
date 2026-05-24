@@ -95,13 +95,13 @@ public partial class KeyStepControl : UserControl
             fg = ui.SelectedText;
         }
 
-        KeyBorder.Background = new SolidColorBrush(bg);
-        KeyBorder.BorderBrush = new SolidColorBrush(border);
+        KeyBorder.Background = UiBrushes.Get(bg);
+        KeyBorder.BorderBrush = UiBrushes.Get(border);
         KeyBorder.BorderThickness = IsSelected
             ? ui.SelectedBorderThickness
             : ui.NormalBorderThickness;
-        KeyTextBlock.Foreground = new SolidColorBrush(fg);
-        UpArrow.Foreground = new SolidColorBrush(fg);
-        DownArrow.Foreground = new SolidColorBrush(fg);
+        KeyTextBlock.Foreground = UiBrushes.Get(fg);
+        UpArrow.Foreground = UiBrushes.Get(fg);
+        DownArrow.Foreground = UiBrushes.Get(fg);
     }
 }

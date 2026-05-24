@@ -2,7 +2,7 @@
 using KeySpammer.Domain;
 using KeySpammer.Services.Input;
 
-namespace KeySpammer.Services.Macro;
+namespace KeySpammer.Services.Recording;
 
 public sealed class MacroRecorder
 {

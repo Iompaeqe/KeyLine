@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 using KeySpammer.Domain;
+using KeySpammer.UI.Config;
 
 namespace KeySpammer;
 
@@ -16,7 +16,7 @@ public partial class MainWindow
 
         RecordStopButton.Visibility = Visibility.Visible;
         StatusText.Text = $"● Recording {timeline.Name}";
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+        StatusText.Foreground = UiBrushes.Get(System.Windows.Media.Color.FromRgb(248, 113, 113));
 
         Focus();
     }
@@ -28,27 +28,30 @@ public partial class MainWindow
 
         RecordStopButton.Visibility = Visibility.Collapsed;
         StatusText.Text = "Stopped";
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+        StatusText.Foreground = UiBrushes.Get(System.Windows.Media.Color.FromRgb(61, 84, 112));
 
-        RefreshTimeline();
+        if (_document.ActiveTimeline != null)
+            RefreshTimelineRow(_document.ActiveTimeline);
+        else
+            RefreshTimeline();
     }
 
     private void RecordStopButton_Click(object sender, RoutedEventArgs e) => StopRecording();
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        
-        CancelTimelineDragState();
-        
-        if (!_recorder.IsRecording && e.Key == Key.Delete)
+        if (!_recorder.IsRecording)
         {
-            DeleteSelectedItem();
-            e.Handled = true;
+            CancelTimelineDragState();
+
+            if (e.Key == Key.Delete)
+            {
+                DeleteSelectedItem();
+                e.Handled = true;
+            }
+
             return;
         }
-
-        if (!_recorder.IsRecording)
-            return;
 
         if (e.Key == Key.Escape)
         {
@@ -58,12 +61,18 @@ public partial class MainWindow
         }
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
+        var addedAny = false;
 
         foreach (var step in _recorder.RecordKeyDown(e, timeline.Steps.Count > 0))
+        {
             timeline.Steps.Add(step);
+            addedAny = true;
+        }
 
         e.Handled = true;
-        RefreshTimeline();
+
+        if (addedAny)
+            RefreshTimelineRow(timeline);
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -72,11 +81,17 @@ public partial class MainWindow
             return;
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
+        var addedAny = false;
 
         foreach (var step in _recorder.RecordKeyUp(e, timeline.Steps.Count > 0))
+        {
             timeline.Steps.Add(step);
+            addedAny = true;
+        }
 
         e.Handled = true;
-        RefreshTimeline();
+
+        if (addedAny)
+            RefreshTimelineRow(timeline);
     }
 }

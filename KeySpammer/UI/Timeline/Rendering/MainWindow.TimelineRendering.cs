@@ -2,10 +2,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using KeySpammer.Domain;
 using KeySpammer.Services.Macro;
-using KeySpammer.UI.Config;
+using KeySpammer.Services.Timeline;
+using KeySpammer.State;
 using KeySpammer.UI.Controls;
+using KeySpammer.UI.Config;
 using KeySpammer.UI.Timeline;
 
 namespace KeySpammer;
@@ -14,15 +17,15 @@ public partial class MainWindow
 {
     private static TimelineUiConfig TimelineUi => GeneratedUiConfig.Timeline;
 
-    private static double TimelineRowHeight => TimelineUi.RowHeight;
-    private static double TimelineRowGap => TimelineUi.RowGap;
+    private protected static double TimelineRowHeight => TimelineUi.RowHeight;
+    private protected static double TimelineRowGap => TimelineUi.RowGap;
     private static double TimelineHeaderWidth => TimelineUi.HeaderWidth;
 
-    private static double TimelineFirstItemLeft => TimelineUi.FirstItemLeft;
-    private static double TimelineItemGap => TimelineUi.ItemGap;
+    private protected static double TimelineFirstItemLeft => TimelineUi.FirstItemLeft;
+    private protected static double TimelineItemGap => TimelineUi.ItemGap;
     private static double TimelineRightPadding => TimelineUi.RightPadding;
 
-    private static double TimelineConnectorY => TimelineUi.ConnectorY;
+    private protected static double TimelineConnectorY => TimelineUi.ConnectorY;
     private static double TimelineConnectorThickness => TimelineUi.ConnectorThickness;
 
     private static double TimelineHeaderTopExtra => TimelineUi.HeaderTopExtra;
@@ -42,7 +45,7 @@ public partial class MainWindow
             ShowEmptyTimelineState();
             UpdateTimelineOptionsPagerVisibility();
             UpdateWindowHeightForTimelineCount();
-            Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
+            RequestTimelineScrollIndicatorUpdate();
             return;
         }
 
@@ -88,7 +91,7 @@ public partial class MainWindow
         UpdateTimelineOptionsPagerVisibility();
         UpdateWindowHeightForTimelineCount();
 
-        Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
+        RequestTimelineScrollIndicatorUpdate();
     }
     
     private void BuildTimelineHeaderGridRows()
@@ -219,6 +222,55 @@ public partial class MainWindow
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
     }
 
+    private void RefreshTimelineRow(MacroTimeline timeline)
+    {
+        if (TimelineRowsPanel == null)
+            return;
+
+        if (_document.Timelines.Count == 0)
+        {
+            RefreshTimeline();
+            return;
+        }
+
+        // Row-only refresh is valid only when the timeline structure did not change.
+        // Add/remove/reorder timelines still needs the normal full RefreshTimeline().
+        if (TimelineRowsPanel.Children.Count != _document.Timelines.Count)
+        {
+            RefreshTimeline();
+            return;
+        }
+
+        var rowIndex = _document.Timelines.IndexOf(timeline);
+
+        if (rowIndex < 0 || rowIndex >= TimelineRowsPanel.Children.Count)
+        {
+            RefreshTimeline();
+            return;
+        }
+
+        var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+            GetTimelineRenderRawSteps(timeline).ToList(),
+            timeline.UseStandardDelay,
+            timeline.ShowKeyUpDown);
+
+        var existingCanvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
+        var requiredCanvasWidth = CalculateTimelineCanvasWidth(timeline, visibleSteps);
+        var canvasWidth = Math.Max(existingCanvasWidth, requiredCanvasWidth);
+
+        var replacementRow = CreateTimelineRow(
+            timeline,
+            visibleSteps,
+            canvasWidth,
+            rowIndex == 0,
+            rowIndex == _document.Timelines.Count - 1);
+
+        TimelineRowsPanel.Children.RemoveAt(rowIndex);
+        TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
+
+        RequestTimelineScrollIndicatorUpdate();
+    }
+
     private double GetExistingTimelineCanvasWidth(int rowIndex)
     {
         if (rowIndex >= 0 && rowIndex < TimelineRowsPanel.Children.Count)
@@ -255,13 +307,13 @@ public partial class MainWindow
 
             foreach (var step in visibleSteps)
             {
-                var block = CreateStepBlock(timeline, step);
+                var block = CreateStepBlockForMeasure(timeline, step);
                 var size = MeasureTimelineItem(block);
 
                 contentWidth += size.Width + TimelineItemGap;
             }
 
-            var addBlock = CreateAddBlock(timeline);
+            var addBlock = TimelineElementFactory.CreateAddStep(timeline);
             var addSize = MeasureTimelineItem(addBlock);
 
             contentWidth += addSize.Width + TimelineRightPadding;
@@ -270,6 +322,32 @@ public partial class MainWindow
         }
 
         return Math.Max(Math.Max(0, viewportWidth - 20), maxContentWidth);
+    }
+
+    private double CalculateTimelineCanvasWidth(
+        MacroTimeline timeline,
+        IReadOnlyList<MacroStep> visibleSteps)
+    {
+        var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
+            ? TimelineScrollViewer.ViewportWidth
+            : TimelineScrollViewer?.ActualWidth ?? 0;
+
+        var contentWidth = TimelineFirstItemLeft;
+
+        foreach (var step in visibleSteps)
+        {
+            var block = CreateStepBlockForMeasure(timeline, step);
+            var size = MeasureTimelineItem(block);
+
+            contentWidth += size.Width + TimelineItemGap;
+        }
+
+        var addBlock = TimelineElementFactory.CreateAddStep(timeline);
+        var addSize = MeasureTimelineItem(addBlock);
+
+        contentWidth += addSize.Width + TimelineRightPadding;
+
+        return Math.Max(Math.Max(0, viewportWidth - 20), contentWidth);
     }
 
     private UIElement CreateTimelineRow(
@@ -471,6 +549,14 @@ public partial class MainWindow
 
         AttachTimelineHeaderMouseHandlers(border, timeline);
         return border;
+    }
+
+    private UIElement CreateStepBlockForMeasure(MacroTimeline timeline, MacroStep step)
+    {
+        return TimelineElementFactory.CreateStepBlock(
+            timeline,
+            step,
+            IsStepSelected(timeline, step));
     }
 
     private UIElement CreateStepBlock(MacroTimeline timeline, MacroStep step)

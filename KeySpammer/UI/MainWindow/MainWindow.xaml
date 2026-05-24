@@ -350,19 +350,47 @@
                     </Grid>
 
                     <Popup x:Name="AddPopup"
-                           Placement="Top" StaysOpen="False" AllowsTransparency="True">
-                        <Border Background="#05080F" BorderBrush="#162035" BorderThickness="1"
-                                CornerRadius="9" Padding="5" Margin="0,0,0,6">
+                           Placement="Top"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           PopupAnimation="Fade">
+                        <Border CornerRadius="12"
+                                Background="#08111F"
+                                BorderBrush="#263A55"
+                                BorderThickness="1"
+                                Padding="6"
+                                Margin="0,0,0,8"
+                                SnapsToDevicePixels="True">
                             <Border.Effect>
-                                <DropShadowEffect BlurRadius="22" ShadowDepth="0"
-                                                  Opacity="0.8" Color="#000000" />
+                                <DropShadowEffect BlurRadius="10"
+                                                  ShadowDepth="2"
+                                                  Direction="270"
+                                                  Opacity="0.38"
+                                                  Color="#000000" />
                             </Border.Effect>
-                            <StackPanel Width="124">
-                                <Button Content="Record keys" Height="28" Margin="0,0,0,4"
+
+                            <StackPanel Width="132">
+                                <Button Content="Record keys"
+                                        Height="30"
+                                        Margin="0,0,0,5"
+                                        Background="#102033"
+                                        BorderBrush="#2C4A6D"
+                                        Foreground="#DDEBFF"
                                         Click="RecordMenuButton_Click" />
-                                <Button Content="Add delay" Height="28" Margin="0,0,0,4"
+
+                                <Button Content="Add delay"
+                                        Height="30"
+                                        Margin="0,0,0,5"
+                                        Background="#102033"
+                                        BorderBrush="#2C4A6D"
+                                        Foreground="#DDEBFF"
                                         Click="DelayMenuButton_Click" />
-                                <Button Content="Add text" Height="28"
+
+                                <Button Content="Add text"
+                                        Height="30"
+                                        Background="#102033"
+                                        BorderBrush="#2C4A6D"
+                                        Foreground="#DDEBFF"
                                         Click="TextMenuButton_Click" />
                             </StackPanel>
                         </Border>

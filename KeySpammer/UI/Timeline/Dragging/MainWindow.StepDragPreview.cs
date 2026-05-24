@@ -1,6 +1,7 @@
 using System.Windows;
 using KeySpammer.Domain;
 using KeySpammer.Services.Macro;
+using KeySpammer.Services.Timeline;
 using KeySpammer.UI.Timeline;
 
 namespace KeySpammer;
@@ -13,7 +14,7 @@ public partial class MainWindow
         _stepDragRawItems.Clear();
         _stepDragPreviewWidthByFirstRawItem.Clear();
 
-        var draggedItems = MainWindow.GetRawStepsForDisplayStep(timeline, draggedStep);
+        var draggedItems = GetRawStepsForDisplayStep(timeline, draggedStep);
         if (draggedItems.Count == 0)
             return;
 
@@ -35,7 +36,7 @@ public partial class MainWindow
         _stepDragPreviewContentLeftX = 0;
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-            Enumerable.ToList<MacroStep>(_stepDragPreviewRawSteps),
+            _stepDragPreviewRawSteps.ToList(),
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
@@ -84,7 +85,7 @@ public partial class MainWindow
             ? CreateStepBlock(timeline, _drag.DraggedStep)
             : CreateStepBlock(timeline, displayStep);
 
-        var size = MainWindow.MeasureTimelineItem(block);
+        var size = MeasureTimelineItem(block);
         var width = Math.Max(1, size.Width);
 
         _stepDragPreviewWidthByFirstRawItem[firstRawItem] = width;
@@ -93,6 +94,20 @@ public partial class MainWindow
 
     private bool UpdateStepDragPreviewFromMouse(Point currentPoint)
     {
+        if (_lastStepDragPreviewMousePoint.HasValue)
+        {
+            var last = _lastStepDragPreviewMousePoint.Value;
+            var epsilon = DragUi.PreviewMouseMoveEpsilon;
+
+            if (Math.Abs(currentPoint.X - last.X) < epsilon &&
+                Math.Abs(currentPoint.Y - last.Y) < epsilon)
+            {
+                return false;
+            }
+        }
+
+        _lastStepDragPreviewMousePoint = currentPoint;
+
         var orderChanged = UpdateStepDragPreviewOrderFromMouse(currentPoint.X);
         var rawInsertAnchor = GetStepDragPreviewRawInsertAnchor();
         var anchorChanged = _drag.UpdateStepDragPreview(currentPoint, rawInsertAnchor);
@@ -106,7 +121,7 @@ public partial class MainWindow
             return false;
 
         var changed = false;
-        var maxMoves = Math.Max((int)1, (int)_stepDragPreviewRawSteps.Count);
+        var maxMoves = Math.Max(1, _stepDragPreviewRawSteps.Count);
 
         for (var move = 0; move < maxMoves; move++)
         {
@@ -160,11 +175,11 @@ public partial class MainWindow
         var slots = new List<StepPreviewSlot>();
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-            Enumerable.ToList<MacroStep>(_stepDragPreviewRawSteps),
+            _stepDragPreviewRawSteps.ToList(),
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
-        var currentLeft = MainWindow.TimelineFirstItemLeft;
+        var currentLeft = TimelineFirstItemLeft;
 
         foreach (var displayStep in visibleSteps)
         {
@@ -181,7 +196,7 @@ public partial class MainWindow
                 IsDraggedSlot = rawItems.Any(_stepDragRawItems.Contains)
             });
 
-            currentLeft += width + MainWindow.TimelineItemGap;
+            currentLeft += width + TimelineItemGap;
         }
 
         return slots;
@@ -259,6 +274,6 @@ public partial class MainWindow
         if (index < 0)
             return 0;
 
-        return index * (MainWindow.TimelineRowHeight + MainWindow.TimelineRowGap);
+        return index * (TimelineRowHeight + TimelineRowGap);
     }
 }

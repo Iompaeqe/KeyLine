@@ -2,43 +2,65 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-        <Style TargetType="Button">
-            <Setter Property="Height" Value="30" />
-            <Setter Property="MinWidth" Value="72" />
-            <Setter Property="Padding" Value="14,0" />
-            <Setter Property="Foreground" Value="#E5EDF7" />
-            <Setter Property="Background" Value="#1A2433" />
-            <Setter Property="BorderBrush" Value="#354258" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="B" CornerRadius="7"
+    <Style TargetType="Button">
+        <Setter Property="Height" Value="30" />
+        <Setter Property="MinWidth" Value="72" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Foreground" Value="#E5EDF7" />
+        <Setter Property="Background" Value="#1A2433" />
+        <Setter Property="BorderBrush" Value="#354258" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid RenderTransformOrigin="0.5,0.5">
+                        <Border x:Name="B"
+                                CornerRadius="7"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="B" Property="Opacity" Value="0.78" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="B" Property="RenderTransformOrigin" Value="0.5,0.5" />
-                                <Setter TargetName="B" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <ScaleTransform ScaleX="0.97" ScaleY="0.97" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+                                BorderThickness="{TemplateBinding BorderThickness}" />
+
+                        <!-- Hover shine. Does not make the button transparent. -->
+                        <Border x:Name="HoverOverlay"
+                                CornerRadius="7"
+                                Background="#FFFFFF"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}" />
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.08" />
+                        </Trigger>
+
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.14" />
+                            <Setter TargetName="B" Property="RenderTransformOrigin" Value="0.5,0.5" />
+                            <Setter TargetName="B" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.97" ScaleY="0.97" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="B" Property="Opacity" Value="0.45" />
+                            <Setter Property="Foreground" Value="#7B8798" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
 </ResourceDictionary>

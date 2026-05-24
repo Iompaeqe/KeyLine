@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Media;
 
 namespace KeySpammer.UI.Config;
@@ -11,6 +11,7 @@ public static class GeneratedUiConfig
     public static TextStepUiConfig TextStep { get; } = new();
     public static AddStepUiConfig AddStep { get; } = new();
     public static DragUiConfig Drag { get; } = new();
+    public static PerformanceUiConfig Performance { get; } = new();
 }
 
 public sealed class TimelineUiConfig
@@ -148,10 +149,17 @@ public sealed class DragUiConfig
     public double GhostScale { get; init; } = 1.04;
     public double GhostFollowStrength { get; init; } = 0.65;
 
-    // Adjusts where the dragged node ghost appears compared to the cursor.
-    // X: positive moves the ghost right, negative moves it left.
-    // Y: positive moves the ghost down, negative moves it up.
-    // Default 0 keeps the previous behavior.
     public double GhostCursorOffsetX { get; init; } = 0;
-    public double GhostCursorOffsetY { get; init; } = 30;
+    public double GhostCursorOffsetY { get; init; } = 0;
+
+    // Drag preview does not need to recalculate insertion slots for every single mouse pixel.
+    // The ghost still follows the cursor every frame; this only throttles expensive preview math.
+    public double PreviewMouseMoveEpsilon { get; init; } = 2.0;
+}
+
+public sealed class PerformanceUiConfig
+{
+    // Recording can generate many key events per second. Rebuilding the whole timeline for
+    // every keydown/keyup makes WPF choke once there are 100+ nodes. This caps visual refresh.
+    public int RecordingTimelineRefreshIntervalMs { get; init; } = 50;
 }
