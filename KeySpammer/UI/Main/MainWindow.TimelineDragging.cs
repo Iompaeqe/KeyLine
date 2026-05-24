@@ -275,12 +275,10 @@ public partial class MainWindow
     {
         _stepDragPreviewWidthByFirstRawItem.Clear();
 
-        // Timeline rows are laid out at X=0 inside TimelineRowsPanel.
-        // The canvas starts after the optional header column. Do not use
-        // TransformToAncestor here during dragging; it is unnecessary work.
-        _stepDragPreviewContentLeftX = _document.Timelines.Count > 1
-            ? TimelineHeaderWidth
-            : 0;
+        // TimelineRowsPanel now lives inside the node/content column.
+        // Mouse coordinates used for step dragging are already relative to that column,
+        // so there is no header-column offset anymore.
+        _stepDragPreviewContentLeftX = 0;
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
             _stepDragPreviewRawSteps.ToList(),
@@ -604,7 +602,7 @@ public partial class MainWindow
 
             _drag.BeginTimelineHeaderDrag(
                 timeline,
-                e.GetPosition(TimelineRowsPanel),
+                e.GetPosition(TimelineHeaderGrid),
                 _document.Timelines.IndexOf(timeline));
 
             element.CaptureMouse();
@@ -620,7 +618,7 @@ public partial class MainWindow
                 return;
             }
 
-            var currentPoint = e.GetPosition(TimelineRowsPanel);
+            var currentPoint = e.GetPosition(TimelineHeaderGrid);
 
             if (!_drag.IsDraggingTimelineHeader)
             {
@@ -721,11 +719,10 @@ public partial class MainWindow
                 continue;
 
             var rowPosition = row.TransformToAncestor(TimelineRowsPanel).Transform(new Point(0, 0));
-            var headerWidth = _document.Timelines.Count > 1 ? TimelineHeaderWidth : 0;
-            return rowPosition.X + headerWidth;
+            return rowPosition.X;
         }
 
-        return _document.Timelines.Count > 1 ? TimelineHeaderWidth : 0;
+        return 0;
     }
 
     private void MoveTimelineHeaderByMouseY(MacroTimeline draggedTimeline, double mouseY)

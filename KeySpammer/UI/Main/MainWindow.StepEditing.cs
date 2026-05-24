@@ -33,7 +33,9 @@ public partial class MainWindow
         _document.RemoveTimeline(timeline);
         _selection.Clear();
 
-        SelectTimeline(_document.ActiveTimeline);
+        if (_document.Timelines.Count > 0)
+            SelectTimeline(_document.ActiveTimeline);
+
         RefreshTimeline();
     }
 

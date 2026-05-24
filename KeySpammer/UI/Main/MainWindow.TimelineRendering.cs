@@ -23,26 +23,44 @@ public partial class MainWindow
         public double CenterX => Left + (Size.Width / 2.0);
     }
 
-    private const double TimelineRowHeight = 88;
-    private const double TimelineRowGap = 8;
-    private const double TimelineHeaderWidth = 48;
+    private const double TimelineRowHeight = 72;
+    private const double TimelineRowGap = 30;
+    private const double TimelineHeaderWidth = 56;
 
     private const double TimelineFirstItemLeft = 12;
     private const double TimelineItemGap = 0;
     private const double TimelineRightPadding = 32;
 
-    private const double TimelineConnectorY = 28;
+    private const double TimelineConnectorY = 36;
     private const double TimelineConnectorThickness = 2;
+    
+    private const double TimelineHeaderTopExtra = 28;
+    private const double TimelineHeaderBottomExtra = 30;
+    
 
     private void RefreshTimeline(object? sender = null, RoutedEventArgs? e = null)
     {
         if (TimelineRowsPanel == null)
             return;
 
-        _document.EnsureTimeline();
-        SyncOptionsFromActiveTimeline();
-
         TimelineRowsPanel.Children.Clear();
+        BuildTimelineHeaderGridRows();
+
+        if (_document.Timelines.Count == 0)
+        {
+            ShowEmptyTimelineState();
+            UpdateTimelineOptionsPagerVisibility();
+            UpdateWindowHeightForTimelineCount();
+            Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
+            return;
+        }
+
+        HideEmptyTimelineState();
+        SyncOptionsFromActiveTimeline();
+        
+        TimelineRowsPanel.Margin = _document.Timelines.Count > 1
+            ? new Thickness(0, TimelineHeaderTopExtra, 0, 0)
+            : new Thickness(0, 10, 0, 0);
 
         var visibleStepsByTimeline = _document.Timelines.ToDictionary(
             timeline => timeline,
@@ -56,12 +74,26 @@ public partial class MainWindow
         for (var i = 0; i < _document.Timelines.Count; i++)
         {
             var timeline = _document.Timelines[i];
+            var isLastRow = i == _document.Timelines.Count - 1;
+
+            if (_document.Timelines.Count > 1)
+            {
+                var isActive = ReferenceEquals(timeline, _document.ActiveTimeline);
+                var isSelected = _selection.IsTimelineSelected(timeline);
+
+                AddTimelineHeaderToGrid(
+                    timeline,
+                    i,
+                    isActive,
+                    isSelected);
+            }
 
             TimelineRowsPanel.Children.Add(CreateTimelineRow(
                 timeline,
                 visibleStepsByTimeline[timeline],
                 canvasWidth,
-                i == 0));
+                i == 0,
+                isLastRow));
         }
 
         UpdateTimelineOptionsPagerVisibility();
@@ -69,6 +101,119 @@ public partial class MainWindow
 
         Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
     }
+    
+    private void BuildTimelineHeaderGridRows()
+    {
+        TimelineHeaderGrid.Children.Clear();
+        TimelineHeaderGrid.RowDefinitions.Clear();
+
+        var showHeaderColumn = _document.Timelines.Count > 1;
+
+        TimelineHeaderColumn.Width = showHeaderColumn
+            ? new GridLength(TimelineHeaderWidth)
+            : new GridLength(0);
+
+        if (!showHeaderColumn)
+        {
+            TimelineHeaderGrid.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        TimelineHeaderGrid.Visibility = Visibility.Visible;
+
+        TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
+        {
+            Height = new GridLength(TimelineHeaderTopExtra)
+        });
+
+        for (var i = 0; i < _document.Timelines.Count; i++)
+        {
+            TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = new GridLength(TimelineRowHeight)
+            });
+
+            TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
+            {
+                // Gap rows are consumed by the header above them.
+                // The final row must absorb the remaining panel height so the last
+                // header reaches the bottom of the timeline scroll viewer.
+                Height = i < _document.Timelines.Count - 1
+                    ? new GridLength(TimelineRowGap)
+                    : new GridLength(1, GridUnitType.Star),
+                MinHeight = i < _document.Timelines.Count - 1
+                    ? 0
+                    : TimelineHeaderBottomExtra
+            });
+        }
+
+        var headerColumnBackplate = new Border
+        {
+            CornerRadius = new CornerRadius(8, 0, 0, 8),
+            Background = new SolidColorBrush(Color.FromRgb(8, 17, 31)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(30, 64, 100)),
+            BorderThickness = new Thickness(1, 1, 1, 1),
+            IsHitTestVisible = false
+        };
+
+        Grid.SetRow(headerColumnBackplate, 0);
+        Grid.SetRowSpan(headerColumnBackplate, TimelineHeaderGrid.RowDefinitions.Count);
+        TimelineHeaderGrid.Children.Add(headerColumnBackplate);
+    }
+    
+    private void AddTimelineHeaderToGrid(
+        MacroTimeline timeline,
+        int timelineIndex,
+        bool isActive,
+        bool isSelected)
+    {
+        var isFirst = timelineIndex == 0;
+        var isLast = timelineIndex == _document.Timelines.Count - 1;
+        var header = CreateTimelineHeader(timeline, isActive, isSelected, isFirst, isLast);
+
+        // Row pattern:
+        // 0 = top extra
+        // 1 = timeline 0 row
+        // 2 = gap after timeline 0
+        // 3 = timeline 1 row
+        // 4 = gap after timeline 1
+        // ...
+        // The header cells must consume the spacer rows too.
+        // Otherwise the spacer rows become visible holes between T1/T2/etc.
+        var row = isFirst
+            ? 0
+            : 1 + (timelineIndex * 2);
+
+        var rowSpan = isFirst
+            ? 3
+            : 2;
+
+        Grid.SetRow(header, row);
+        Grid.SetRowSpan(header, rowSpan);
+
+        TimelineHeaderGrid.Children.Add(header);
+    }
+
+    private void ShowEmptyTimelineState()
+    {
+        TimelineRowsPanel.Margin = new Thickness(0);
+        TimelineHeaderGrid.Visibility = Visibility.Collapsed;
+        TimelineHeaderColumn.Width = new GridLength(0);
+
+        EmptyTimelinePanel.Visibility = Visibility.Visible;
+        TimelineScrollViewer.Visibility = Visibility.Hidden;
+        TimelineDragOverlayCanvas.Visibility = Visibility.Collapsed;
+        TimelineScrollIndicator.Visibility = Visibility.Collapsed;
+    }
+
+    private void HideEmptyTimelineState()
+    {
+        EmptyTimelinePanel.Visibility = Visibility.Collapsed;
+        TimelineScrollViewer.Visibility = Visibility.Visible;
+        TimelineDragOverlayCanvas.Visibility = Visibility.Visible;
+        TimelineScrollIndicator.Visibility = Visibility.Visible;
+    }
+
 
 
     private void RefreshTimelineDragPreview()
@@ -102,7 +247,8 @@ public partial class MainWindow
             timeline,
             visibleSteps,
             existingCanvasWidth,
-            rowIndex == 0);
+            rowIndex == 0,
+            rowIndex == _document.Timelines.Count - 1);
 
         TimelineRowsPanel.Children.RemoveAt(rowIndex);
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
@@ -161,34 +307,20 @@ public partial class MainWindow
         return Math.Max(Math.Max(0, viewportWidth - 20), maxContentWidth);
     }
 
-    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps, double canvasWidth, bool isFirstRow)
+    private UIElement CreateTimelineRow(
+        MacroTimeline timeline,
+        IReadOnlyList<MacroStep> visibleSteps,
+        double canvasWidth,
+        bool isFirstRow,
+        bool isLastRow)
     {
-        var showTimelineHeaders = _document.Timelines.Count > 1;
-
         var row = new Grid
         {
             Height = TimelineRowHeight,
-            Margin = new Thickness(0, isFirstRow ? 14 : 0, 0, showTimelineHeaders ? TimelineRowGap : 0),
+            Margin = new Thickness(0, 0, 0, isLastRow ? 0 : TimelineRowGap),
             Tag = timeline,
             VerticalAlignment = VerticalAlignment.Top
         };
-
-        row.ColumnDefinitions.Add(new ColumnDefinition
-        {
-            Width = showTimelineHeaders ? new GridLength(TimelineHeaderWidth) : new GridLength(0)
-        });
-
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        if (showTimelineHeaders)
-        {
-            var isActive = ReferenceEquals(timeline, _document.ActiveTimeline);
-            var isSelected = _selection.IsTimelineSelected(timeline);
-
-            var header = CreateTimelineHeader(timeline, isActive, isSelected);
-            Grid.SetColumn(header, 0);
-            row.Children.Add(header);
-        }
 
         var canvas = new Canvas
         {
@@ -199,7 +331,6 @@ public partial class MainWindow
             VerticalAlignment = VerticalAlignment.Top
         };
 
-        Grid.SetColumn(canvas, 1);
         row.Children.Add(canvas);
 
         var visualItems = BuildTimelineVisualItems(timeline, visibleSteps);
@@ -374,31 +505,51 @@ public partial class MainWindow
         canvas.Children.Add(connector);
     }
 
-    private Border CreateTimelineHeader(MacroTimeline timeline, bool isActive, bool isSelected)
+    private Border CreateTimelineHeader(
+        MacroTimeline timeline,
+        bool isActive,
+        bool isSelected,
+        bool isFirst,
+        bool isLast)
     {
+        var backgroundColor = isActive
+            ? Color.FromRgb(10, 52, 84)
+            : Color.FromRgb(8, 17, 31);
+
+        var borderColor = isSelected
+            ? Color.FromRgb(226, 232, 240)
+            : isActive
+                ? Color.FromRgb(14, 165, 233)
+                : Color.FromRgb(30, 64, 100);
+
         var border = new Border
         {
-            Width = 36,
-            Height = 44,
-            Margin = new Thickness(0, 6, 8, 6),
-            CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(isActive ? Color.FromRgb(18, 58, 90) : Color.FromRgb(15, 23, 42)),
-            BorderBrush = new SolidColorBrush(isSelected ? Color.FromRgb(248, 250, 252) : Color.FromRgb(37, 99, 235)),
-            BorderThickness = new Thickness(isSelected ? 2 : 1),
+            Width = TimelineHeaderWidth,
+            Margin = new Thickness(0),
+            CornerRadius = new CornerRadius(
+                isFirst ? 8 : 0,
+                0,
+                0,
+                isLast ? 8 : 0),
+            Background = new SolidColorBrush(backgroundColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(0, 1, 1, 1),
             Cursor = System.Windows.Input.Cursors.SizeAll,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
             Tag = timeline
         };
 
         border.Child = new TextBlock
         {
             Text = timeline.Name,
-            FontWeight = FontWeights.Bold,
-            FontSize = 11,
+            FontWeight = FontWeights.Black,
+            FontSize = 14,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = new SolidColorBrush(isActive ? Color.FromRgb(186, 230, 253) : Color.FromRgb(148, 163, 184))
+            Foreground = new SolidColorBrush(isActive
+                ? Color.FromRgb(224, 242, 254)
+                : Color.FromRgb(148, 163, 184))
         };
 
         AttachTimelineHeaderMouseHandlers(border, timeline);
@@ -597,9 +748,10 @@ public partial class MainWindow
         var timelineAreaHeight =
             (timelineCount * TimelineRowHeight) +
             ((timelineCount - 1) * TimelineRowGap) +
-            36; // header/footer/padding inside the timeline card
+            52;
 
-        var wantedHeight = 356 + (_document.Timelines.Count * 100);
+        var wantedHeight = 276 + timelineAreaHeight;
+
         Height = Math.Max(MinHeight, wantedHeight);
     }
 

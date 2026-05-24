@@ -35,7 +35,7 @@
             <DropShadowEffect BlurRadius="18"
                               ShadowDepth="0"
                               Opacity="0.45"
-                              Color="#000000"/>
+                              Color="#000000" />
         </Border.Effect>
 
         <Grid>
@@ -192,69 +192,116 @@
             <!-- ── Timeline ────────────────────────────────────── -->
             <Border Grid.Row="2" Margin="14,0,14,6" CornerRadius="10"
                     Background="#0F141D" BorderBrush="{StaticResource Border}" BorderThickness="1">
-                <Grid>
+                <!--
+                    Real timeline grid:
+                    Column 0 = fixed timeline headers.
+                    Column 1 = label + horizontally pannable node canvas.
+                    The header column spans the title row and the timeline rows,
+                    so T1 can reach the top and the last timeline can reach the bottom.
+                -->
+                <Grid x:Name="TimelineGrid"
+                      ClipToBounds="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="24" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <DockPanel Margin="12,5,12,0">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="TimelineHeaderColumn" Width="56" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Column 0: fixed connected timeline header column -->
+                    <Grid x:Name="TimelineHeaderGrid"
+                          Grid.Row="0"
+                          Grid.RowSpan="2"
+                          Grid.Column="0"
+                          Background="Transparent" />
+
+                    <!-- Column 1 / Row 0: title belongs to the timeline content side -->
+                    <DockPanel Grid.Row="0"
+                               Grid.Column="1"
+                               Margin="12,5,12,0">
                         <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
                                    Margin="0" DockPanel.Dock="Left" />
                         <TextBlock Text="drag T headers to reorder  ·  Delete = remove selected"
                                    Style="{StaticResource Dim}" FontSize="10"
                                    HorizontalAlignment="Right" />
                     </DockPanel>
-                    <Grid Grid.Row="1">
-                        <Grid>
-                        <ScrollViewer x:Name="TimelineScrollViewer"
-                                      HorizontalScrollBarVisibility="Hidden"
-                                      VerticalScrollBarVisibility="Disabled"
-                                      Padding="10,0,10,16"
-                                      Background="Transparent"
-                                      Loaded="TimelineScrollViewer_Loaded"
-                                      ScrollChanged="TimelineScrollViewer_ScrollChanged"
-                                      SizeChanged="TimelineScrollViewer_SizeChanged"
-                                      PreviewMouseLeftButtonDown="TimelineScrollViewer_PreviewMouseLeftButtonDown"
-                                      PreviewMouseMove="TimelineScrollViewer_PreviewMouseMove"
-                                      PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
-                                      MouseLeave="TimelineScrollViewer_MouseLeave">
 
-                            <StackPanel x:Name="TimelineRowsPanel"
-                                        Orientation="Vertical"
-                                        Background="Transparent"/>
-                        </ScrollViewer>
-                            
+                    <!-- Column 1 / Row 1: scrollable timeline content -->
+                    <ScrollViewer x:Name="TimelineScrollViewer"
+                                  Grid.Row="1"
+                                  Grid.Column="1"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  Padding="16,0,10,16"
+                                  Background="Transparent"
+                                  Loaded="TimelineScrollViewer_Loaded"
+                                  ScrollChanged="TimelineScrollViewer_ScrollChanged"
+                                  SizeChanged="TimelineScrollViewer_SizeChanged"
+                                  PreviewMouseLeftButtonDown="TimelineScrollViewer_PreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="TimelineScrollViewer_PreviewMouseMove"
+                                  PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
+                                  MouseLeave="TimelineScrollViewer_MouseLeave">
 
-                            <Canvas x:Name="TimelineDragOverlayCanvas"
-                                    IsHitTestVisible="False"
-                                    ClipToBounds="False"
-                                    Panel.ZIndex="999"/>
-                        </Grid>
+                        <StackPanel x:Name="TimelineRowsPanel"
+                                    Orientation="Vertical"
+                                    Background="Transparent" />
+                    </ScrollViewer>
 
-                        <!-- Fake non-clickable scroll indicator -->
-                        <Canvas x:Name="TimelineScrollIndicator"
-                                Height="10"
-                                VerticalAlignment="Bottom"
-                                Margin="14,0,14,5"
-                                IsHitTestVisible="False">
 
-                            <Border x:Name="TimelineScrollTrack"
-                                    Canvas.Left="0"
-                                    Canvas.Top="3"
-                                    Height="4"
-                                    CornerRadius="2"
-                                    Background="#334155"
-                                    Opacity="0.55"/>
-
-                            <Border x:Name="TimelineScrollThumb"
-                                    Canvas.Left="0"
-                                    Canvas.Top="3"
-                                    Height="4"
-                                    CornerRadius="2"
-                                    Background="#94A3B8"
-                                    Opacity="0.95"/>
-                        </Canvas>
+                    <Grid x:Name="EmptyTimelinePanel"
+                          Grid.Row="0"
+                          Grid.RowSpan="2"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="2"
+                          Visibility="Collapsed"
+                          Background="Transparent"
+                          Panel.ZIndex="50">
+                        <Button Content="＋"
+                                Width="72"
+                                Height="32"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="18"
+                                FontWeight="Bold"
+                                Click="AddTimelineButton_Click" />
                     </Grid>
+
+                    <!-- Drag overlay only over scrollable node area -->
+                    <Canvas x:Name="TimelineDragOverlayCanvas"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            IsHitTestVisible="False"
+                            ClipToBounds="False"
+                            Panel.ZIndex="999" />
+
+                    <!-- Scroll indicator only under node area, not header column -->
+                    <Canvas x:Name="TimelineScrollIndicator"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Height="10"
+                            VerticalAlignment="Bottom"
+                            Margin="16,0,14,5"
+                            IsHitTestVisible="False">
+
+                        <Border x:Name="TimelineScrollTrack"
+                                Canvas.Left="0"
+                                Canvas.Top="3"
+                                Height="4"
+                                CornerRadius="2"
+                                Background="#334155"
+                                Opacity="0.55" />
+
+                        <Border x:Name="TimelineScrollThumb"
+                                Canvas.Left="0"
+                                Canvas.Top="3"
+                                Height="4"
+                                CornerRadius="2"
+                                Background="#94A3B8"
+                                Opacity="0.95" />
+                    </Canvas>
                 </Grid>
             </Border>
 
@@ -292,8 +339,8 @@
                     <Grid Grid.Column="8">
                         <Button x:Name="StartStopButton" Content="▶  Start"
                                 Background="#31205F" BorderBrush="#6D4AFF"
-                                Foreground="#DDD6FE"  Width="130" 
-                                Click="StartStopButton_Click"/>
+                                Foreground="#DDD6FE" Width="130"
+                                Click="StartStopButton_Click" />
                         <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
                                 Background="#2A0808" BorderBrush="#7F1D1D"
                                 Foreground="#FCA5A5" Visibility="Collapsed" Width="130"
