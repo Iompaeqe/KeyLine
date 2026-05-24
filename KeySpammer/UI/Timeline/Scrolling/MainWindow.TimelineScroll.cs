@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using KeySpammer.Domain;
+using KeySpammer.State;
 
 namespace KeySpammer;
 
@@ -23,6 +24,9 @@ public partial class MainWindow
 
     private void TimelineScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        // Width changes should reveal more timeline content, not shift/rebuild rows.
+        // Keep all row canvases at least as wide as the new viewport.
+        EnsureTimelineCanvasWidthForAllRows(GetMinimumTimelineCanvasWidth());
         UpdateTimelineScrollIndicator();
     }
 

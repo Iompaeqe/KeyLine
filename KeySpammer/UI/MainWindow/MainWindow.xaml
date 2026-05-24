@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MacroSpammer"
         Width="900" Height="420"
-        MinWidth="720" MinHeight="360"
+        MinWidth="900" MinHeight="420" MaxHeight="420"
         WindowStyle="None"
         ResizeMode="CanResize"
         AllowsTransparency="True"
@@ -27,386 +27,390 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Border Margin="8"
-            CornerRadius="14"
-            Background="{StaticResource Bg}"
-            BorderBrush="#2A3547"
-            BorderThickness="1">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="18"
-                              ShadowDepth="0"
-                              Opacity="0.45"
-                              Color="#000000" />
-        </Border.Effect>
+    <Grid x:Name="WindowRoot"
+          Background="Transparent">
+        
+        <Border Margin="8"
+                CornerRadius="14"
+                Background="{StaticResource Bg}"
+                BorderBrush="#2A3547"
+                BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18"
+                                  ShadowDepth="0"
+                                  Opacity="0.45"
+                                  Color="#000000" />
+            </Border.Effect>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="42" />
-                <RowDefinition Height="96" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="52" />
-                <RowDefinition Height="24" />
-            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="42" />
+                    <RowDefinition Height="96" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="52" />
+                    <RowDefinition Height="24" />
+                </Grid.RowDefinitions>
 
-            <!-- ── Title bar ───────────────────────────────────── -->
-            <Grid Grid.Row="0"
-                  Margin="14,0"
-                  Background="Transparent"
-                  PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Canvas Width="18" Height="18" Margin="0,0,9,0" VerticalAlignment="Center">
-                        <Rectangle Canvas.Left="0" Canvas.Top="8" Width="4" Height="10" Fill="#0EA5C9" RadiusX="1" RadiusY="1" />
-                        <Rectangle Canvas.Left="5" Canvas.Top="3" Width="4" Height="15" Fill="#2563EB" RadiusX="1" RadiusY="1" />
-                        <Rectangle Canvas.Left="10" Canvas.Top="11" Width="4" Height="7" Fill="#7C3AED" RadiusX="1" RadiusY="1" />
-                        <Rectangle Canvas.Left="15" Canvas.Top="5" Width="3" Height="13" Fill="#0EA5C9" RadiusX="1" RadiusY="1" Opacity="0.5" />
-                    </Canvas>
-                    <TextBlock Text="MacroSpammer" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
-                    <TextBlock Text="  ·  macro recorder" FontSize="11" Foreground="{StaticResource Muted}"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Content="—" Width="30" MinWidth="30" Height="22"
-                            Background="Transparent" BorderBrush="Transparent"
-                            Foreground="{StaticResource Muted}" FontSize="13"
-                            Click="MinimizeButton_Click" />
-                    <Button Content="✕" Width="30" MinWidth="30" Height="22"
-                            Background="Transparent" BorderBrush="Transparent"
-                            Foreground="{StaticResource Muted}" FontSize="11"
-                            Click="CloseButton_Click" />
-                </StackPanel>
-                <Border Height="1" VerticalAlignment="Bottom" Margin="-14,0"
-                        Background="#263244" />
-            </Grid>
-
-            <!-- ── Config strip ────────────────────────────────── -->
-            <Grid Grid.Row="1" Margin="14,8,14,6">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="400" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <!-- Window selector -->
-                <Grid Grid.Column="0"
-                      Width="400"
-                      HorizontalAlignment="Left"
-                      VerticalAlignment="Top">
-
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="16" />
-                        <RowDefinition Height="28" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="28" />
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0"
-                               Text="TARGET WINDOW"
-                               Style="{StaticResource Cap}" />
-
-                    <ComboBox x:Name="WindowComboBox"
-                              Grid.Row="1"
-                              Width="400"
-                              DropDownOpened="WindowComboBox_DropDownOpened"
-                              SelectionChanged="WindowComboBox_SelectionChanged" />
-
-                    <ComboBox x:Name="HandleComboBox"
-                              Grid.Row="3"
-                              Width="400"
-                              Visibility="Collapsed" />
+                <!-- ── Title bar ───────────────────────────────────── -->
+                <Grid Grid.Row="0"
+                      Margin="14,0"
+                      Background="Transparent"
+                      PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Canvas Width="18" Height="18" Margin="0,0,9,0" VerticalAlignment="Center">
+                            <Rectangle Canvas.Left="0" Canvas.Top="8" Width="4" Height="10" Fill="#0EA5C9" RadiusX="1" RadiusY="1" />
+                            <Rectangle Canvas.Left="5" Canvas.Top="3" Width="4" Height="15" Fill="#2563EB" RadiusX="1" RadiusY="1" />
+                            <Rectangle Canvas.Left="10" Canvas.Top="11" Width="4" Height="7" Fill="#7C3AED" RadiusX="1" RadiusY="1" />
+                            <Rectangle Canvas.Left="15" Canvas.Top="5" Width="3" Height="13" Fill="#0EA5C9" RadiusX="1" RadiusY="1" Opacity="0.5" />
+                        </Canvas>
+                        <TextBlock Text="MacroSpammer" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock Text="  ·  macro recorder" FontSize="11" Foreground="{StaticResource Muted}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="—" Width="30" MinWidth="30" Height="22"
+                                Background="Transparent" BorderBrush="Transparent"
+                                Foreground="{StaticResource Muted}" FontSize="13"
+                                Click="MinimizeButton_Click" />
+                        <Button Content="✕" Width="30" MinWidth="30" Height="22"
+                                Background="Transparent" BorderBrush="Transparent"
+                                Foreground="{StaticResource Muted}" FontSize="11"
+                                Click="CloseButton_Click" />
+                    </StackPanel>
+                    <Border Height="1" VerticalAlignment="Bottom" Margin="-14,0"
+                            Background="#263244" />
                 </Grid>
 
-                <Border Grid.Column="2"
-                        Width="300"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        CornerRadius="8"
-                        Background="{StaticResource Card}"
-                        BorderBrush="{StaticResource Border}"
-                        BorderThickness="1"
-                        Padding="13,8">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,5">
-                            <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
-                            <StackPanel Orientation="Horizontal"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Top">
-                                <Button x:Name="PreviousTimelineOptionsButton"
-                                        Content="‹"
-                                        Width="24"
-                                        MinWidth="24"
-                                        Height="18"
-                                        Padding="0"
-                                        FontSize="13"
-                                        Click="PreviousTimelineOptionsButton_Click" />
-                                <TextBlock x:Name="ActiveTimelineTextBlock"
-                                           Text="T1/1"
-                                           Width="44"
-                                           TextAlignment="Center"
-                                           FontSize="10"
-                                           FontWeight="Bold"
-                                           Foreground="{StaticResource Muted}"
-                                           VerticalAlignment="Center" />
-                                <Button x:Name="NextTimelineOptionsButton"
-                                        Content="›"
-                                        Width="24"
-                                        MinWidth="24"
-                                        Height="18"
-                                        Padding="0"
-                                        FontSize="13"
-                                        Click="NextTimelineOptionsButton_Click" />
+                <!-- ── Config strip ────────────────────────────────── -->
+                <Grid Grid.Row="1" Margin="14,8,14,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="400" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Window selector -->
+                    <Grid Grid.Column="0"
+                          Width="400"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="6" />
+                            <RowDefinition Height="28" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="TARGET WINDOW"
+                                   Style="{StaticResource Cap}" />
+
+                        <ComboBox x:Name="WindowComboBox"
+                                  Grid.Row="1"
+                                  Width="400"
+                                  DropDownOpened="WindowComboBox_DropDownOpened"
+                                  SelectionChanged="WindowComboBox_SelectionChanged" />
+
+                        <ComboBox x:Name="HandleComboBox"
+                                  Grid.Row="3"
+                                  Width="400"
+                                  Visibility="Collapsed" />
+                    </Grid>
+
+                    <Border Grid.Column="2"
+                            Width="300"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            CornerRadius="8"
+                            Background="{StaticResource Card}"
+                            BorderBrush="{StaticResource Border}"
+                            BorderThickness="1"
+                            Padding="13,8">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,5">
+                                <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top">
+                                    <Button x:Name="PreviousTimelineOptionsButton"
+                                            Content="‹"
+                                            Width="24"
+                                            MinWidth="24"
+                                            Height="18"
+                                            Padding="0"
+                                            FontSize="13"
+                                            Click="PreviousTimelineOptionsButton_Click" />
+                                    <TextBlock x:Name="ActiveTimelineTextBlock"
+                                               Text="T1/1"
+                                               Width="44"
+                                               TextAlignment="Center"
+                                               FontSize="10"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource Muted}"
+                                               VerticalAlignment="Center" />
+                                    <Button x:Name="NextTimelineOptionsButton"
+                                            Content="›"
+                                            Width="24"
+                                            MinWidth="24"
+                                            Height="18"
+                                            Padding="0"
+                                            FontSize="13"
+                                            Click="NextTimelineOptionsButton_Click" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox x:Name="UseStandardDelayCheckBox"
+                                          Content="Std delay"
+                                          Checked="OptionsControl_Changed"
+                                          Unchecked="OptionsControl_Changed"
+                                          Margin="0,0,14,0" />
+
+                                <TextBlock Text="ms"
+                                           Style="{StaticResource Dim}"
+                                           Margin="0,0,5,0" />
+
+                                <TextBox x:Name="StandardDelayTextBox"
+                                         Text="50"
+                                         Width="50"
+                                         TextChanged="StandardDelayTextBox_TextChanged" />
+
+                                <Border x:Name="ShowKeyUpDownCheckSeparator"
+                                        Width="1"
+                                        Background="#162035"
+                                        Margin="14,0"
+                                        Visibility="{Binding ElementName=ShowKeyUpDownCheckBox, Path=Visibility}" />
+
+                                <CheckBox x:Name="ShowKeyUpDownCheckBox"
+                                          Margin="0,0,10,0"
+                                          Content="Show ↑↓"
+                                          IsChecked="True"
+                                          Checked="OptionsControl_Changed"
+                                          Unchecked="OptionsControl_Changed" />
                             </StackPanel>
-                        </Grid>
-
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <CheckBox x:Name="UseStandardDelayCheckBox"
-                                      Content="Std delay"
-                                      Checked="OptionsControl_Changed"
-                                      Unchecked="OptionsControl_Changed"
-                                      Margin="0,0,14,0" />
-
-                            <TextBlock Text="ms"
-                                       Style="{StaticResource Dim}"
-                                       Margin="0,0,5,0" />
-
-                            <TextBox x:Name="StandardDelayTextBox"
-                                     Text="50"
-                                     Width="50"
-                                     TextChanged="StandardDelayTextBox_TextChanged" />
-
-                            <Border x:Name="ShowKeyUpDownCheckSeparator"
-                                    Width="1"
-                                    Background="#162035"
-                                    Margin="14,0"
-                                    Visibility="{Binding ElementName=ShowKeyUpDownCheckBox, Path=Visibility}" />
-
-                            <CheckBox x:Name="ShowKeyUpDownCheckBox"
-                                      Margin="0,0,10,0"
-                                      Content="Show ↑↓"
-                                      IsChecked="True"
-                                      Checked="OptionsControl_Changed"
-                                      Unchecked="OptionsControl_Changed" />
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-            </Grid>
+                    </Border>
+                </Grid>
 
-            <!-- ── Timeline ────────────────────────────────────── -->
-            <Border Grid.Row="2" Margin="14,0,14,6" CornerRadius="10"
-                    Background="#0F141D" BorderBrush="{StaticResource Border}" BorderThickness="1">
-                <!--
+                <!-- ── Timeline ────────────────────────────────────── -->
+                <Border Grid.Row="2" Margin="14,0,14,6" CornerRadius="10"
+                        Background="#0F141D" BorderBrush="{StaticResource Border}" BorderThickness="1">
+                    <!--
                     Real timeline grid:
                     Column 0 = fixed timeline headers.
                     Column 1 = label + horizontally pannable node canvas.
                     The header column spans the title row and the timeline rows,
                     so T1 can reach the top and the last timeline can reach the bottom.
                 -->
-                <Grid x:Name="TimelineGrid"
-                      ClipToBounds="True">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="24" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+                    <Grid x:Name="TimelineGrid"
+                          ClipToBounds="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="24" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="TimelineHeaderColumn" Width="56" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition x:Name="TimelineHeaderColumn" Width="56" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                    <!-- Column 0: fixed connected timeline header column -->
-                    <Grid x:Name="TimelineHeaderGrid"
-                          Grid.Row="0"
-                          Grid.RowSpan="2"
-                          Grid.Column="0"
-                          Background="Transparent" />
+                        <!-- Column 0: fixed connected timeline header column -->
+                        <Grid x:Name="TimelineHeaderGrid"
+                              Grid.Row="0"
+                              Grid.RowSpan="2"
+                              Grid.Column="0"
+                              Background="Transparent" />
 
-                    <!-- Column 1 / Row 0: title belongs to the timeline content side -->
-                    <DockPanel Grid.Row="0"
-                               Grid.Column="1"
-                               Margin="12,5,12,0">
-                        <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
-                                   Margin="0" DockPanel.Dock="Left" />
-                        <TextBlock Text="drag T headers to reorder  ·  Delete = remove selected"
-                                   Style="{StaticResource Dim}" FontSize="10"
-                                   HorizontalAlignment="Right" />
-                    </DockPanel>
+                        <!-- Column 1 / Row 0: title belongs to the timeline content side -->
+                        <DockPanel Grid.Row="0"
+                                   Grid.Column="1"
+                                   Margin="12,5,12,0">
+                            <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
+                                       Margin="0" DockPanel.Dock="Left" />
+                            <TextBlock Text="drag T headers to reorder  ·  Delete = remove selected"
+                                       Style="{StaticResource Dim}" FontSize="10"
+                                       HorizontalAlignment="Right" />
+                        </DockPanel>
 
-                    <!-- Column 1 / Row 1: scrollable timeline content -->
-                    <ScrollViewer x:Name="TimelineScrollViewer"
-                                  Grid.Row="1"
-                                  Grid.Column="1"
-                                  HorizontalScrollBarVisibility="Hidden"
-                                  VerticalScrollBarVisibility="Disabled"
-                                  Padding="16,0,10,16"
-                                  Background="Transparent"
-                                  Loaded="TimelineScrollViewer_Loaded"
-                                  ScrollChanged="TimelineScrollViewer_ScrollChanged"
-                                  SizeChanged="TimelineScrollViewer_SizeChanged"
-                                  PreviewMouseLeftButtonDown="TimelineScrollViewer_PreviewMouseLeftButtonDown"
-                                  PreviewMouseMove="TimelineScrollViewer_PreviewMouseMove"
-                                  PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
-                                  MouseLeave="TimelineScrollViewer_MouseLeave">
+                        <!-- Column 1 / Row 1: scrollable timeline content -->
+                        <ScrollViewer x:Name="TimelineScrollViewer"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      Padding="16,0,10,16"
+                                      Background="Transparent"
+                                      Loaded="TimelineScrollViewer_Loaded"
+                                      ScrollChanged="TimelineScrollViewer_ScrollChanged"
+                                      SizeChanged="TimelineScrollViewer_SizeChanged"
+                                      PreviewMouseLeftButtonDown="TimelineScrollViewer_PreviewMouseLeftButtonDown"
+                                      PreviewMouseMove="TimelineScrollViewer_PreviewMouseMove"
+                                      PreviewMouseLeftButtonUp="TimelineScrollViewer_PreviewMouseLeftButtonUp"
+                                      MouseLeave="TimelineScrollViewer_MouseLeave">
 
-                        <StackPanel x:Name="TimelineRowsPanel"
-                                    Orientation="Vertical"
-                                    Background="Transparent" />
-                    </ScrollViewer>
+                            <StackPanel x:Name="TimelineRowsPanel"
+                                        Orientation="Vertical"
+                                        Background="Transparent" />
+                        </ScrollViewer>
 
 
-                    <Grid x:Name="EmptyTimelinePanel"
-                          Grid.Row="0"
-                          Grid.RowSpan="2"
-                          Grid.Column="0"
-                          Grid.ColumnSpan="2"
-                          Visibility="Collapsed"
-                          Background="Transparent"
-                          Panel.ZIndex="50">
-                        <Button Content="＋"
-                                Width="72"
-                                Height="32"
-                                Margin="33,0,0,16"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="18"
-                                FontWeight="Bold"
-                                Click="AddTimelineButton_Click" />
+                        <Grid x:Name="EmptyTimelinePanel"
+                              Grid.Row="0"
+                              Grid.RowSpan="2"
+                              Grid.Column="0"
+                              Grid.ColumnSpan="2"
+                              Visibility="Collapsed"
+                              Background="Transparent"
+                              Panel.ZIndex="50">
+                            <Button Content="＋"
+                                    Width="72"
+                                    Height="32"
+                                    Margin="33,0,0,16"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Click="AddTimelineButton_Click" />
+                        </Grid>
+
+                        <!-- Drag overlay only over scrollable node area -->
+                        <Canvas x:Name="TimelineDragOverlayCanvas"
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                IsHitTestVisible="False"
+                                ClipToBounds="False"
+                                Panel.ZIndex="999" />
+
+                        <!-- Scroll indicator only under node area, not header column -->
+                        <Canvas x:Name="TimelineScrollIndicator"
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Height="10"
+                                VerticalAlignment="Bottom"
+                                Margin="16,0,14,5"
+                                IsHitTestVisible="False">
+
+                            <Border x:Name="TimelineScrollTrack"
+                                    Canvas.Left="0"
+                                    Canvas.Top="3"
+                                    Height="4"
+                                    CornerRadius="2"
+                                    Background="#334155"
+                                    Opacity="0.55" />
+
+                            <Border x:Name="TimelineScrollThumb"
+                                    Canvas.Left="0"
+                                    Canvas.Top="3"
+                                    Height="4"
+                                    CornerRadius="2"
+                                    Background="#94A3B8"
+                                    Opacity="0.95" />
+                        </Canvas>
                     </Grid>
+                </Border>
 
-                    <!-- Drag overlay only over scrollable node area -->
-                    <Canvas x:Name="TimelineDragOverlayCanvas"
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            IsHitTestVisible="False"
-                            ClipToBounds="False"
-                            Panel.ZIndex="999" />
+                <!-- ── Control bar ─────────────────────────────────── -->
+                <Border Grid.Row="3" Margin="14,0,14,6" Padding="12,0" CornerRadius="10"
+                        Background="{StaticResource Surface}"
+                        BorderBrush="{StaticResource Border}" BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="150" />
+                        </Grid.ColumnDefinitions>
 
-                    <!-- Scroll indicator only under node area, not header column -->
-                    <Canvas x:Name="TimelineScrollIndicator"
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Height="10"
-                            VerticalAlignment="Bottom"
-                            Margin="16,0,14,5"
-                            IsHitTestVisible="False">
+                        <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="104"
+                                Background="#123A5A" BorderBrush="#256D9D"
+                                Foreground="#BAE6FD" Click="AddTimelineButton_Click" />
 
-                        <Border x:Name="TimelineScrollTrack"
-                                Canvas.Left="0"
-                                Canvas.Top="3"
-                                Height="4"
-                                CornerRadius="2"
-                                Background="#334155"
-                                Opacity="0.55" />
+                        <TextBlock x:Name="StatusText" Grid.Column="2"
+                                   Text="Stopped" Style="{StaticResource Dim}" />
 
-                        <Border x:Name="TimelineScrollThumb"
-                                Canvas.Left="0"
-                                Canvas.Top="3"
-                                Height="4"
-                                CornerRadius="2"
-                                Background="#94A3B8"
-                                Opacity="0.95" />
-                    </Canvas>
-                </Grid>
-            </Border>
+                        <TextBlock Grid.Column="3" Text="Loops"
+                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
+                        <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
 
-            <!-- ── Control bar ─────────────────────────────────── -->
-            <Border Grid.Row="3" Margin="14,0,14,6" Padding="12,0" CornerRadius="10"
-                    Background="{StaticResource Surface}"
-                    BorderBrush="{StaticResource Border}" BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="14" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="54" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="150" />
-                    </Grid.ColumnDefinitions>
+                        <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="100"
+                                Click="ClearButton_Click" />
 
-                    <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="104"
-                            Background="#123A5A" BorderBrush="#256D9D"
-                            Foreground="#BAE6FD" Click="AddTimelineButton_Click" />
+                        <Grid Grid.Column="8">
+                            <Button x:Name="StartStopButton" Content="▶  Start"
+                                    Background="#31205F" BorderBrush="#6D4AFF"
+                                    Foreground="#DDD6FE" Width="130"
+                                    Click="StartStopButton_Click" />
+                            <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
+                                    Background="#2A0808" BorderBrush="#7F1D1D"
+                                    Foreground="#FCA5A5" Visibility="Collapsed" Width="130"
+                                    Click="RecordStopButton_Click" />
+                        </Grid>
 
-                    <TextBlock x:Name="StatusText" Grid.Column="2"
-                               Text="Stopped" Style="{StaticResource Dim}" />
+                        <Popup x:Name="AddPopup"
+                               Placement="Top"
+                               StaysOpen="False"
+                               AllowsTransparency="True"
+                               PopupAnimation="Fade">
+                            <Border CornerRadius="12"
+                                    Background="#08111F"
+                                    BorderBrush="#263A55"
+                                    BorderThickness="1"
+                                    Padding="6"
+                                    Margin="0,0,0,8"
+                                    SnapsToDevicePixels="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10"
+                                                      ShadowDepth="2"
+                                                      Direction="270"
+                                                      Opacity="0.38"
+                                                      Color="#000000" />
+                                </Border.Effect>
 
-                    <TextBlock Grid.Column="3" Text="Loops"
-                               Style="{StaticResource Dim}" Margin="0,0,8,0" />
-                    <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
+                                <StackPanel Width="132">
+                                    <Button Content="Record keys"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#102033"
+                                            BorderBrush="#2C4A6D"
+                                            Foreground="#DDEBFF"
+                                            Click="RecordMenuButton_Click" />
 
-                    <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="100"
-                            Click="ClearButton_Click" />
+                                    <Button Content="Add delay"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#102033"
+                                            BorderBrush="#2C4A6D"
+                                            Foreground="#DDEBFF"
+                                            Click="DelayMenuButton_Click" />
 
-                    <Grid Grid.Column="8">
-                        <Button x:Name="StartStopButton" Content="▶  Start"
-                                Background="#31205F" BorderBrush="#6D4AFF"
-                                Foreground="#DDD6FE" Width="130"
-                                Click="StartStopButton_Click" />
-                        <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
-                                Background="#2A0808" BorderBrush="#7F1D1D"
-                                Foreground="#FCA5A5" Visibility="Collapsed" Width="130"
-                                Click="RecordStopButton_Click" />
+                                    <Button Content="Add text"
+                                            Height="30"
+                                            Background="#102033"
+                                            BorderBrush="#2C4A6D"
+                                            Foreground="#DDEBFF"
+                                            Click="TextMenuButton_Click" />
+                                </StackPanel>
+                            </Border>
+                        </Popup>
                     </Grid>
+                </Border>
 
-                    <Popup x:Name="AddPopup"
-                           Placement="Top"
-                           StaysOpen="False"
-                           AllowsTransparency="True"
-                           PopupAnimation="Fade">
-                        <Border CornerRadius="12"
-                                Background="#08111F"
-                                BorderBrush="#263A55"
-                                BorderThickness="1"
-                                Padding="6"
-                                Margin="0,0,0,8"
-                                SnapsToDevicePixels="True">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="10"
-                                                  ShadowDepth="2"
-                                                  Direction="270"
-                                                  Opacity="0.38"
-                                                  Color="#000000" />
-                            </Border.Effect>
-
-                            <StackPanel Width="132">
-                                <Button Content="Record keys"
-                                        Height="30"
-                                        Margin="0,0,0,5"
-                                        Background="#102033"
-                                        BorderBrush="#2C4A6D"
-                                        Foreground="#DDEBFF"
-                                        Click="RecordMenuButton_Click" />
-
-                                <Button Content="Add delay"
-                                        Height="30"
-                                        Margin="0,0,0,5"
-                                        Background="#102033"
-                                        BorderBrush="#2C4A6D"
-                                        Foreground="#DDEBFF"
-                                        Click="DelayMenuButton_Click" />
-
-                                <Button Content="Add text"
-                                        Height="30"
-                                        Background="#102033"
-                                        BorderBrush="#2C4A6D"
-                                        Foreground="#DDEBFF"
-                                        Click="TextMenuButton_Click" />
-                            </StackPanel>
-                        </Border>
-                    </Popup>
-                </Grid>
-            </Border>
-
-            <!-- ── Footer ──────────────────────────────────────── -->
-            <DockPanel Grid.Row="4" Margin="16,0,16,0" VerticalAlignment="Center">
-                <Ellipse Width="5" Height="5" Fill="#059669"
-                         Margin="0,0,5,0" DockPanel.Dock="Left" VerticalAlignment="Center" />
-                <TextBlock Text="Ready" Foreground="#059669" FontSize="11"
-                           DockPanel.Dock="Left" VerticalAlignment="Center" />
-                <TextBlock Text="Delete = remove selected step/timeline  ·  Esc = stop recording"
-                           Style="{StaticResource Dim}" FontSize="10" HorizontalAlignment="Right" />
-            </DockPanel>
-        </Grid>
-    </Border>
+                <!-- ── Footer ──────────────────────────────────────── -->
+                <DockPanel Grid.Row="4" Margin="16,0,16,0" VerticalAlignment="Center">
+                    <Ellipse Width="5" Height="5" Fill="#059669"
+                             Margin="0,0,5,0" DockPanel.Dock="Left" VerticalAlignment="Center" />
+                    <TextBlock Text="Ready" Foreground="#059669" FontSize="11"
+                               DockPanel.Dock="Left" VerticalAlignment="Center" />
+                    <TextBlock Text="Delete = remove selected step/timeline  ·  Esc = stop recording"
+                               Style="{StaticResource Dim}" FontSize="10" HorizontalAlignment="Right" />
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

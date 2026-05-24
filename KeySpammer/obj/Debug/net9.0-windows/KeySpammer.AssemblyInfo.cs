@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KeySpammer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7c7dbba85741a7a11cb9b33cec6b07b76ee59a8e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+19194947a69b5edb3966e2e51436aa91637d7768")]
 [assembly: System.Reflection.AssemblyProductAttribute("KeySpammer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KeySpammer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -47,6 +47,7 @@ public partial class MainWindow
         public double NextLeft { get; set; }
         public double FirstCenterX { get; set; }
         public double LastCenterX { get; set; }
+        public double RowWidth { get; set; }
         public int VisualItemCount { get; set; }
     }
 
@@ -250,17 +251,18 @@ public partial class MainWindow
             return;
         }
 
-        var existingCanvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
-
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
             GetTimelineRenderRawSteps(timeline).ToList(),
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
+        var requiredCanvasWidth = CalculateTimelineCanvasWidth(timeline, visibleSteps);
+        var canvasWidth = GetSharedTimelineCanvasWidth(requiredCanvasWidth);
+
         var replacementRow = CreateTimelineRow(
             timeline,
             visibleSteps,
-            existingCanvasWidth,
+            canvasWidth,
             rowIndex == 0,
             rowIndex == _document.Timelines.Count - 1);
 
@@ -543,6 +545,7 @@ public partial class MainWindow
             NextLeft = addItem.Left,
             FirstCenterX = visualItems[0].CenterX,
             LastCenterX = visualItems[^1].CenterX,
+            RowWidth = addItem.Left + addItem.Width + TimelineRightPadding,
             VisualItemCount = visualItems.Count
         };
     }
@@ -564,9 +567,8 @@ public partial class MainWindow
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
-        var existingCanvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
         var requiredCanvasWidth = CalculateTimelineCanvasWidth(timeline, visibleSteps);
-        var canvasWidth = Math.Max(existingCanvasWidth, requiredCanvasWidth);
+        var canvasWidth = GetSharedTimelineCanvasWidth(requiredCanvasWidth);
 
         var replacementRow = CreateTimelineRow(
             timeline,
@@ -659,6 +661,7 @@ public partial class MainWindow
         state.NextLeft = currentLeft;
 
         var requiredWidth = currentLeft + addSize.Width + TimelineRightPadding;
+        state.RowWidth = requiredWidth;
         EnsureTimelineCanvasWidthForAllRows(requiredWidth);
 
         UpdateRowConnector(state);
@@ -713,22 +716,34 @@ public partial class MainWindow
         if (TimelineRowsPanel == null)
             return;
 
-        var width = Math.Max(requiredWidth, GetMinimumTimelineCanvasWidth());
+        var width = GetSharedTimelineCanvasWidth(requiredWidth);
+
+        TimelineRowsPanel.Width = width;
 
         foreach (var row in TimelineRowsPanel.Children.OfType<Grid>())
         {
             foreach (var canvas in row.Children.OfType<Canvas>())
-            {
-                if (canvas.Width < width)
-                    canvas.Width = width;
-            }
+                canvas.Width = width;
         }
 
         foreach (var state in _timelineRowRenderStates.Values)
-        {
-            if (state.Canvas.Width < width)
-                state.Canvas.Width = width;
-        }
+            state.Canvas.Width = width;
+    }
+
+    private double GetSharedTimelineCanvasWidth(double requiredWidth = 0)
+    {
+        var contentWidth = Math.Max(requiredWidth, GetRequiredTimelineContentWidth());
+        return Math.Max(contentWidth, GetMinimumTimelineCanvasWidth());
+    }
+
+    private double GetRequiredTimelineContentWidth()
+    {
+        var maxWidth = TimelineFirstItemLeft + TimelineRightPadding;
+
+        foreach (var state in _timelineRowRenderStates.Values)
+            maxWidth = Math.Max(maxWidth, state.RowWidth);
+
+        return maxWidth;
     }
 
     private double GetMinimumTimelineCanvasWidth()
@@ -739,6 +754,7 @@ public partial class MainWindow
 
         return Math.Max(0, viewportWidth - 20);
     }
+
 
 
     private double CalculateTimelineCanvasWidth(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps)
@@ -1012,7 +1028,19 @@ public partial class MainWindow
 
         var wantedHeight = 276 + timelineAreaHeight;
 
-        Height = Math.Max(MinHeight, wantedHeight);
+        LockWindowHeight(Math.Max(420, wantedHeight));
+    }
+
+    private void LockWindowHeight(double height)
+    {
+        height = Math.Ceiling(height);
+
+        // The window is intentionally horizontally resizable only.
+        // MinHeight == MaxHeight blocks manual vertical resizing, while this
+        // method still lets the app grow/shrink vertically when timeline count changes.
+        MinHeight = height;
+        MaxHeight = height;
+        Height = height;
     }
 
     private void AddTimelineItem(Canvas canvas, TimelineVisualItem item)
