@@ -1,0 +1,104 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# .NET / C#
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.pdb
+*.mdb
+*.ilk
+*.log
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.VC.opendb
+ipch/
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+
+# WPF generated files
+*.g.cs
+*.g.i.cs
+*.baml
+*.resources
+GeneratedInternalTypeHelper.g.cs
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+project.lock.json
+project.assets.json
+
+# Publish output
+publish/
+PublishProfiles/
+*.pubxml.user
+
+# Test output / coverage
+TestResults/
+.coverage
+.coveragexml
+*.trx
+coverage/
+coverage.cobertura.xml
+coverage.opencover.xml
+
+# Local app/runtime files
+*.db
+*.sqlite
+*.sqlite3
+*.local
+*.tmp
+*.temp
+
+# Windows / Explorer junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS junk, just in case
+.DS_Store
+
+# ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Logs
+logs/
+*.log
+
+# Archives / backups
+*.zip
+*.7z
+*.rar
+*.bak
+*.backup
+*.old
+
+# Installer output, if using Inno Setup later
+Output/
+*.iss.user
