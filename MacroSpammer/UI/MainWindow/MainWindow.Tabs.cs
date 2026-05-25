@@ -56,6 +56,7 @@ public partial class MainWindow
             ResetClearConfirmation();
 
             LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
+            BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             SelectTimeline(_document.ActiveTimeline);
@@ -157,6 +158,7 @@ public partial class MainWindow
 
         _activeWorkspace.Document = _document;
         _activeWorkspace.LoopCount = GetLoopCount();
+        _activeWorkspace.BaseDelayMs = GetBaseDelayMs();
         CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }

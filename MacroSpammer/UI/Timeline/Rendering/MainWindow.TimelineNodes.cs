@@ -13,6 +13,7 @@ public partial class MainWindow
         {
             MacroStepType.Delay => CreateDelayBlock(timeline, step),
             MacroStepType.Text => CreateTextStepBlock(timeline, step),
+            MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick => CreateMouseStepBlock(timeline, step),
             MacroStepType.KeyDown or MacroStepType.KeyUp => CreateKeyStepBlock(timeline, step),
             _ => CreateTextStepBlock(timeline, step)
         };
@@ -58,6 +59,32 @@ public partial class MainWindow
         {
             RefreshTimeline();
             ScheduleSaveState();
+        };
+
+        AttachStepMouseHandlers(control, timeline, step);
+        return control;
+    }
+
+    private UIElement CreateMouseStepBlock(MacroTimeline timeline, MacroStep step)
+    {
+        var control = new MouseStepControl
+        {
+            Step = step,
+            IsSelected = IsStepSelected(timeline, step),
+            Tag = step
+        };
+
+        control.CoordinateCommitted += (_, _) =>
+        {
+            RefreshTimeline();
+            ScheduleSaveState();
+        };
+
+        control.TargetPickRequested += async (_, _) =>
+        {
+            SelectTimeline(timeline);
+            _selection.SelectStep(timeline, step);
+            await PickMouseCoordinatesForStepAsync(step);
         };
 
         AttachStepMouseHandlers(control, timeline, step);

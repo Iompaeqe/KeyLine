@@ -89,6 +89,7 @@ public static class MacroStateStore
                 : persistedWorkspace.Name,
             Document = ToDocument(persistedWorkspace.Timelines, persistedWorkspace.ActiveTimelineIndex),
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
+            BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
             TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
         };
@@ -100,7 +101,8 @@ public static class MacroStateStore
         {
             Name = "Macro 1",
             Document = ToDocument(state.Timelines, state.ActiveTimelineIndex),
-            LoopCount = Math.Max(0, state.LoopCount)
+            LoopCount = Math.Max(0, state.LoopCount),
+            BaseDelayMs = 50
         };
     }
 
@@ -145,6 +147,8 @@ public static class MacroStateStore
             VirtualKey = persistedStep.VirtualKey,
             DelayMs = Math.Max(0, persistedStep.DelayMs),
             Text = persistedStep.Text,
+            MouseX = persistedStep.MouseX,
+            MouseY = persistedStep.MouseY,
             IsRecordedDelay = persistedStep.IsRecordedDelay
         };
     }
@@ -174,6 +178,7 @@ public static class MacroStateStore
                 0,
                 Math.Max(0, workspace.Document.Timelines.Count - 1)),
             LoopCount = Math.Max(0, workspace.LoopCount),
+            BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             TargetWindowTitle = workspace.TargetWindowTitle,
             TargetChildWindowTitle = workspace.TargetChildWindowTitle,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
@@ -189,6 +194,8 @@ public static class MacroStateStore
             VirtualKey = step.VirtualKey,
             DelayMs = Math.Max(0, step.DelayMs),
             Text = step.Text,
+            MouseX = step.MouseX,
+            MouseY = step.MouseY,
             IsRecordedDelay = step.IsRecordedDelay
         };
     }
@@ -210,6 +217,7 @@ public static class MacroStateStore
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public int BaseDelayMs { get; set; } = 50;
         public string TargetWindowTitle { get; set; } = "";
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
@@ -231,6 +239,8 @@ public static class MacroStateStore
         public int VirtualKey { get; set; }
         public int DelayMs { get; set; }
         public string Text { get; set; } = "";
+        public int MouseX { get; set; }
+        public int MouseY { get; set; }
         public bool IsRecordedDelay { get; set; }
     }
 }

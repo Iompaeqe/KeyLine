@@ -33,6 +33,7 @@ public partial class MainWindow
     private bool _isDragGhostAnimating;
     private bool _timelineDragGlobalHandlersAttached;
     private bool _isDelayValueMouseEditPending;
+    private bool _isMouseNodeEditPending;
 
     private static DragUiConfig DragUi => GeneratedUiConfig.Drag;
 
@@ -53,6 +54,18 @@ public partial class MainWindow
                 _isDelayValueMouseEditPending = true;
                 delayControl.FocusValueEditor();
                 e.Handled = true;
+                return;
+            }
+
+            if (step.Type is MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick &&
+                element is MouseStepControl mouseControl &&
+                mouseControl.IsEditorSource(e.OriginalSource as DependencyObject))
+            {
+                CancelTimelineDragState();
+                _isMouseNodeEditPending = true;
+                SelectTimeline(timeline);
+                _selection.SelectStep(timeline, step);
+                e.Handled = false;
                 return;
             }
 
@@ -117,6 +130,12 @@ public partial class MainWindow
             {
                 _isDelayValueMouseEditPending = false;
                 e.Handled = true;
+                return;
+            }
+
+            if (_isMouseNodeEditPending)
+            {
+                _isMouseNodeEditPending = false;
                 return;
             }
 

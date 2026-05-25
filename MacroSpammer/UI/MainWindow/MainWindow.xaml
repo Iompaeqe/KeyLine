@@ -409,6 +409,9 @@
                             <ColumnDefinition Width="54" />
                             <ColumnDefinition Width="12" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="150" />
                         </Grid.ColumnDefinitions>
@@ -424,10 +427,14 @@
                                    Style="{StaticResource Dim}" Margin="0,0,8,0" />
                         <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
 
-                        <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="100"
+                        <TextBlock Grid.Column="6" Text="Delay"
+                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
+                        <TextBox x:Name="BaseDelayTextBox" Grid.Column="7" Text="50" />
+
+                        <Button x:Name="ClearButton" Grid.Column="9" Content="Clear" Width="100"
                                 Click="ClearButton_Click" />
 
-                        <Grid Grid.Column="8">
+                        <Grid Grid.Column="11">
                             <Button x:Name="StartStopButton" Content="▶  Start"
                                     Background="#31205F" BorderBrush="#6D4AFF"
                                     Foreground="#DDD6FE" Width="130"
@@ -459,7 +466,8 @@
                                 </Border.Effect>
 
                                 <StackPanel Width="132">
-                                    <Button Content="Record keys"
+                                    <Button x:Name="RecordMenuButton"
+                                            Content="Record keys"
                                             Height="30"
                                             Margin="0,0,0,5"
                                             Background="#102033"
@@ -475,12 +483,40 @@
                                             Foreground="#DDEBFF"
                                             Click="DelayMenuButton_Click" />
 
-                                    <Button Content="Add text"
+                                    <Button x:Name="TextMenuButton"
+                                            Content="Add text"
                                             Height="30"
+                                            Margin="0,0,0,5"
                                             Background="#102033"
                                             BorderBrush="#2C4A6D"
                                             Foreground="#DDEBFF"
                                             Click="TextMenuButton_Click" />
+
+                                    <Button x:Name="MouseDownMenuButton"
+                                            Content="Mouse down"
+                                            Height="30"
+                                            Margin="0,5,0,5"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseDownMenuButton_Click" />
+
+                                    <Button x:Name="MouseUpMenuButton"
+                                            Content="Mouse up"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseUpMenuButton_Click" />
+
+                                    <Button x:Name="MouseClickMenuButton"
+                                            Content="Mouse click"
+                                            Height="30"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseClickMenuButton_Click" />
                                 </StackPanel>
                             </Border>
                         </Popup>

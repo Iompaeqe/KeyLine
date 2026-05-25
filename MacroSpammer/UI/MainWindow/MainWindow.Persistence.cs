@@ -21,9 +21,12 @@ public partial class MainWindow
         };
 
         LoopCountTextBox.TextChanged += LoopCountTextBox_TextChanged;
+        BaseDelayTextBox.TextChanged += BaseDelayTextBox_TextChanged;
     }
 
     private void LoopCountTextBox_TextChanged(object sender, TextChangedEventArgs e) => ScheduleSaveState();
+
+    private void BaseDelayTextBox_TextChanged(object sender, TextChangedEventArgs e) => ScheduleSaveState();
 
     private void ScheduleSaveState()
     {

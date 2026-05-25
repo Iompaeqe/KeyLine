@@ -82,4 +82,31 @@ public partial class MainWindow
         RefreshTimeline();
         ScheduleSaveState();
     }
+
+    private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseStep(MacroStepType.MouseDown);
+
+    private void MouseUpMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseStep(MacroStepType.MouseUp);
+
+    private void MouseClickMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseStep(MacroStepType.MouseClick);
+
+    private void AddMouseStep(MacroStepType type)
+    {
+        AddPopup.IsOpen = false;
+
+        var timeline = GetPopupTimeline();
+        timeline.Steps.Add(new MacroStep
+        {
+            Type = type,
+            MouseX = 0,
+            MouseY = 0
+        });
+
+        SelectTimeline(timeline);
+        RefreshTimeline();
+        ScheduleSaveState();
+    }
+
 }
