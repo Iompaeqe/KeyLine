@@ -38,6 +38,7 @@ public partial class MainWindow : Window
 
     private MacroTimeline? _pendingClearTimeline;
     private bool _isClearConfirmationActive;
+    private MacroTimeline? _pendingDeleteTimeline;
 
     private bool _didInitialTimelineRefresh;
 

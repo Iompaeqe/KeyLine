@@ -11,6 +11,7 @@ public partial class MainWindow
     private void DeleteSelectedItem()
     {
         ResetClearConfirmation();
+        ResetTimelineDeleteConfirmation();
 
         if (_selection.HasStepSelection)
         {
@@ -24,6 +25,8 @@ public partial class MainWindow
 
     private void DeleteSelectedTimeline(MacroTimeline timeline)
     {
+        ResetTimelineDeleteConfirmation();
+
         if (_runners.TryGetValue(timeline, out var runner))
             runner.Stop();
 
@@ -47,17 +50,25 @@ public partial class MainWindow
         if (timeline == null || selectedStep == null)
             return;
 
-        if (selectedStep.IsSyntheticDisplayStep)
+        DeleteStep(timeline, selectedStep);
+    }
+
+    private void DeleteStep(MacroTimeline timeline, MacroStep step)
+    {
+        ResetTimelineDeleteConfirmation();
+
+        if (step.IsSyntheticDisplayStep)
         {
-            foreach (var sourceStep in selectedStep.SourceSteps.ToList())
+            foreach (var sourceStep in step.SourceSteps.ToList())
                 timeline.Steps.Remove(sourceStep);
         }
         else
         {
-            timeline.Steps.Remove(selectedStep);
+            timeline.Steps.Remove(step);
         }
 
         _selection.Clear();
+        SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
     }
@@ -140,6 +151,8 @@ public partial class MainWindow
 
     private void ClearTimeline(MacroTimeline timeline)
     {
+        ResetTimelineDeleteConfirmation();
+
         if (_runners.TryGetValue(timeline, out var runner))
             runner.Stop();
 

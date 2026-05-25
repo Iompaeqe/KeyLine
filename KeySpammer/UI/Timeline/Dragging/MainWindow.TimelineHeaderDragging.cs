@@ -11,6 +11,7 @@ public partial class MainWindow
         element.PreviewMouseLeftButtonDown += (_, e) =>
         {
             EnsureTimelineDragGlobalHandlers();
+            ResetTimelineDeleteConfirmation();
 
             SelectTimeline(timeline);
             _selection.SelectTimeline(timeline);
@@ -61,6 +62,13 @@ public partial class MainWindow
             if (Mouse.LeftButton != MouseButtonState.Pressed)
                 EndTimelineHeaderDrag(element);
         };
+
+        element.PreviewMouseRightButtonDown += (_, e) =>
+        {
+            CancelTimelineDragState();
+            BeginOrConfirmTimelineDelete(timeline);
+            e.Handled = true;
+        };
     }
 
     private void MoveTimelineHeaderByMouseY(MacroTimeline draggedTimeline, double mouseY)
@@ -89,5 +97,31 @@ public partial class MainWindow
 
         if (element.IsMouseCaptured)
             element.ReleaseMouseCapture();
+    }
+
+    private void BeginOrConfirmTimelineDelete(MacroTimeline timeline)
+    {
+        if (_document.Timelines.Count <= 1)
+            return;
+
+        SelectTimeline(timeline);
+        _selection.SelectTimeline(timeline);
+
+        if (ReferenceEquals(_pendingDeleteTimeline, timeline))
+        {
+            DeleteSelectedTimeline(timeline);
+            return;
+        }
+
+        _pendingDeleteTimeline = timeline;
+        RefreshTimeline();
+    }
+
+    private void ResetTimelineDeleteConfirmation()
+    {
+        if (_pendingDeleteTimeline == null)
+            return;
+
+        _pendingDeleteTimeline = null;
     }
 }

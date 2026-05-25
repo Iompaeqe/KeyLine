@@ -5,7 +5,7 @@ namespace KeySpammer.UI.Timeline;
 public sealed class TimelineVisualItem
 {
     public required UIElement Element { get; init; }
-    public required double Left { get; init; }
+    public required double Left { get; set; }
     public required Size Size { get; init; }
     public object? AnimationKey { get; init; }
 

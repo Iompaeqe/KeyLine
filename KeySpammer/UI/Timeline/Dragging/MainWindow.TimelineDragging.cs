@@ -43,6 +43,15 @@ public partial class MainWindow
         {
             EnsureTimelineDragGlobalHandlers();
 
+            if (e.ClickCount >= 2 && step.Type == MacroStepType.Text)
+            {
+                SelectTimeline(timeline);
+                _selection.SelectStep(timeline, step);
+                EditTextStep(timeline, step);
+                e.Handled = true;
+                return;
+            }
+
             SelectTimeline(timeline);
             _selection.SelectStep(timeline, step);
             _drag.BeginStepDrag(timeline, step, e.GetPosition(TimelineRowsPanel));
@@ -99,6 +108,16 @@ public partial class MainWindow
         {
             if (Mouse.LeftButton != MouseButtonState.Pressed && _drag.DraggedStep != null)
                 CancelTimelineDragState();
+        };
+
+        element.PreviewMouseRightButtonDown += (_, e) =>
+        {
+            CancelTimelineDragState();
+            SelectTimeline(timeline);
+            _selection.SelectStep(timeline, step);
+            DeleteStep(timeline, step);
+
+            e.Handled = true;
         };
     }
 }

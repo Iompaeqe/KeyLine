@@ -2,29 +2,16 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 using KeySpammer.Domain;
 using KeySpammer.Services.Macro;
-using KeySpammer.Services.Timeline;
 using KeySpammer.State;
 using KeySpammer.UI.Config;
-using KeySpammer.UI.Controls;
+using KeySpammer.UI.Timeline;
 
 namespace KeySpammer;
 
 public partial class MainWindow
 {
-    private sealed class TimelineVisualItem
-    {
-        public required UIElement Element { get; init; }
-        public required double Left { get; init; }
-        public required Size Size { get; init; }
-        public object? AnimationKey { get; init; }
-
-        public double Width => Size.Width;
-        public double CenterX => Left + (Size.Width / 2.0);
-    }
-
     private static TimelineUiConfig TimelineUi => GeneratedUiConfig.Timeline;
     
     private static double TimelineRowHeight => TimelineUi.RowHeight;
@@ -41,21 +28,27 @@ public partial class MainWindow
     private static double TimelineHeaderTopExtra => TimelineUi.HeaderTopExtra;
     private static double TimelineHeaderBottomExtra => TimelineUi.HeaderBottomExtra;
 
-    private sealed class TimelineRowRenderState
+    private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
+
+    private sealed class TimelineRowVisualModel
     {
         public required MacroTimeline Timeline { get; init; }
-        public required Canvas Canvas { get; init; }
-        public Border? Connector { get; set; }
-        public FrameworkElement? AddButton { get; set; }
-        public double NextLeft { get; set; }
-        public double FirstCenterX { get; set; }
-        public double LastCenterX { get; set; }
-        public double RowWidth { get; set; }
-        public int VisualItemCount { get; set; }
-    }
+        public required IReadOnlyList<TimelineVisualItem> VisualItems { get; init; }
+        public required bool IsFirstRow { get; init; }
+        public required bool IsLastRow { get; init; }
 
-    private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
-    
+        public double RowWidth
+        {
+            get
+            {
+                if (VisualItems.Count == 0)
+                    return TimelineFirstItemLeft + TimelineRightPadding;
+
+                var lastItem = VisualItems[^1];
+                return lastItem.Left + lastItem.Width + TimelineRightPadding;
+            }
+        }
+    }
 
     private void RefreshTimeline(object? sender = null, RoutedEventArgs? e = null)
     {
@@ -78,22 +71,17 @@ public partial class MainWindow
         HideEmptyTimelineState();
         SyncOptionsFromActiveTimeline();
         
-        TimelineRowsPanel.Margin = new Thickness(0, TimelineHeaderTopExtra, 0, 0);
+        TimelineRowsPanel.Margin = TimelineLayoutCalculator.GetRowsPanelMargin(TimelineHeaderTopExtra);
 
-        var visibleStepsByTimeline = _document.Timelines.ToDictionary(
-            timeline => timeline,
-            timeline => MacroTimelineBuilder.BuildVisibleSteps(
-                GetTimelineRenderRawSteps(timeline).ToList(),
-                timeline.UseStandardDelay,
-                timeline.ShowKeyUpDown));
+        var rowModels = BuildTimelineRowVisualModels();
 
-        var canvasWidth = CalculateSimpleTimelineCanvasWidth(visibleStepsByTimeline);
+        var canvasWidth = GetTimelineCanvasWidth(rowModels);
         SetTimelineCanvasWidthForAllRows(canvasWidth);
 
-        for (var i = 0; i < _document.Timelines.Count; i++)
+        for (var i = 0; i < rowModels.Count; i++)
         {
-            var timeline = _document.Timelines[i];
-            var isLastRow = i == _document.Timelines.Count - 1;
+            var rowModel = rowModels[i];
+            var timeline = rowModel.Timeline;
 
             if (_document.Timelines.Count > 1)
             {
@@ -109,10 +97,10 @@ public partial class MainWindow
 
             TimelineRowsPanel.Children.Add(CreateTimelineRow(
                 timeline,
-                visibleStepsByTimeline[timeline],
+                rowModel.VisualItems,
                 canvasWidth,
-                i == 0,
-                isLastRow));
+                rowModel.IsFirstRow,
+                rowModel.IsLastRow));
         }
 
         UpdateTimelineOptionsPagerVisibility();
@@ -140,30 +128,20 @@ public partial class MainWindow
 
         TimelineHeaderGrid.Visibility = Visibility.Visible;
 
-        TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
-        {
-            Height = new GridLength(TimelineHeaderTopExtra)
-        });
+        TimelineHeaderGrid.RowDefinitions.Add(
+            TimelineLayoutCalculator.CreateHeaderTopExtraRow(TimelineHeaderTopExtra));
 
         for (var i = 0; i < _document.Timelines.Count; i++)
         {
-            TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
-            {
-                Height = new GridLength(TimelineRowHeight)
-            });
+            TimelineHeaderGrid.RowDefinitions.Add(
+                TimelineLayoutCalculator.CreateTimelineHeaderContentRow(TimelineRowHeight));
 
-            TimelineHeaderGrid.RowDefinitions.Add(new RowDefinition
-            {
-                // Gap rows are consumed by the header above them.
-                // The final row must absorb the remaining panel height so the last
-                // header reaches the bottom of the timeline scroll viewer.
-                Height = i < _document.Timelines.Count - 1
-                    ? new GridLength(TimelineRowGap)
-                    : new GridLength(1, GridUnitType.Star),
-                MinHeight = i < _document.Timelines.Count - 1
-                    ? 0
-                    : TimelineHeaderBottomExtra
-            });
+            TimelineHeaderGrid.RowDefinitions.Add(
+                TimelineLayoutCalculator.CreateTimelineHeaderGapRow(
+                    i,
+                    _document.Timelines.Count,
+                    TimelineRowGap,
+                    TimelineHeaderBottomExtra));
         }
 
         var headerColumnBackplate = new Border
@@ -195,13 +173,8 @@ public partial class MainWindow
         // ...
         // The header cells must consume the spacer rows too.
         // Otherwise the spacer rows become visible holes between T1/T2/etc.
-        var row = isFirst
-            ? 0
-            : 1 + (timelineIndex * 2);
-
-        var rowSpan = isFirst
-            ? 3
-            : 2;
+        var row = TimelineLayoutCalculator.GetHeaderGridRow(timelineIndex);
+        var rowSpan = TimelineLayoutCalculator.GetHeaderGridRowSpan(timelineIndex);
 
         Grid.SetRow(header, row);
         Grid.SetRowSpan(header, rowSpan);
@@ -243,30 +216,150 @@ public partial class MainWindow
         }
 
         var timeline = _drag.DraggedStepTimeline;
-        var rowIndex = _document.Timelines.IndexOf(timeline);
-
-        if (rowIndex < 0 || rowIndex >= TimelineRowsPanel.Children.Count)
+        
+        // Fast path: if we already have a render state for this row, just update positions
+        if (_timelineRowRenderStates.TryGetValue(timeline, out var state))
         {
-            RefreshTimeline();
+            // The problem with the fast path is that the "placeholder" is only present in state.VisualItems
+            // IF the row was already rendered in "dragging mode".
+            // If it's the FIRST move after BeginStepDrag, state.VisualItems doesn't have the placeholder.
+            // In that case, we MUST do a full row refresh once to get the placeholder element created.
+            
+            var hasPlaceholder = state.VisualItems.Any(v => Equals(v.AnimationKey, (timeline, "drop-placeholder")));
+            if (!hasPlaceholder)
+            {
+                RefreshTimelineRow(timeline);
+                return;
+            }
+
+            var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+                GetTimelineRenderRawSteps(timeline).ToList(),
+                timeline.UseStandardDelay,
+                timeline.ShowKeyUpDown);
+
+            // Re-calculate positions for all items including the placeholder.
+            var currentLeft = TimelineFirstItemLeft;
+            var rawStepsForRender = GetTimelineRenderRawSteps(timeline);
+            var draggedItems = GetRawStepsForDisplayStep(timeline, _drag.DraggedStep!);
+            var placeholderAdded = false;
+
+            var visualIndex = 0;
+            var orderedVisualItems = new List<TimelineVisualItem>(state.VisualItems.Count);
+
+            foreach (var step in visibleSteps)
+            {
+                var rawItems = GetRawStepsForDisplayStep(rawStepsForRender, step);
+                var isDraggedDisplayStep = rawItems.Any(draggedItems.Contains);
+
+                if (isDraggedDisplayStep)
+                {
+                    if (!UpdateOrMoveVisualItem(
+                            state,
+                            orderedVisualItems,
+                            ref visualIndex,
+                            ref currentLeft,
+                            GetDropPlaceholderAnimationKey(timeline)))
+                        return;
+                    placeholderAdded = true;
+                    continue;
+                }
+
+                if (!UpdateOrMoveVisualItem(
+                        state,
+                        orderedVisualItems,
+                        ref visualIndex,
+                        ref currentLeft,
+                        GetTimelineAnimationKey(timeline, step)))
+                    return;
+            }
+
+            if (!placeholderAdded)
+            {
+                if (!UpdateOrMoveVisualItem(
+                        state,
+                        orderedVisualItems,
+                        ref visualIndex,
+                        ref currentLeft,
+                        GetDropPlaceholderAnimationKey(timeline)))
+                    return;
+            }
+
+            // Finally, the Add button
+            if (!UpdateOrMoveVisualItem(
+                    state,
+                    orderedVisualItems,
+                    ref visualIndex,
+                    ref currentLeft,
+                    (timeline, "add")))
+                return;
+
+            state.VisualItems = orderedVisualItems;
+            state.VisualItemCount = orderedVisualItems.Count;
+            state.NextLeft = orderedVisualItems[^1].Left;
+            state.RowWidth = orderedVisualItems[^1].Left + orderedVisualItems[^1].Width + TimelineRightPadding;
+            
+            UpdateRowConnector(state);
+            FitTimelineCanvasWidthToCurrentContent();
             return;
         }
 
-        var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-            GetTimelineRenderRawSteps(timeline).ToList(),
-            timeline.UseStandardDelay,
-            timeline.ShowKeyUpDown);
+        RefreshTimeline();
+    }
 
-        var canvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
+    private bool UpdateOrMoveVisualItem(
+        TimelineRowRenderState state,
+        List<TimelineVisualItem> orderedVisualItems,
+        ref int visualIndex,
+        ref double currentLeft,
+        object animationKey)
+    {
+        TimelineVisualItem? item = null;
+        if (visualIndex < state.VisualItems.Count)
+        {
+            var candidate = state.VisualItems[visualIndex];
+            if (Equals(candidate.AnimationKey, animationKey))
+            {
+                item = candidate;
+            }
+            else
+            {
+                // Try searching for it (it might have moved in the list)
+                item = state.VisualItems.FirstOrDefault(v => Equals(v.AnimationKey, animationKey));
+            }
+        }
+        else
+        {
+            item = state.VisualItems.FirstOrDefault(v => Equals(v.AnimationKey, animationKey));
+        }
 
-        var replacementRow = CreateTimelineRow(
-            timeline,
-            visibleSteps,
-            canvasWidth,
-            rowIndex == 0,
-            rowIndex == _document.Timelines.Count - 1);
+        if (item == null)
+        {
+            RefreshTimelineRow(state.Timeline);
+            return false;
+        }
 
-        TimelineRowsPanel.Children.RemoveAt(rowIndex);
-        TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
+        if (!orderedVisualItems.Contains(item))
+            orderedVisualItems.Add(item);
+
+        var previousLeft = Canvas.GetLeft(item.Element);
+        if (Math.Abs(previousLeft - currentLeft) > 0.1)
+        {
+            // Animate smooth movement if it moved significantly
+            var deltaX = previousLeft - currentLeft;
+            if (Math.Abs(deltaX) > 0.5)
+                AnimateRenderOffsetToRest(item.Element, deltaX, 0, animateY: false);
+
+            Canvas.SetLeft(item.Element, currentLeft);
+        }
+
+        item.Left = currentLeft;
+        currentLeft += item.Width + TimelineItemGap;
+        
+        // Update the cached position for future full refreshes
+        _timelineVisualPositions[animationKey] = new Point(item.Left, TimelineLayoutCalculator.GetItemTop(TimelineConnectorY, item.Size.Height));
+        
+        visualIndex++;
+        return true;
     }
 
     private double GetExistingTimelineCanvasWidth(int rowIndex)
@@ -283,50 +376,62 @@ public partial class MainWindow
             }
         }
 
-        var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
-            ? TimelineScrollViewer.ViewportWidth
-            : TimelineScrollViewer?.ActualWidth ?? 0;
-
-        return Math.Max(0, viewportWidth - 20);
+        return GetMinimumTimelineCanvasWidth();
     }
 
-    private double CalculateSimpleTimelineCanvasWidth(Dictionary<MacroTimeline, List<MacroStep>> visibleStepsByTimeline)
+    private List<TimelineRowVisualModel> BuildTimelineRowVisualModels()
     {
-        var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
-            ? TimelineScrollViewer.ViewportWidth
-            : TimelineScrollViewer?.ActualWidth ?? 0;
+        var rows = new List<TimelineRowVisualModel>(_document.Timelines.Count);
 
-        var maxContentWidth = TimelineFirstItemLeft + TimelineRightPadding;
-
-        foreach (var (timeline, visibleSteps) in visibleStepsByTimeline)
+        for (var i = 0; i < _document.Timelines.Count; i++)
         {
-            var contentWidth = TimelineFirstItemLeft;
+            var timeline = _document.Timelines[i];
+            var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+                GetTimelineRenderRawSteps(timeline).ToList(),
+                timeline.UseStandardDelay,
+                timeline.ShowKeyUpDown);
 
-            foreach (var step in visibleSteps)
+            rows.Add(new TimelineRowVisualModel
             {
-                var block = CreateStepBlock(timeline, step);
-                var size = MeasureTimelineItem(block);
-
-                contentWidth += size.Width + TimelineItemGap;
-            }
-
-            var addBlock = CreateAddBlock(timeline);
-            var addSize = MeasureTimelineItem(addBlock);
-
-            contentWidth += addSize.Width + TimelineRightPadding;
-
-            maxContentWidth = Math.Max(maxContentWidth, contentWidth);
+                Timeline = timeline,
+                VisualItems = BuildTimelineVisualItems(timeline, visibleSteps),
+                IsFirstRow = i == 0,
+                IsLastRow = i == _document.Timelines.Count - 1
+            });
         }
 
-        return Math.Max(Math.Max(0, viewportWidth - 20), maxContentWidth);
+        return rows;
+    }
+
+    private double GetTimelineCanvasWidth(IEnumerable<TimelineRowVisualModel> rows)
+    {
+        var maxContentWidth = rows.Aggregate(
+            TimelineFirstItemLeft + TimelineRightPadding,
+            (maxWidth, row) => Math.Max(maxWidth, row.RowWidth));
+
+        return Math.Max(GetMinimumTimelineCanvasWidth(), maxContentWidth);
     }
 
     private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps, double canvasWidth, bool isFirstRow, bool isLastRow)
     {
+        return CreateTimelineRow(
+            timeline,
+            BuildTimelineVisualItems(timeline, visibleSteps),
+            canvasWidth,
+            isFirstRow,
+            isLastRow);
+    }
+
+    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<TimelineVisualItem> visualItems, double canvasWidth, bool isFirstRow, bool isLastRow)
+    {
         var row = new Grid
         {
             Height = TimelineRowHeight,
-            Margin = new Thickness(0, 0, 0, isLastRow ? 0 : TimelineRowGap),
+            Margin = new Thickness(
+                0,
+                0,
+                0,
+                TimelineLayoutCalculator.GetRowBottomMargin(isLastRow, TimelineRowGap)),
             Tag = timeline,
             VerticalAlignment = VerticalAlignment.Top
         };
@@ -341,8 +446,6 @@ public partial class MainWindow
         };
 
         row.Children.Add(canvas);
-
-        var visualItems = BuildTimelineVisualItems(timeline, visibleSteps);
 
         var connector = CreateTimelineConnector(visualItems);
         if (connector != null)
@@ -424,6 +527,11 @@ public partial class MainWindow
         return visualItems;
     }
 
+    private static object GetDropPlaceholderAnimationKey(MacroTimeline timeline)
+    {
+        return (timeline, "drop-placeholder");
+    }
+
     private void AddPlaceholderVisualItem(
         List<TimelineVisualItem> visualItems,
         ref double currentLeft,
@@ -442,45 +550,32 @@ public partial class MainWindow
             BorderBrush = new SolidColorBrush(Color.FromArgb(150, 96, 165, 250)),
             Background = new SolidColorBrush(Color.FromArgb(30, 96, 165, 250)),
             Opacity = 1.0,
-            IsHitTestVisible = false
+            IsHitTestVisible = false,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform(0.96, 0.96)
         };
+
+        if (placeholder.RenderTransform is ScaleTransform scale)
+        {
+            var duration = new Duration(TimeSpan.FromMilliseconds(90));
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var animation = new DoubleAnimation(1.0, duration) { EasingFunction = easing };
+
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+        }
 
         visualItems.Add(new TimelineVisualItem
         {
             Element = placeholder,
             Left = currentLeft,
             Size = draggedSize,
-            AnimationKey = (timeline, "drop-placeholder")
+            AnimationKey = GetDropPlaceholderAnimationKey(timeline)
         });
 
         currentLeft += draggedSize.Width + TimelineItemGap;
     }
 
-    private static Size MeasureTimelineItem(UIElement element)
-    {
-        element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-
-        var width = element.DesiredSize.Width;
-        var height = element.DesiredSize.Height;
-
-        if (element is FrameworkElement frameworkElement)
-        {
-            if (!double.IsNaN(frameworkElement.Width) && frameworkElement.Width > 0)
-                width = frameworkElement.Width;
-
-            if (!double.IsNaN(frameworkElement.Height) && frameworkElement.Height > 0)
-                height = frameworkElement.Height;
-        }
-
-        if (width <= 0)
-            width = 72;
-
-        if (height <= 0)
-            height = 48;
-
-        return new Size(width, height);
-    }
-    
     private object GetTimelineAnimationKey(MacroTimeline timeline, MacroStep step)
     {
         var rawItems = GetRawStepsForDisplayStep(timeline, step);
@@ -510,7 +605,9 @@ public partial class MainWindow
         };
 
         Canvas.SetLeft(connector, firstCenterX);
-        Canvas.SetTop(connector, TimelineConnectorY - (TimelineConnectorThickness / 2.0));
+        Canvas.SetTop(
+            connector,
+            TimelineLayoutCalculator.GetConnectorTop(TimelineConnectorY, TimelineConnectorThickness));
         Panel.SetZIndex(connector, -10);
 
         return connector;
@@ -533,7 +630,8 @@ public partial class MainWindow
             FirstCenterX = visualItems[0].CenterX,
             LastCenterX = visualItems[^1].CenterX,
             RowWidth = addItem.Left + addItem.Width + TimelineRightPadding,
-            VisualItemCount = visualItems.Count
+            VisualItemCount = visualItems.Count,
+            VisualItems = visualItems.ToList()
         };
     }
 
@@ -665,7 +763,7 @@ public partial class MainWindow
 
     private void UpdateRowConnector(TimelineRowRenderState state)
     {
-        if (state.VisualItemCount <= 1)
+        if (state.VisualItems.Count <= 1)
         {
             if (state.Connector != null)
             {
@@ -675,6 +773,12 @@ public partial class MainWindow
 
             return;
         }
+
+        var firstItem = state.VisualItems[0];
+        var lastItem = state.VisualItems[^1];
+        
+        var firstCenterX = Canvas.GetLeft(firstItem.Element) + (firstItem.Width / 2.0);
+        var lastCenterX = Canvas.GetLeft(lastItem.Element) + (lastItem.Width / 2.0);
 
         if (state.Connector == null)
         {
@@ -687,13 +791,39 @@ public partial class MainWindow
                 IsHitTestVisible = false
             };
 
-            Canvas.SetLeft(state.Connector, state.FirstCenterX);
-            Canvas.SetTop(state.Connector, TimelineConnectorY - (TimelineConnectorThickness / 2.0));
+            Canvas.SetLeft(state.Connector, firstCenterX);
+            Canvas.SetTop(
+                state.Connector,
+                TimelineLayoutCalculator.GetConnectorTop(TimelineConnectorY, TimelineConnectorThickness));
             Panel.SetZIndex(state.Connector, -10);
             state.Canvas.Children.Insert(0, state.Connector);
         }
 
-        state.Connector.Width = Math.Max(0, state.LastCenterX - state.FirstCenterX);
+        // Animate connector smoothly if items moved
+        var previousLeft = Canvas.GetLeft(state.Connector);
+        var previousWidth = state.Connector.Width;
+        var targetWidth = Math.Max(0, lastCenterX - firstCenterX);
+
+        if (Math.Abs(previousLeft - firstCenterX) > 0.1 || Math.Abs(previousWidth - targetWidth) > 0.1)
+        {
+            Canvas.SetLeft(state.Connector, firstCenterX);
+            state.Connector.Width = targetWidth;
+
+            var deltaX = previousLeft - firstCenterX;
+            var deltaWidth = previousWidth - targetWidth;
+
+            if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaWidth) > 0.5)
+            {
+                AnimateRenderOffsetToRest(state.Connector, deltaX, 0, animateY: false);
+
+                var duration = new Duration(TimeSpan.FromMilliseconds(130));
+                var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+                // Width animation is more expensive as it triggers layout, but it's needed for the connector
+                var widthAnim = new DoubleAnimation(previousWidth, targetWidth, duration) { EasingFunction = easing };
+                state.Connector.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+            }
+        }
     }
 
     private void EnsureTimelineCanvasWidthForAllRows(double requiredWidth)
@@ -745,46 +875,58 @@ public partial class MainWindow
 
     private double GetMinimumTimelineCanvasWidth()
     {
-        var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
-            ? TimelineScrollViewer.ViewportWidth
-            : TimelineScrollViewer?.ActualWidth ?? 0;
+        var viewportWidth = GetTimelineLayoutViewportWidth();
+        var horizontalPadding = GetTimelineScrollViewerHorizontalPadding();
 
-        return Math.Max(0, viewportWidth - 20);
+        return Math.Max(0, viewportWidth - horizontalPadding);
     }
 
-
-
-    private double CalculateTimelineCanvasWidth(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps)
+    private double GetTimelineScrollViewerHorizontalPadding()
     {
-        var contentWidth = TimelineFirstItemLeft;
+        return TimelineScrollViewer == null
+            ? 0
+            : TimelineScrollViewer.Padding.Left + TimelineScrollViewer.Padding.Right;
+    }
 
-        foreach (var step in visibleSteps)
-        {
-            var block = CreateStepBlock(timeline, step);
-            var size = MeasureTimelineItem(block);
-
-            contentWidth += size.Width + TimelineItemGap;
-        }
-
-        var addBlock = CreateAddBlock(timeline);
-        var addSize = MeasureTimelineItem(addBlock);
-
-        contentWidth += addSize.Width + TimelineRightPadding;
-
-        var viewportWidth = TimelineScrollViewer?.ViewportWidth > 0
+    private double GetTimelineLayoutViewportWidth()
+    {
+        var measuredViewportWidth = TimelineScrollViewer?.ViewportWidth > 0
             ? TimelineScrollViewer.ViewportWidth
             : TimelineScrollViewer?.ActualWidth ?? 0;
 
-        return Math.Max(Math.Max(0, viewportWidth - 20), contentWidth);
+        if (TimelineGrid == null || TimelineGrid.ActualWidth <= 0)
+            return measuredViewportWidth;
+
+        var headerWidth = _document.Timelines.Count > 1
+            ? TimelineHeaderWidth
+            : 0;
+
+        var expectedViewportWidth = Math.Max(0, TimelineGrid.ActualWidth - headerWidth);
+
+        if (measuredViewportWidth <= 0)
+            return expectedViewportWidth;
+
+        if (expectedViewportWidth <= 0)
+            return measuredViewportWidth;
+
+        return Math.Min(measuredViewportWidth, expectedViewportWidth);
     }
+
+
 
     private Border CreateTimelineHeader(MacroTimeline timeline, bool isActive, bool isSelected, bool isFirst, bool isLast)
     {
-        var backgroundColor = isActive
+        var isPendingDelete = ReferenceEquals(timeline, _pendingDeleteTimeline);
+
+        var backgroundColor = isPendingDelete
+            ? Color.FromRgb(127, 29, 29)
+            : isActive
             ? Color.FromRgb(10, 52, 84)
             : Color.FromRgb(8, 17, 31);
 
-        var borderColor = isSelected
+        var borderColor = isPendingDelete
+            ? Color.FromRgb(248, 113, 113)
+            : isSelected
             ? Color.FromRgb(226, 232, 240)
             : isActive
                 ? Color.FromRgb(14, 165, 233)
@@ -808,224 +950,64 @@ public partial class MainWindow
             Tag = timeline
         };
 
-        border.Child = new TextBlock
-        {
-            Text = timeline.Name,
-            FontWeight = FontWeights.Black,
-            FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = new SolidColorBrush(isActive
-                ? Color.FromRgb(224, 242, 254)
-                : Color.FromRgb(148, 163, 184))
-        };
+        border.Child = CreateTimelineHeaderContent(timeline, isActive, isPendingDelete);
 
         AttachTimelineHeaderMouseHandlers(border, timeline);
         return border;
     }
 
-    private UIElement CreateStepBlock(MacroTimeline timeline, MacroStep step)
+    private static UIElement CreateTimelineHeaderContent(MacroTimeline timeline, bool isActive, bool isPendingDelete)
     {
-        return step.Type switch
+        if (!isPendingDelete)
         {
-            MacroStepType.Delay => CreateDelayBlock(timeline, step),
-            MacroStepType.Text => CreateTextStepBlock(timeline, step),
-            MacroStepType.KeyDown or MacroStepType.KeyUp => CreateKeyStepBlock(timeline, step),
-            _ => CreateTextStepBlock(timeline, step)
-        };
-    }
-
-    private UIElement CreateKeyStepBlock(MacroTimeline timeline, MacroStep step)
-    {
-        var control = new KeyStepControl
-        {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            ShowKeyUpDown = timeline.ShowKeyUpDown,
-            Tag = step
-        };
-
-        AttachStepMouseHandlers(control, timeline, step);
-        return control;
-    }
-
-    private UIElement CreateTextStepBlock(MacroTimeline timeline, MacroStep step)
-    {
-        var control = new TextStepControl
-        {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
-        };
-
-        AttachStepMouseHandlers(control, timeline, step);
-
-        control.MouseRightButtonDown += (_, e) =>
-        {
-            EditTextStep(timeline, step);
-            e.Handled = true;
-        };
-
-        return control;
-    }
-
-    private UIElement CreateDelayBlock(MacroTimeline timeline, MacroStep step)
-    {
-        var control = new DelayStepControl
-        {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
-        };
-
-        control.DelayCommitted += (_, _) =>
-        {
-            RefreshTimeline();
-            ScheduleSaveState();
-        };
-
-        AttachStepMouseHandlers(control, timeline, step);
-        return control;
-    }
-
-    private UIElement CreateAddBlock(MacroTimeline timeline)
-    {
-        var control = new AddStepControl
-        {
-            Tag = timeline
-        };
-
-        control.AddClicked += AddButton_Click;
-        return control;
-    }
-
-    private bool IsStepSelected(MacroTimeline timeline, MacroStep step)
-    {
-        if (!_selection.HasStepSelection || _selection.SelectedTimeline == null || _selection.SelectedStep == null)
-            return false;
-
-        if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
-            return false;
-
-        if (ReferenceEquals(step, _selection.SelectedStep))
-            return true;
-
-        if (step.IsSyntheticDisplayStep)
-        {
-            return step.SourceSteps.Contains(_selection.SelectedStep) ||
-                   (_selection.SelectedStep.IsSyntheticDisplayStep &&
-                    step.SourceSteps.SequenceEqual(_selection.SelectedStep.SourceSteps));
+            return new TextBlock
+            {
+                Text = timeline.Name,
+                FontWeight = FontWeights.Black,
+                FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(isActive
+                    ? Color.FromRgb(224, 242, 254)
+                    : Color.FromRgb(148, 163, 184))
+            };
         }
 
-        if (_selection.SelectedStep.IsSyntheticDisplayStep)
-            return _selection.SelectedStep.SourceSteps.Contains(step);
-
-        return false;
-    }
-
-    private void SelectTimeline(MacroTimeline timeline)
-    {
-        if (_isClearConfirmationActive && !ReferenceEquals(_pendingClearTimeline, timeline))
-            ResetClearConfirmation();
-        
-        _document.SelectTimeline(timeline);
-        SyncOptionsFromActiveTimeline();
-        ScheduleSaveState();
-    }
-
-    private void SyncOptionsFromActiveTimeline()
-    {
-        if (UseStandardDelayCheckBox == null)
-            return;
-
-        var timeline = _document.ActiveTimeline;
-
-        _isSyncingOptions = true;
-
-        UseStandardDelayCheckBox.IsChecked = timeline.UseStandardDelay;
-        StandardDelayTextBox.Text = timeline.StandardDelayMs.ToString();
-        ShowKeyUpDownCheckBox.IsChecked = timeline.ShowKeyUpDown;
-
-        ShowKeyUpDownCheckBox.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Collapsed;
-        ShowKeyUpDownCheckSeparator.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Collapsed;
-
-        ActiveTimelineTextBlock.Text = $"{timeline.Name}/{_document.Timelines.Count}";
-        UpdateTimelineOptionsPagerVisibility();
-
-        _isSyncingOptions = false;
-    }
-
-    private void UpdateTimelineOptionsPagerVisibility()
-    {
-        var visibility = _document.Timelines.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
-
-        if (PreviousTimelineOptionsButton != null)
-            PreviousTimelineOptionsButton.Visibility = visibility;
-
-        if (NextTimelineOptionsButton != null)
-            NextTimelineOptionsButton.Visibility = visibility;
-
-        if (ActiveTimelineTextBlock != null)
-            ActiveTimelineTextBlock.Visibility = visibility;
-    }
-
-    private void OptionsControl_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isSyncingOptions || UseStandardDelayCheckBox == null)
-            return;
-
-        ApplyOptionsToActiveTimeline();
-        RefreshTimeline();
-        ScheduleSaveState();
-    }
-
-    private void StandardDelayTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_isSyncingOptions || StandardDelayTextBox == null)
-            return;
-
-        ApplyOptionsToActiveTimeline();
-        RefreshTimeline();
-        ScheduleSaveState();
-    }
-
-    private void ApplyOptionsToActiveTimeline()
-    {
-        var timeline = _document.ActiveTimeline;
-
-        timeline.UseStandardDelay = UseStandardDelayCheckBox.IsChecked == true;
-        timeline.StandardDelayMs = GetStandardDelayMs();
-
-        if (!timeline.UseStandardDelay)
-            timeline.ShowKeyUpDown = true;
-        else
-            timeline.ShowKeyUpDown = ShowKeyUpDownCheckBox.IsChecked == true;
-    }
-
-    private void PreviousTimelineOptionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        _document.SelectPreviousTimeline();
-        _selection.SelectTimeline(_document.ActiveTimeline);
-        RefreshTimeline();
-        ScheduleSaveState();
-    }
-
-    private void NextTimelineOptionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        _document.SelectNextTimeline();
-        _selection.SelectTimeline(_document.ActiveTimeline);
-        RefreshTimeline();
-        ScheduleSaveState();
+        return new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = timeline.Name,
+                    FontWeight = FontWeights.Black,
+                    FontSize = 13,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromRgb(254, 202, 202))
+                },
+                new TextBlock
+                {
+                    Text = "Confirm",
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 8,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromRgb(254, 202, 202))
+                }
+            }
+        };
     }
 
     private void UpdateWindowHeightForTimelineCount()
     {
         var timelineCount = Math.Max(1, _document.Timelines.Count);
 
-        var timelineAreaHeight =
-            (timelineCount * TimelineRowHeight) +
-            ((timelineCount - 1) * TimelineRowGap) +
-            52;
+        var timelineAreaHeight = TimelineLayoutCalculator.GetTimelineAreaHeight(
+            timelineCount,
+            TimelineRowHeight,
+            TimelineRowGap,
+            52);
 
         var wantedHeight = 252 + timelineAreaHeight;
 
@@ -1047,7 +1029,7 @@ public partial class MainWindow
     private void AddTimelineItem(Canvas canvas, TimelineVisualItem item)
     {
         var targetLeft = item.Left;
-        var targetTop = TimelineConnectorY - (item.Size.Height / 2.0);
+        var targetTop = TimelineLayoutCalculator.GetItemTop(TimelineConnectorY, item.Size.Height);
 
         canvas.Children.Add(item.Element);
 
@@ -1059,45 +1041,103 @@ public partial class MainWindow
 
         var targetPosition = new Point(targetLeft, targetTop);
 
-        if (_timelineVisualPositions.TryGetValue(item.AnimationKey, out var previousPosition))
+        if (!IsDropPlaceholderAnimationKey(item.AnimationKey) &&
+            _timelineVisualPositions.TryGetValue(item.AnimationKey, out var previousPosition))
         {
             var deltaX = previousPosition.X - targetLeft;
             var deltaY = previousPosition.Y - targetTop;
 
             if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaY) > 0.5)
-            {
-                var transform = new TranslateTransform(deltaX, deltaY);
-                item.Element.RenderTransform = transform;
-
-                var duration = new Duration(TimeSpan.FromMilliseconds(130));
-                var easing = new CubicEase
-                {
-                    EasingMode = EasingMode.EaseOut
-                };
-
-                transform.BeginAnimation(
-                    TranslateTransform.XProperty,
-                    new DoubleAnimation(0, duration)
-                    {
-                        EasingFunction = easing
-                    });
-
-                if (Math.Abs(deltaY) > 0.5)
-                {
-                    transform.BeginAnimation(
-                        TranslateTransform.YProperty,
-                        new DoubleAnimation(0, duration)
-                        {
-                            EasingFunction = easing
-                        });
-                }
-                else
-                {
-                    transform.Y = 0;
-                }
-            }
+                AnimateRenderOffsetToRest(item.Element, deltaX, deltaY, animateY: Math.Abs(deltaY) > 0.5);
         }
 
         _timelineVisualPositions[item.AnimationKey] = targetPosition;
+    }
+
+    private static bool IsDropPlaceholderAnimationKey(object? animationKey)
+    {
+        return animationKey is ValueTuple<MacroTimeline, string> tuple &&
+               tuple.Item2 == "drop-placeholder";
+    }
+
+    private static TranslateTransform EnsureTranslateTransform(UIElement element)
+    {
+        switch (element.RenderTransform)
+        {
+            case TranslateTransform translate:
+                return translate;
+
+            case TransformGroup group:
+            {
+                var existing = group.Children.OfType<TranslateTransform>().FirstOrDefault();
+                if (existing != null)
+                    return existing;
+
+                var translate = new TranslateTransform();
+                group.Children.Add(translate);
+                return translate;
+            }
+
+            case Transform existingTransform:
+            {
+                var group = new TransformGroup();
+                group.Children.Add(existingTransform);
+
+                var translate = new TranslateTransform();
+                group.Children.Add(translate);
+
+                element.RenderTransform = group;
+                return translate;
+            }
+
+            default:
+            {
+                var translate = new TranslateTransform();
+                element.RenderTransform = translate;
+                return translate;
+            }
+        }
+    }
+
+    private static void AnimateRenderOffsetToRest(UIElement element, double deltaX, double deltaY, bool animateY)
+    {
+        var transform = EnsureTranslateTransform(element);
+        var currentX = transform.X;
+        var currentY = transform.Y;
+
+        transform.BeginAnimation(TranslateTransform.XProperty, null);
+        transform.BeginAnimation(TranslateTransform.YProperty, null);
+
+        var startX = currentX + deltaX;
+        var startY = currentY + deltaY;
+
+        transform.X = startX;
+        transform.Y = animateY ? startY : 0;
+
+        var duration = new Duration(TimeSpan.FromMilliseconds(130));
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        transform.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation
+            {
+                From = startX,
+                To = 0,
+                Duration = duration,
+                EasingFunction = easing
+            });
+
+        if (!animateY)
+            return;
+
+        transform.BeginAnimation(
+            TranslateTransform.YProperty,
+            new DoubleAnimation
+            {
+                From = startY,
+                To = 0,
+                Duration = duration,
+                EasingFunction = easing
+            });
     }
 }

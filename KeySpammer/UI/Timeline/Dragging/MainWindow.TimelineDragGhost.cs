@@ -97,6 +97,15 @@ public partial class MainWindow
         if (!_drag.IsDraggingStep)
             return;
 
+        if (ApplyStepDragAutoScroll())
+        {
+            var currentPoint = Mouse.GetPosition(TimelineRowsPanel);
+            var previewChanged = UpdateStepDragPreviewFromMouse(currentPoint);
+
+            if (previewChanged)
+                RefreshTimelineDragPreview();
+        }
+
         UpdateDraggedStepGhostTargetPosition();
 
         var followStrength = MainWindow.DragUi.GhostFollowStrength;
@@ -116,6 +125,54 @@ public partial class MainWindow
         }
 
         ApplyDragGhostPosition();
+    }
+
+    private bool ApplyStepDragAutoScroll()
+    {
+        if (TimelineScrollViewer == null || TimelineRowsPanel == null)
+            return false;
+
+        if (!HasTimelineOverflow(TimelineScrollViewer.ExtentWidth, TimelineScrollViewer.ViewportWidth))
+            return false;
+
+        var mouse = Mouse.GetPosition(TimelineScrollViewer);
+        var viewportWidth = TimelineScrollViewer.ViewportWidth > 0
+            ? TimelineScrollViewer.ViewportWidth
+            : TimelineScrollViewer.ActualWidth;
+
+        if (viewportWidth <= 0)
+            return false;
+
+        var edgeSize = Math.Min(MainWindow.DragUi.AutoScrollEdgeSize, viewportWidth / 2.0);
+        if (edgeSize <= 0)
+            return false;
+
+        var scrollStep = 0.0;
+
+        if (mouse.X < edgeSize)
+        {
+            var strength = (edgeSize - mouse.X) / edgeSize;
+            scrollStep = -MainWindow.DragUi.AutoScrollMaxStep * Math.Clamp(strength, 0, 1);
+        }
+        else if (mouse.X > viewportWidth - edgeSize)
+        {
+            var strength = (mouse.X - (viewportWidth - edgeSize)) / edgeSize;
+            scrollStep = MainWindow.DragUi.AutoScrollMaxStep * Math.Clamp(strength, 0, 1);
+        }
+
+        if (Math.Abs(scrollStep) < 0.1)
+            return false;
+
+        var previousOffset = TimelineScrollViewer.HorizontalOffset;
+        var maxOffset = Math.Max(0, TimelineScrollViewer.ExtentWidth - TimelineScrollViewer.ViewportWidth);
+        var targetOffset = Math.Clamp(previousOffset + scrollStep, 0, maxOffset);
+
+        if (Math.Abs(targetOffset - previousOffset) < 0.1)
+            return false;
+
+        TimelineScrollViewer.ScrollToHorizontalOffset(targetOffset);
+        UpdateTimelineScrollIndicator();
+        return true;
     }
 
     private void ApplyDragGhostPosition()

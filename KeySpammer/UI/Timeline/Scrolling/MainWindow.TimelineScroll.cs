@@ -10,7 +10,7 @@ namespace KeySpammer;
 public partial class MainWindow
 {
     private const double MinimumTimelineThumbWidth = 44;
-    private const double TimelineOverflowTolerance = 1;
+    private const double TimelineOverflowTolerance = 8;
     private const double TimelineWheelScrollAmount = 80;
 
     private void TimelineScrollViewer_Loaded(object sender, RoutedEventArgs e)

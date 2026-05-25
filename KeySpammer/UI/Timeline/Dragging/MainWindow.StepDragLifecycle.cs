@@ -34,6 +34,9 @@ public partial class MainWindow
         _stepDragPreviewWidthByFirstRawItem.Clear();
         _lastStepDragPreviewMousePoint = null;
 
+        if (_drag.DraggedStepTimeline != null)
+            _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(_drag.DraggedStepTimeline));
+
         _drag.EndStepDrag();
         _drag.EndTimelineHeaderDrag();
         _drag.EndTimelinePan();

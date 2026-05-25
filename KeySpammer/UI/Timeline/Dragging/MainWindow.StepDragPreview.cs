@@ -13,6 +13,7 @@ public partial class MainWindow
         _stepDragPreviewRawSteps.Clear();
         _stepDragRawItems.Clear();
         _stepDragPreviewWidthByFirstRawItem.Clear();
+        _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(timeline));
 
         var draggedItems = GetRawStepsForDisplayStep(timeline, draggedStep);
         if (draggedItems.Count == 0)

@@ -147,6 +147,9 @@ public sealed class DragUiConfig
     public double GhostCursorOffsetX { get; init; } = 0;
     public double GhostCursorOffsetY { get; init; } = 25;
 
+    public double AutoScrollEdgeSize { get; init; } = 64;
+    public double AutoScrollMaxStep { get; init; } = 7;
+
     // Drag preview does not need to recalculate insertion slots for every single mouse pixel.
     // The ghost still follows the cursor every frame; this only throttles expensive preview math.
     public double PreviewMouseMoveEpsilon { get; init; } = 2.0;

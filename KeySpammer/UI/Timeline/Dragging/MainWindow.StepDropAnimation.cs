@@ -1,4 +1,5 @@
 using System.Windows;
+using KeySpammer.UI.Timeline;
 
 namespace KeySpammer;
 
@@ -12,9 +13,13 @@ public partial class MainWindow
             return;
         }
 
+        var ghostPositionInRowsPanel = TimelineDragOverlayCanvas.TranslatePoint(
+            new Point(_draggedStepGhostTransform.X, _draggedStepGhostTransform.Y),
+            TimelineRowsPanel);
+
         _lastDroppedGhostRowsPanelPosition = new Point(
-            _draggedStepGhostTransform.X,
-            MainWindow.TimelineConnectorY - (_draggedStepGhostHeight / 2.0));
+            ghostPositionInRowsPanel.X,
+            TimelineLayoutCalculator.GetItemTop(MainWindow.TimelineConnectorY, _draggedStepGhostHeight));
     }
 
     private void SeedDraggedNodeAnimationFromGhost()
