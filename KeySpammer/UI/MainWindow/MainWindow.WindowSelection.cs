@@ -7,20 +7,25 @@ namespace KeySpammer;
 
 public partial class MainWindow
 {
+    private const string SelectWindowPlaceholderTitle = "Select target window";
+    private const string ParentWindowTitle = "[Parent Window]";
+
     private void LoadWindows()
     {
         var selectedTitle = WindowComboBox.SelectedItem is TargetWindowInfo currentTarget
             ? currentTarget.Title
             : "";
 
-        WindowComboBox.ItemsSource = WindowEnumerator.GetVisibleWindows();
-
-        if (!SelectComboBoxItemByTitle(WindowComboBox, selectedTitle) &&
-            WindowComboBox.Items.Count > 0 &&
-            WindowComboBox.SelectedIndex < 0)
+        var windows = new List<TargetWindowInfo>
         {
+            new() { Handle = 0, Title = SelectWindowPlaceholderTitle }
+        };
+        windows.AddRange(WindowEnumerator.GetVisibleWindows());
+
+        WindowComboBox.ItemsSource = windows;
+
+        if (!SelectComboBoxItemByTitle(WindowComboBox, selectedTitle))
             WindowComboBox.SelectedIndex = 0;
-        }
     }
 
     private void WindowComboBox_DropDownOpened(object sender, EventArgs e) => LoadWindows();
@@ -29,6 +34,15 @@ public partial class MainWindow
     {
         if (WindowComboBox.SelectedItem is not TargetWindowInfo target)
             return;
+
+        if (target.Handle == 0)
+        {
+            HandleComboBox.Visibility = Visibility.Collapsed;
+            HandleComboBox.ItemsSource = null;
+            CaptureSelectedTargetWindow(_activeWorkspace);
+            ScheduleSaveState();
+            return;
+        }
 
         LoadChildWindows(target);
 
@@ -55,6 +69,7 @@ public partial class MainWindow
             return;
 
         workspace.TargetWindowTitle = WindowComboBox.SelectedItem is TargetWindowInfo target
+                                     && target.Handle != 0
             ? target.Title
             : "";
 
@@ -100,7 +115,7 @@ public partial class MainWindow
 
         var handles = new List<TargetWindowInfo>
         {
-            new() { Handle = target.Handle, Title = "[Parent Window]" }
+            new() { Handle = target.Handle, Title = ParentWindowTitle }
         };
         handles.AddRange(children);
 

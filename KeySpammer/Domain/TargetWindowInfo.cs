@@ -7,6 +7,9 @@ public sealed class TargetWindowInfo
 
     public override string ToString()
     {
+        if (Handle == 0)
+            return Title;
+
         return $"{Title} — 0x{Handle:X}";
     }
 }
