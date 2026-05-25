@@ -6,8 +6,8 @@ namespace KeySpammer.Services.Macro;
 
 public sealed class MacroStateSnapshot
 {
-    public required MacroDocument Document { get; init; }
-    public int LoopCount { get; init; }
+    public List<MacroWorkspace> Workspaces { get; init; } = new();
+    public int ActiveWorkspaceIndex { get; init; }
 }
 
 public static class MacroStateStore
@@ -38,19 +38,14 @@ public static class MacroStateStore
             if (state == null)
                 return null;
 
-            var document = new MacroDocument();
-            document.Timelines.Clear();
-
-            foreach (var persistedTimeline in state.Timelines)
-                document.Timelines.Add(ToTimeline(persistedTimeline));
-
-            document.EnsureTimeline();
-            document.SelectTimeline(Math.Clamp(state.ActiveTimelineIndex, 0, document.Timelines.Count - 1));
+            var workspaces = state.Workspaces.Count > 0
+                ? state.Workspaces.Select(ToWorkspace).ToList()
+                : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
 
             return new MacroStateSnapshot
             {
-                Document = document,
-                LoopCount = Math.Max(0, state.LoopCount)
+                Workspaces = workspaces,
+                ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1)
             };
         }
         catch
@@ -59,17 +54,17 @@ public static class MacroStateStore
         }
     }
 
-    public static void Save(MacroDocument document, int loopCount)
+    public static void Save(IReadOnlyList<MacroWorkspace> workspaces, int activeWorkspaceIndex)
     {
+        var safeWorkspaces = workspaces.Count > 0
+            ? workspaces
+            : new List<MacroWorkspace> { new() };
+
         var state = new PersistedState
         {
             Version = CurrentVersion,
-            ActiveTimelineIndex = Math.Clamp(
-                document.ActiveTimelineIndex,
-                0,
-                Math.Max(0, document.Timelines.Count - 1)),
-            LoopCount = Math.Max(0, loopCount),
-            Timelines = document.Timelines.Select(ToPersistedTimeline).ToList()
+            ActiveWorkspaceIndex = Math.Clamp(activeWorkspaceIndex, 0, safeWorkspaces.Count - 1),
+            Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
         };
 
         Directory.CreateDirectory(StateDirectory);
@@ -83,6 +78,44 @@ public static class MacroStateStore
             File.Replace(tempPath, StatePath, null);
         else
             File.Move(tempPath, StatePath);
+    }
+
+    private static MacroWorkspace ToWorkspace(PersistedWorkspace persistedWorkspace)
+    {
+        return new MacroWorkspace
+        {
+            Name = string.IsNullOrWhiteSpace(persistedWorkspace.Name)
+                ? "Macro"
+                : persistedWorkspace.Name,
+            Document = ToDocument(persistedWorkspace.Timelines, persistedWorkspace.ActiveTimelineIndex),
+            LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
+            TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
+            TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
+        };
+    }
+
+    private static MacroWorkspace ToLegacyWorkspace(PersistedState state)
+    {
+        return new MacroWorkspace
+        {
+            Name = "Macro 1",
+            Document = ToDocument(state.Timelines, state.ActiveTimelineIndex),
+            LoopCount = Math.Max(0, state.LoopCount)
+        };
+    }
+
+    private static MacroDocument ToDocument(IReadOnlyList<PersistedTimeline> persistedTimelines, int activeTimelineIndex)
+    {
+        var document = new MacroDocument();
+        document.Timelines.Clear();
+
+        foreach (var persistedTimeline in persistedTimelines)
+            document.Timelines.Add(ToTimeline(persistedTimeline));
+
+        document.EnsureTimeline();
+        document.SelectTimeline(Math.Clamp(activeTimelineIndex, 0, document.Timelines.Count - 1));
+
+        return document;
     }
 
     private static MacroTimeline ToTimeline(PersistedTimeline persistedTimeline)
@@ -131,6 +164,22 @@ public static class MacroStateStore
         };
     }
 
+    private static PersistedWorkspace ToPersistedWorkspace(MacroWorkspace workspace)
+    {
+        return new PersistedWorkspace
+        {
+            Name = workspace.Name,
+            ActiveTimelineIndex = Math.Clamp(
+                workspace.Document.ActiveTimelineIndex,
+                0,
+                Math.Max(0, workspace.Document.Timelines.Count - 1)),
+            LoopCount = Math.Max(0, workspace.LoopCount),
+            TargetWindowTitle = workspace.TargetWindowTitle,
+            TargetChildWindowTitle = workspace.TargetChildWindowTitle,
+            Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
+        };
+    }
+
     private static PersistedStep ToPersistedStep(MacroStep step)
     {
         return new PersistedStep
@@ -147,8 +196,22 @@ public static class MacroStateStore
     private sealed class PersistedState
     {
         public int Version { get; set; }
+        public int ActiveWorkspaceIndex { get; set; }
+        public List<PersistedWorkspace> Workspaces { get; set; } = new();
+
+        // Legacy single-workspace state from v1.
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public List<PersistedTimeline> Timelines { get; set; } = new();
+    }
+
+    private sealed class PersistedWorkspace
+    {
+        public string Name { get; set; } = "";
+        public int ActiveTimelineIndex { get; set; }
+        public int LoopCount { get; set; }
+        public string TargetWindowTitle { get; set; } = "";
+        public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
     }
 

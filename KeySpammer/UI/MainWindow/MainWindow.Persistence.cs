@@ -27,7 +27,7 @@ public partial class MainWindow
 
     private void ScheduleSaveState()
     {
-        if (!IsInitialized)
+        if (!IsInitialized || _isSwitchingWorkspace || _isRestoringWindowSelection)
             return;
 
         _stateSaveTimer.Stop();
@@ -39,7 +39,8 @@ public partial class MainWindow
         if (!IsInitialized)
             return;
 
-        MacroStateStore.Save(_document, GetLoopCount());
+        CaptureActiveWorkspaceState();
+        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex);
     }
 
     private int GetLoopCount() =>

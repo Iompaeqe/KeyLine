@@ -9,9 +9,18 @@ public partial class MainWindow
 {
     private void LoadWindows()
     {
+        var selectedTitle = WindowComboBox.SelectedItem is TargetWindowInfo currentTarget
+            ? currentTarget.Title
+            : "";
+
         WindowComboBox.ItemsSource = WindowEnumerator.GetVisibleWindows();
-        if (WindowComboBox.Items.Count > 0 && WindowComboBox.SelectedIndex < 0)
+
+        if (!SelectComboBoxItemByTitle(WindowComboBox, selectedTitle) &&
+            WindowComboBox.Items.Count > 0 &&
+            WindowComboBox.SelectedIndex < 0)
+        {
             WindowComboBox.SelectedIndex = 0;
+        }
     }
 
     private void WindowComboBox_DropDownOpened(object sender, EventArgs e) => LoadWindows();
@@ -21,6 +30,66 @@ public partial class MainWindow
         if (WindowComboBox.SelectedItem is not TargetWindowInfo target)
             return;
 
+        LoadChildWindows(target);
+
+        CaptureSelectedTargetWindow(_activeWorkspace);
+        ScheduleSaveState();
+    }
+
+    private void HandleComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        CaptureSelectedTargetWindow(_activeWorkspace);
+        ScheduleSaveState();
+    }
+
+    private TargetWindowInfo? GetTargetHandle()
+    {
+        if (HandleComboBox.Visibility == Visibility.Visible)
+            return HandleComboBox.SelectedItem as TargetWindowInfo;
+        return WindowComboBox.SelectedItem as TargetWindowInfo;
+    }
+
+    private void CaptureSelectedTargetWindow(MacroWorkspace workspace)
+    {
+        if (_isRestoringWindowSelection)
+            return;
+
+        workspace.TargetWindowTitle = WindowComboBox.SelectedItem is TargetWindowInfo target
+            ? target.Title
+            : "";
+
+        workspace.TargetChildWindowTitle = HandleComboBox.Visibility == Visibility.Visible &&
+                                           HandleComboBox.SelectedItem is TargetWindowInfo child
+            ? child.Title
+            : "";
+    }
+
+    private void RestoreTargetWindowSelection(MacroWorkspace workspace)
+    {
+        _isRestoringWindowSelection = true;
+
+        try
+        {
+            LoadWindows();
+
+            SelectComboBoxItemByTitle(WindowComboBox, workspace.TargetWindowTitle);
+
+            if (WindowComboBox.SelectedItem is TargetWindowInfo target)
+            {
+                LoadChildWindows(target);
+
+                if (HandleComboBox.Visibility == Visibility.Visible)
+                    SelectComboBoxItemByTitle(HandleComboBox, workspace.TargetChildWindowTitle);
+            }
+        }
+        finally
+        {
+            _isRestoringWindowSelection = false;
+        }
+    }
+
+    private void LoadChildWindows(TargetWindowInfo target)
+    {
         var children = ChildWindowFinder.GetChildWindows(target.Handle);
         if (children.Count == 0)
         {
@@ -40,10 +109,20 @@ public partial class MainWindow
         HandleComboBox.Visibility = Visibility.Visible;
     }
 
-    private TargetWindowInfo? GetTargetHandle()
+    private static bool SelectComboBoxItemByTitle(ComboBox comboBox, string title)
     {
-        if (HandleComboBox.Visibility == Visibility.Visible)
-            return HandleComboBox.SelectedItem as TargetWindowInfo;
-        return WindowComboBox.SelectedItem as TargetWindowInfo;
+        if (string.IsNullOrWhiteSpace(title))
+            return false;
+
+        foreach (var item in comboBox.Items.OfType<TargetWindowInfo>())
+        {
+            if (!string.Equals(item.Title, title, StringComparison.Ordinal))
+                continue;
+
+            comboBox.SelectedItem = item;
+            return true;
+        }
+
+        return false;
     }
 }

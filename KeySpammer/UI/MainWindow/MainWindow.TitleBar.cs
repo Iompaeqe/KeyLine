@@ -12,8 +12,8 @@ public partial class MainWindow
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        // Do not drag when clicking titlebar buttons.
-        if (IsClickInsideButton(e.OriginalSource as DependencyObject))
+        // Do not drag when clicking titlebar controls.
+        if (IsClickInsideTitleBarControl(e.OriginalSource as DependencyObject))
             return;
 
         try
@@ -26,11 +26,11 @@ public partial class MainWindow
         }
     }
 
-    private static bool IsClickInsideButton(DependencyObject? source)
+    private static bool IsClickInsideTitleBarControl(DependencyObject? source)
     {
         while (source != null)
         {
-            if (source is Button)
+            if (source is Button or TextBox or ScrollViewer)
                 return true;
 
             source = VisualTreeHelper.GetParent(source);

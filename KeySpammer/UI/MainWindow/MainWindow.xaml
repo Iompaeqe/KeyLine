@@ -66,6 +66,91 @@
                         <TextBlock Text="  ·  macro recorder" FontSize="11" Foreground="{StaticResource Muted}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                MaxWidth="540">
+                        <Grid MaxWidth="300"
+                              Height="24"
+                              ClipToBounds="True">
+                            <ScrollViewer x:Name="MacroTabsScrollViewer"
+                                          MaxWidth="300"
+                                          Height="24"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Disabled"
+                                          CanContentScroll="False"
+                                          ClipToBounds="True"
+                                          PreviewMouseWheel="MacroTabsScrollViewer_PreviewMouseWheel"
+                                          PreviewMouseLeftButtonDown="MacroTabsScrollViewer_PreviewMouseLeftButtonDown"
+                                          PreviewMouseMove="MacroTabsScrollViewer_PreviewMouseMove"
+                                          PreviewMouseLeftButtonUp="MacroTabsScrollViewer_PreviewMouseLeftButtonUp"
+                                          MouseLeave="MacroTabsScrollViewer_MouseLeave"
+                                          ScrollChanged="MacroTabsScrollViewer_ScrollChanged"
+                                          SizeChanged="MacroTabsScrollViewer_SizeChanged">
+                                <StackPanel x:Name="MacroTabsPanel"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center" />
+                            </ScrollViewer>
+
+                            <Border x:Name="MacroTabsLeftEdgeFade"
+                                    Width="28"
+                                    HorizontalAlignment="Left"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#10151D" Offset="0" />
+                                        <GradientStop Color="#D910151D" Offset="0.55" />
+                                        <GradientStop Color="#0010151D" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+
+                            <Border x:Name="MacroTabsRightEdgeFade"
+                                    Width="28"
+                                    HorizontalAlignment="Right"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
+                                        <GradientStop Color="#10151D" Offset="0" />
+                                        <GradientStop Color="#D910151D" Offset="0.55" />
+                                        <GradientStop Color="#0010151D" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+
+                            <Border x:Name="MacroTabsLeftEdgeLine"
+                                    Width="1"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,3,0,3"
+                                    Background="#38BDF8"
+                                    Opacity="0.42"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False" />
+
+                            <Border x:Name="MacroTabsRightEdgeLine"
+                                    Width="1"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,3,0,3"
+                                    Background="#38BDF8"
+                                    Opacity="0.42"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False" />
+                        </Grid>
+
+                        <Button x:Name="AddMacroTabButton"
+                                Content="+"
+                                Style="{StaticResource TitleGlyphButton}"
+                                Width="24"
+                                MinWidth="24"
+                                Height="22"
+                                Margin="4,0,0,0"
+                                Click="AddMacroTabButton_Click" />
+
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="─"
                                 Style="{StaticResource TitleGlyphButton}"
@@ -113,7 +198,8 @@
                         <ComboBox x:Name="HandleComboBox"
                                   Grid.Row="3"
                                   Width="400"
-                                  Visibility="Collapsed" />
+                                  Visibility="Collapsed"
+                                  SelectionChanged="HandleComboBox_SelectionChanged" />
                     </Grid>
 
                     <Border Grid.Column="2"
@@ -245,7 +331,8 @@
                                       Background="Transparent"
                                       Loaded="TimelineScrollViewer_Loaded"
                                       ScrollChanged="TimelineScrollViewer_ScrollChanged"
-                                      SizeChanged="TimelineScrollViewer_SizeChanged">
+                                      SizeChanged="TimelineScrollViewer_SizeChanged"
+                                      PreviewMouseWheel="TimelineScrollViewer_PreviewMouseWheel">
 
                             <StackPanel x:Name="TimelineRowsPanel"
                                         Orientation="Vertical"

@@ -11,6 +11,7 @@ public partial class MainWindow
 {
     private const double MinimumTimelineThumbWidth = 44;
     private const double TimelineOverflowTolerance = 1;
+    private const double TimelineWheelScrollAmount = 80;
 
     private void TimelineScrollViewer_Loaded(object sender, RoutedEventArgs e)
     {
@@ -28,6 +29,19 @@ public partial class MainWindow
         // Keep all row canvases at least as wide as the new viewport.
         EnsureTimelineCanvasWidthForAllRows(GetMinimumTimelineCanvasWidth());
         UpdateTimelineScrollIndicator();
+    }
+
+    private void TimelineScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!HasTimelineOverflow(TimelineScrollViewer.ExtentWidth, TimelineScrollViewer.ViewportWidth))
+            return;
+
+        var direction = e.Delta > 0 ? -1 : 1;
+        TimelineScrollViewer.ScrollToHorizontalOffset(
+            TimelineScrollViewer.HorizontalOffset + (direction * TimelineWheelScrollAmount));
+
+        UpdateTimelineScrollIndicator();
+        e.Handled = true;
     }
 
     private void UpdateTimelineScrollIndicator()

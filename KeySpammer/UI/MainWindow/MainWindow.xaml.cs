@@ -12,7 +12,10 @@ namespace KeySpammer;
 
 public partial class MainWindow : Window
 {
-    private readonly MacroDocument _document;
+    private readonly List<MacroWorkspace> _workspaces;
+    private int _activeWorkspaceIndex;
+    private MacroWorkspace _activeWorkspace;
+    private MacroDocument _document;
     private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
     private readonly MacroRecorder _recorder = new();
 
@@ -24,6 +27,14 @@ public partial class MainWindow : Window
     private MacroTimeline? _recordingTimeline;
     private MacroTimeline? _popupTimeline;
     private bool _isSyncingOptions;
+    private bool _isSwitchingWorkspace;
+    private bool _isRestoringWindowSelection;
+    private MacroWorkspace? _pendingDeleteWorkspace;
+    private MacroWorkspace? _renamingWorkspace;
+    private bool _isDraggingMacroTabs;
+    private bool _didDragMacroTabs;
+    private Point _macroTabsDragStartPoint;
+    private double _macroTabsDragStartOffset;
 
     private MacroTimeline? _pendingClearTimeline;
     private bool _isClearConfirmationActive;
@@ -33,16 +44,18 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         var savedState = MacroStateStore.Load();
-        _document = savedState?.Document ?? new MacroDocument();
+        _workspaces = savedState?.Workspaces.Count > 0
+            ? savedState.Workspaces
+            : new List<MacroWorkspace> { CreateWorkspace(1) };
+        _activeWorkspaceIndex = savedState?.ActiveWorkspaceIndex ?? 0;
+        _activeWorkspaceIndex = Math.Clamp(_activeWorkspaceIndex, 0, _workspaces.Count - 1);
+        _activeWorkspace = _workspaces[_activeWorkspaceIndex];
+        _document = _activeWorkspace.Document;
 
         InitializeComponent();
 
-        if (savedState != null)
-            LoopCountTextBox.Text = savedState.LoopCount.ToString();
-
         InitializeStatePersistence();
-        LoadWindows();
-        SelectTimeline(_document.ActiveTimeline);
+        ActivateWorkspace(_activeWorkspaceIndex, false);
 
         Loaded += MainWindow_Loaded;
     }

@@ -88,6 +88,7 @@ public partial class MainWindow
                 timeline.ShowKeyUpDown));
 
         var canvasWidth = CalculateSimpleTimelineCanvasWidth(visibleStepsByTimeline);
+        SetTimelineCanvasWidthForAllRows(canvasWidth);
 
         for (var i = 0; i < _document.Timelines.Count; i++)
         {
@@ -255,8 +256,7 @@ public partial class MainWindow
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
-        var requiredCanvasWidth = CalculateTimelineCanvasWidth(timeline, visibleSteps);
-        var canvasWidth = GetSharedTimelineCanvasWidth(requiredCanvasWidth);
+        var canvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
 
         var replacementRow = CreateTimelineRow(
             timeline,
@@ -554,8 +554,7 @@ public partial class MainWindow
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
-        var requiredCanvasWidth = CalculateTimelineCanvasWidth(timeline, visibleSteps);
-        var canvasWidth = GetSharedTimelineCanvasWidth(requiredCanvasWidth);
+        var canvasWidth = GetExistingTimelineCanvasWidth(rowIndex);
 
         var replacementRow = CreateTimelineRow(
             timeline,
@@ -567,6 +566,7 @@ public partial class MainWindow
         TimelineRowsPanel.Children.RemoveAt(rowIndex);
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
 
+        FitTimelineCanvasWidthToCurrentContent();
         Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
     }
 
@@ -702,7 +702,19 @@ public partial class MainWindow
             return;
 
         var width = GetSharedTimelineCanvasWidth(requiredWidth);
+        SetTimelineCanvasWidthForAllRows(width);
+    }
 
+    private void FitTimelineCanvasWidthToCurrentContent()
+    {
+        if (TimelineRowsPanel == null)
+            return;
+
+        SetTimelineCanvasWidthForAllRows(GetSharedTimelineCanvasWidth());
+    }
+
+    private void SetTimelineCanvasWidthForAllRows(double width)
+    {
         TimelineRowsPanel.Width = width;
 
         foreach (var row in TimelineRowsPanel.Children.OfType<Grid>())
