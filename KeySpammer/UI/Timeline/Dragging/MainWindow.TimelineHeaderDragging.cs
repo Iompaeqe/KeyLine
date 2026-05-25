@@ -80,6 +80,7 @@ public partial class MainWindow
         _document.MoveTimeline(draggedTimeline, targetIndex);
         _selection.SelectTimeline(draggedTimeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void EndTimelineHeaderDrag(FrameworkElement element)

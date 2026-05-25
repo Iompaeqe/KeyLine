@@ -12,7 +12,7 @@ namespace KeySpammer;
 
 public partial class MainWindow : Window
 {
-    private readonly MacroDocument _document = new();
+    private readonly MacroDocument _document;
     private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
     private readonly MacroRecorder _recorder = new();
 
@@ -32,8 +32,15 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        var savedState = MacroStateStore.Load();
+        _document = savedState?.Document ?? new MacroDocument();
+
         InitializeComponent();
 
+        if (savedState != null)
+            LoopCountTextBox.Text = savedState.LoopCount.ToString();
+
+        InitializeStatePersistence();
         LoadWindows();
         SelectTimeline(_document.ActiveTimeline);
 

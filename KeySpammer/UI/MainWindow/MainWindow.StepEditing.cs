@@ -36,6 +36,7 @@ public partial class MainWindow
             SelectTimeline(_document.ActiveTimeline);
 
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void DeleteSelectedStep()
@@ -58,6 +59,7 @@ public partial class MainWindow
 
         _selection.Clear();
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void EditTextStep(MacroTimeline timeline, MacroStep step)
@@ -71,6 +73,7 @@ public partial class MainWindow
         step.Text = dialog.ResultText;
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
     
     private void ClearButton_Click(object sender, RoutedEventArgs e)
@@ -150,5 +153,6 @@ public partial class MainWindow
 
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 }

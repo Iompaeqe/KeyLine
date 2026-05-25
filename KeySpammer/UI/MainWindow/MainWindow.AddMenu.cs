@@ -11,6 +11,7 @@ public partial class MainWindow
         var timeline = _document.AddTimeline();
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
@@ -58,6 +59,7 @@ public partial class MainWindow
         timeline.UseStandardDelay = false;
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void TextMenuButton_Click(object sender, RoutedEventArgs e)
@@ -78,5 +80,6 @@ public partial class MainWindow
 
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 }

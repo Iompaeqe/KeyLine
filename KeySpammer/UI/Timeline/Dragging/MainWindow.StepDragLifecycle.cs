@@ -20,6 +20,7 @@ public partial class MainWindow
 
         CancelTimelineDragState();
         RefreshTimeline();
+        ScheduleSaveState();
 
         _lastDroppedGhostRowsPanelPosition = null;
     }

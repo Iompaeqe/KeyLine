@@ -866,7 +866,11 @@ public partial class MainWindow
             Tag = step
         };
 
-        control.DelayCommitted += (_, _) => RefreshTimeline();
+        control.DelayCommitted += (_, _) =>
+        {
+            RefreshTimeline();
+            ScheduleSaveState();
+        };
 
         AttachStepMouseHandlers(control, timeline, step);
         return control;
@@ -914,6 +918,7 @@ public partial class MainWindow
         
         _document.SelectTimeline(timeline);
         SyncOptionsFromActiveTimeline();
+        ScheduleSaveState();
     }
 
     private void SyncOptionsFromActiveTimeline()
@@ -959,6 +964,7 @@ public partial class MainWindow
 
         ApplyOptionsToActiveTimeline();
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void StandardDelayTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -968,6 +974,7 @@ public partial class MainWindow
 
         ApplyOptionsToActiveTimeline();
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void ApplyOptionsToActiveTimeline()
@@ -988,6 +995,7 @@ public partial class MainWindow
         _document.SelectPreviousTimeline();
         _selection.SelectTimeline(_document.ActiveTimeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void NextTimelineOptionsButton_Click(object sender, RoutedEventArgs e)
@@ -995,6 +1003,7 @@ public partial class MainWindow
         _document.SelectNextTimeline();
         _selection.SelectTimeline(_document.ActiveTimeline);
         RefreshTimeline();
+        ScheduleSaveState();
     }
 
     private void UpdateWindowHeightForTimelineCount()

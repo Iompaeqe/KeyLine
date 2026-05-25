@@ -60,6 +60,9 @@ public partial class MainWindow
         e.Handled = true;
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
         ScrollToTimelineEndAfterRecordingAppend();
+
+        if (addedSteps.Count > 0)
+            ScheduleSaveState();
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -76,6 +79,9 @@ public partial class MainWindow
         e.Handled = true;
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
         ScrollToTimelineEndAfterRecordingAppend();
+
+        if (addedSteps.Count > 0)
+            ScheduleSaveState();
     }
 
     private void ScrollToTimelineEndAfterRecordingAppend()
