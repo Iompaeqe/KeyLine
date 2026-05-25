@@ -117,7 +117,15 @@ public partial class MainWindow
 
     private void TimelineGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!CanStartTimelineBackgroundPan(e))
+        if (e.LeftButton != MouseButtonState.Pressed)
+            return;
+
+        if (IsInsideInteractiveTimelineElement(e.OriginalSource as DependencyObject))
+            return;
+
+        DeselectSelectedTimelineNode();
+
+        if (!IsInsideScrollableTimelineContent(e.GetPosition(TimelineGrid)))
             return;
 
         _drag.BeginTimelinePan(
@@ -174,18 +182,16 @@ public partial class MainWindow
 
         TimelineGrid.Cursor = Cursors.Arrow;
     }
-    
-    private bool CanStartTimelineBackgroundPan(MouseButtonEventArgs e)
+
+    private void DeselectSelectedTimelineNode()
     {
-        if (e.LeftButton != MouseButtonState.Pressed)
-            return false;
+        if (!_selection.HasStepSelection)
+            return;
 
-        if (IsInsideInteractiveTimelineElement(e.OriginalSource as DependencyObject))
-            return false;
-
-        return IsInsideScrollableTimelineContent(e.GetPosition(TimelineGrid));
+        Keyboard.ClearFocus();
+        _selection.Clear();
+        RefreshTimeline();
     }
-
     private bool IsInsideScrollableTimelineContent(Point positionInTimelineGrid)
     {
         if (TimelineGrid == null || TimelineScrollViewer == null)

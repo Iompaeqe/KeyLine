@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using KeySpammer.Domain;
 using KeySpammer.Services.Timeline;
 using KeySpammer.UI.Config;
@@ -38,6 +39,25 @@ public partial class DelayStepControl : UserControl
     public DelayStepControl()
     {
         InitializeComponent();
+    }
+
+    public bool IsValueEditorSource(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (ReferenceEquals(source, ValueTextBox))
+                return true;
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return false;
+    }
+
+    public void FocusValueEditor()
+    {
+        ValueTextBox.Focus();
+        Keyboard.Focus(ValueTextBox);
     }
 
     private void UpdateVisual()

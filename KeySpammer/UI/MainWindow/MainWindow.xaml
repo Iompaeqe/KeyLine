@@ -317,7 +317,7 @@
                                    Margin="12,5,12,0">
                             <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
                                        Margin="0" DockPanel.Dock="Left" />
-                            <TextBlock Text="drag T headers to reorder  ·  Delete = remove selected"
+                            <TextBlock Text="drag to reorder  ·  right-click to remove"
                                        Style="{StaticResource Dim}" FontSize="10"
                                        HorizontalAlignment="Right" />
                         </DockPanel>

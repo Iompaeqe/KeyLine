@@ -3,6 +3,7 @@ using System.Windows.Input;
 using KeySpammer.Domain;
 using System.Windows.Media;
 using KeySpammer.UI.Config;
+using KeySpammer.UI.Controls;
 
 namespace KeySpammer;
 
@@ -31,6 +32,7 @@ public partial class MainWindow
 
     private bool _isDragGhostAnimating;
     private bool _timelineDragGlobalHandlersAttached;
+    private bool _isDelayValueMouseEditPending;
 
     private static DragUiConfig DragUi => GeneratedUiConfig.Drag;
 
@@ -42,6 +44,17 @@ public partial class MainWindow
         element.PreviewMouseLeftButtonDown += (_, e) =>
         {
             EnsureTimelineDragGlobalHandlers();
+
+            if (step.Type == MacroStepType.Delay &&
+                element is DelayStepControl delayControl &&
+                delayControl.IsValueEditorSource(e.OriginalSource as DependencyObject))
+            {
+                CancelTimelineDragState();
+                _isDelayValueMouseEditPending = true;
+                delayControl.FocusValueEditor();
+                e.Handled = true;
+                return;
+            }
 
             if (e.ClickCount >= 2 && step.Type == MacroStepType.Text)
             {
@@ -100,6 +113,13 @@ public partial class MainWindow
 
         element.PreviewMouseLeftButtonUp += (_, e) =>
         {
+            if (_isDelayValueMouseEditPending)
+            {
+                _isDelayValueMouseEditPending = false;
+                e.Handled = true;
+                return;
+            }
+
             CompleteStepDrop();
             e.Handled = true;
         };
