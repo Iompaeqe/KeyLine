@@ -25,6 +25,7 @@ public partial class MainWindow
     private int _remainingLoopCount;
     private bool _restoreInputsOnStop;
     private bool _isUpdatingPlaybackCounters;
+    private readonly HashSet<MacroWorkspace> _shortcutStartingWorkspaces = new();
 
     private int GetStandardDelayMs() =>
         ParseDelayInput(StandardDelayTextBox.Text, StandardDelayUnitTextBlock.Text);
@@ -138,6 +139,105 @@ public partial class MainWindow
     {
         foreach (var runner in _runners.Values)
             runner.Stop();
+    }
+
+    private bool IsWorkspaceRunning(MacroWorkspace workspace)
+    {
+        if (_shortcutStartingWorkspaces.Contains(workspace))
+            return true;
+
+        return workspace.Document.Timelines.Any(timeline =>
+            _runners.TryGetValue(timeline, out var runner) && runner.IsRunning);
+    }
+
+    private void StopWorkspaceRunners(MacroWorkspace workspace)
+    {
+        foreach (var timeline in workspace.Document.Timelines)
+        {
+            if (_runners.TryGetValue(timeline, out var runner))
+                runner.Stop();
+        }
+
+        _shortcutStartingWorkspaces.Remove(workspace);
+    }
+
+    private async void StartWorkspacePlaybackFromShortcut(int workspaceIndex)
+    {
+        if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
+            return;
+
+        var workspace = _workspaces[workspaceIndex];
+        if (!_shortcutStartingWorkspaces.Add(workspace))
+            return;
+
+        var target = ResolveSavedTargetWindow(workspace);
+        if (target == null)
+        {
+            _shortcutStartingWorkspaces.Remove(workspace);
+            if (workspaceIndex == _activeWorkspaceIndex)
+                StatusText.Text = "Shortcut target not found";
+            return;
+        }
+
+        var runnableTimelines = workspace.Document.Timelines
+            .Where(timeline => timeline.Steps.Count > 0)
+            .ToList();
+
+        if (runnableTimelines.Count == 0)
+        {
+            _shortcutStartingWorkspaces.Remove(workspace);
+            if (workspaceIndex == _activeWorkspaceIndex)
+                StatusText.Text = "No steps to run";
+            return;
+        }
+
+        var loopCount = Math.Max(0, workspace.LoopCount);
+        var timerMs = Math.Max(0, workspace.TimerMs);
+        var baseDelayMs = Math.Max(0, workspace.BaseDelayMs);
+        var tasks = new List<Task>();
+
+        foreach (var timeline in runnableTimelines)
+        {
+            var runner = GetRunner(timeline);
+            var steps = timeline.Steps.ToList();
+            var useStandardDelay = timeline.UseStandardDelay;
+            var standardDelayMs = timeline.StandardDelayMs;
+            var useTextInputMode = timeline.UseTextInputMode;
+
+            tasks.Add(Task.Run(() => runner.StartAsync(
+                target.Handle,
+                steps,
+                loopCount,
+                baseDelayMs,
+                useStandardDelay,
+                standardDelayMs,
+                useTextInputMode)));
+        }
+
+        if (workspaceIndex == _activeWorkspaceIndex)
+        {
+            StatusText.Text = $"Running {workspace.Name}";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+        }
+
+        try
+        {
+            var completionTask = Task.WhenAll(tasks);
+            if (timerMs > 0 && await Task.WhenAny(completionTask, Task.Delay(timerMs)) != completionTask)
+                StopWorkspaceRunners(workspace);
+
+            await completionTask;
+        }
+        finally
+        {
+            _shortcutStartingWorkspaces.Remove(workspace);
+
+            if (workspaceIndex == _activeWorkspaceIndex && !IsWorkspaceRunning(workspace))
+            {
+                StatusText.Text = "Stopped";
+                StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+            }
+        }
     }
 
     private void PauseAllRunners()

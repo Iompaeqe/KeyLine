@@ -51,7 +51,7 @@ public partial class MainWindow : Window
             ? savedState.Workspaces
             : new List<MacroWorkspace> { CreateWorkspace(1) };
         _activeWorkspaceIndex = savedState?.ActiveWorkspaceIndex ?? 0;
-        _shortcutsEnabled = savedState?.ShortcutsEnabled ?? true;
+        _shortcutsEnabled = savedState?.ShortcutsEnabled ?? false;
         _activeWorkspaceIndex = Math.Clamp(_activeWorkspaceIndex, 0, _workspaces.Count - 1);
         _activeWorkspace = _workspaces[_activeWorkspaceIndex];
         _document = _activeWorkspace.Document;

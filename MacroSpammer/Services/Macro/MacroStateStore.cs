@@ -8,7 +8,7 @@ public sealed class MacroStateSnapshot
 {
     public List<MacroWorkspace> Workspaces { get; init; } = new();
     public int ActiveWorkspaceIndex { get; init; }
-    public bool ShortcutsEnabled { get; init; } = true;
+    public bool ShortcutsEnabled { get; init; }
 }
 
 public static class MacroStateStore
@@ -95,7 +95,9 @@ public static class MacroStateStore
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
             ShortcutKeys = persistedWorkspace.ShortcutKeys,
+            TargetWindowHandle = Math.Max(0, persistedWorkspace.TargetWindowHandle),
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
+            TargetChildWindowHandle = Math.Max(0, persistedWorkspace.TargetChildWindowHandle),
             TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
         };
     }
@@ -203,7 +205,9 @@ public static class MacroStateStore
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
+            TargetWindowHandle = Math.Max(0, workspace.TargetWindowHandle),
             TargetWindowTitle = workspace.TargetWindowTitle,
+            TargetChildWindowHandle = Math.Max(0, workspace.TargetChildWindowHandle),
             TargetChildWindowTitle = workspace.TargetChildWindowTitle,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
         };
@@ -239,7 +243,7 @@ public static class MacroStateStore
     {
         public int Version { get; set; }
         public int ActiveWorkspaceIndex { get; set; }
-        public bool ShortcutsEnabled { get; set; } = true;
+        public bool ShortcutsEnabled { get; set; }
         public List<PersistedWorkspace> Workspaces { get; set; } = new();
 
         // Legacy single-workspace state from v1.
@@ -259,7 +263,9 @@ public static class MacroStateStore
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
+        public long TargetWindowHandle { get; set; }
         public string TargetWindowTitle { get; set; } = "";
+        public long TargetChildWindowHandle { get; set; }
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
     }

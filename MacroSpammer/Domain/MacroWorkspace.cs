@@ -14,7 +14,11 @@ public sealed class MacroWorkspace
 
     public string ShortcutKeys { get; set; } = "";
 
+    public long TargetWindowHandle { get; set; }
+
     public string TargetWindowTitle { get; set; } = "";
+
+    public long TargetChildWindowHandle { get; set; }
 
     public string TargetChildWindowTitle { get; set; } = "";
 }

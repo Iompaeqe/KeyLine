@@ -66,7 +66,7 @@ public partial class MainWindow
                 return;
             }
 
-            if (step.Type is MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick &&
+            if (step.Type is MacroStepType.CursorMove or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick &&
                 element is MouseStepControl mouseControl &&
                 mouseControl.IsEditorSource(e.OriginalSource as DependencyObject))
             {

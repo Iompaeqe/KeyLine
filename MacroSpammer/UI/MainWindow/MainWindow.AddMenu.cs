@@ -105,7 +105,7 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private async void CursorMoveMenuButton_Click(object sender, RoutedEventArgs e)
+    private void CursorMoveMenuButton_Click(object sender, RoutedEventArgs e)
     {
         AddPopup.IsOpen = false;
 
@@ -121,8 +121,6 @@ public partial class MainWindow
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
-
-        await PickMouseCoordinatesForStepAsync(step);
     }
 
     private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>

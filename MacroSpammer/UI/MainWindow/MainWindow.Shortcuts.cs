@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using MacroSpammer.Domain;
 using MacroSpammer.Interop;
 using MacroSpammer.Services.Input;
 
@@ -10,6 +11,7 @@ namespace MacroSpammer;
 public partial class MainWindow
 {
     private readonly HashSet<int> _globalPressedShortcutKeys = new();
+    private readonly HashSet<int> _suppressedShortcutKeys = new();
     private readonly List<int> _capturedShortcutKeys = new();
     private readonly HashSet<int> _shortcutCaptureDownKeys = new();
     private NativeMethods.LowLevelKeyboardProc? _shortcutKeyboardProc;
@@ -53,6 +55,7 @@ public partial class MainWindow
 
         _shortcutKeyboardProc = null;
         _globalPressedShortcutKeys.Clear();
+        _suppressedShortcutKeys.Clear();
         _triggeredShortcutSignature = "";
     }
 
@@ -69,12 +72,16 @@ public partial class MainWindow
         var message = wParam.ToInt32();
         if (message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN)
         {
+            if (_suppressedShortcutKeys.Remove(virtualKey))
+                return;
+
             _globalPressedShortcutKeys.Add(virtualKey);
             TryTriggerShortcut();
         }
         else if (message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP)
         {
             _globalPressedShortcutKeys.Remove(virtualKey);
+            _suppressedShortcutKeys.Remove(virtualKey);
             _triggeredShortcutSignature = "";
         }
     }
@@ -94,7 +101,7 @@ public partial class MainWindow
             return;
 
         _triggeredShortcutSignature = signature;
-        Dispatcher.BeginInvoke(new Action(() => StartMacroFromShortcut(matchIndex)));
+        Dispatcher.BeginInvoke(new Action(() => ToggleMacroFromShortcut(matchIndex)));
     }
 
     private int FindMatchingShortcutWorkspaceIndex()
@@ -109,18 +116,38 @@ public partial class MainWindow
         return -1;
     }
 
-    private void StartMacroFromShortcut(int workspaceIndex)
+    private void ToggleMacroFromShortcut(int workspaceIndex)
     {
         if (!_shortcutsEnabled || _isCapturingShortcut || _recorder.IsRecording)
             return;
 
-        if (_runners.Values.Any(runner => runner.IsRunning))
+        if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
             return;
 
-        if (workspaceIndex != _activeWorkspaceIndex)
-            ActivateWorkspace(workspaceIndex);
+        CaptureActiveWorkspaceState();
 
-        StartStopButton_Click(this, new RoutedEventArgs());
+        var workspace = _workspaces[workspaceIndex];
+        if (IsWorkspaceRunning(workspace))
+        {
+            StopPlaybackFromShortcut(workspace);
+            return;
+        }
+
+        StartWorkspacePlaybackFromShortcut(workspaceIndex);
+    }
+
+    private void StopPlaybackFromShortcut(MacroWorkspace workspace)
+    {
+        _restoreInputsOnStop = true;
+        StopWorkspaceRunners(workspace);
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_runners.Values.Any(runner => runner.IsRunning))
+                return;
+
+            SetStoppedStatus(true);
+        }));
     }
 
     private void ShortcutToggleTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -225,11 +252,24 @@ public partial class MainWindow
     private void CommitShortcutCapture(IEnumerable<int> virtualKeys)
     {
         _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(virtualKeys);
+        if (!_shortcutsEnabled && !string.IsNullOrWhiteSpace(_activeWorkspace.ShortcutKeys))
+        {
+            _shortcutsEnabled = true;
+            ApplyShortcutHookState();
+            SuppressCurrentlyHeldShortcutKeys(_activeWorkspace.ShortcutKeys);
+        }
+
         _isCapturingShortcut = false;
         _capturedShortcutKeys.Clear();
         _shortcutCaptureDownKeys.Clear();
         UpdateShortcutText();
         ScheduleSaveState();
+    }
+
+    private void SuppressCurrentlyHeldShortcutKeys(string shortcut)
+    {
+        foreach (var virtualKey in ShortcutGesture.Parse(shortcut))
+            _suppressedShortcutKeys.Add(virtualKey);
     }
 
     private void CancelShortcutCapture()
