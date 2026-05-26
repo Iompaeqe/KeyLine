@@ -46,14 +46,19 @@ public static class MacroTimelineBuilder
                 continue;
             }
 
-            if (step.Type is MacroStepType.Text or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick)
+            if (step.Type is MacroStepType.Text
+                or MacroStepType.ForegroundMouseClick
+                or MacroStepType.CursorMove
+                or MacroStepType.MouseDown
+                or MacroStepType.MouseUp
+                or MacroStepType.MouseClick)
             {
                 FlushCombo();
                 result.Add(step);
                 continue;
             }
 
-            if (step.Type == MacroStepType.KeyDown)
+            if (IsKeyLikeDown(step))
             {
                 activeKeys.Add(step);
                 comboKeyDowns.Add(step);
@@ -61,7 +66,7 @@ public static class MacroTimelineBuilder
                 continue;
             }
 
-            if (step.Type == MacroStepType.KeyUp)
+            if (IsKeyLikeUp(step))
             {
                 if (comboSourceSteps.Count == 0)
                 {
@@ -72,7 +77,7 @@ public static class MacroTimelineBuilder
 
                 comboSourceSteps.Add(step);
 
-                var activeIndex = activeKeys.FindIndex(k => k.VirtualKey == step.VirtualKey);
+                var activeIndex = activeKeys.FindIndex(k => HasSameKeyLikeIdentity(k, step));
                 if (activeIndex >= 0)
                     activeKeys.RemoveAt(activeIndex);
 
@@ -98,9 +103,10 @@ public static class MacroTimelineBuilder
 
             result.Add(new MacroStep
             {
-                Type = MacroStepType.KeyDown,
-                KeyName = string.Join("+", comboKeyDowns.Select(k => k.KeyName)),
+                Type = comboKeyDowns.All(IsForegroundMouseStep) ? MacroStepType.ForegroundMouseDown : MacroStepType.KeyDown,
+                KeyName = string.Join("+", comboKeyDowns.Select(GetKeyLikeName)),
                 VirtualKey = comboKeyDowns[0].VirtualKey,
+                MouseButton = comboKeyDowns.FirstOrDefault(IsForegroundMouseStep)?.MouseButton ?? 1,
                 IsSyntheticDisplayStep = true,
 
                 // IMPORTANT:
@@ -113,4 +119,33 @@ public static class MacroTimelineBuilder
             activeKeys.Clear();
         }
     }
+
+    private static bool IsKeyLikeDown(MacroStep step) =>
+        step.Type is MacroStepType.KeyDown or MacroStepType.ForegroundMouseDown;
+
+    private static bool IsKeyLikeUp(MacroStep step) =>
+        step.Type is MacroStepType.KeyUp or MacroStepType.ForegroundMouseUp;
+
+    private static bool IsForegroundMouseStep(MacroStep step) =>
+        step.Type is MacroStepType.ForegroundMouseDown or MacroStepType.ForegroundMouseUp;
+
+    private static bool HasSameKeyLikeIdentity(MacroStep downStep, MacroStep upStep)
+    {
+        if (IsForegroundMouseStep(downStep) || IsForegroundMouseStep(upStep))
+        {
+            return IsForegroundMouseStep(downStep) &&
+                   IsForegroundMouseStep(upStep) &&
+                   NormalizeMouseButton(downStep.MouseButton) == NormalizeMouseButton(upStep.MouseButton);
+        }
+
+        return downStep.VirtualKey == upStep.VirtualKey;
+    }
+
+    private static string GetKeyLikeName(MacroStep step) =>
+        IsForegroundMouseStep(step)
+            ? $"M{NormalizeMouseButton(step.MouseButton)}"
+            : step.KeyName;
+
+    private static int NormalizeMouseButton(int mouseButton) =>
+        Math.Clamp(mouseButton <= 0 ? 1 : mouseButton, 1, 5);
 }

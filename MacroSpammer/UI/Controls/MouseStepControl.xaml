@@ -4,13 +4,13 @@
              Focusable="False">
     <Border x:Name="RootBorder"
             Height="58"
-            MinWidth="176"
+            MinWidth="188"
             Margin="5,0,5,0"
             CornerRadius="10"
             Padding="8,5">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="52" />
+                <ColumnDefinition Width="60" />
                 <ColumnDefinition Width="44" />
                 <ColumnDefinition Width="4" />
                 <ColumnDefinition Width="44" />

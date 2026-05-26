@@ -9,7 +9,7 @@ public static class VirtualKeyParser
         if (key == Key.System)
             key = Keyboard.PrimaryDevice.ActiveSource == null ? key : key;
 
-        keyName = key.ToString();
+        keyName = KeyNameDisplayRules.GetName(key);
         virtualKey = KeyInterop.VirtualKeyFromKey(key);
 
         return virtualKey > 0;
@@ -19,7 +19,7 @@ public static class VirtualKeyParser
     {
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-        keyName = key.ToString();
+        keyName = KeyNameDisplayRules.GetName(key);
         virtualKey = KeyInterop.VirtualKeyFromKey(key);
 
         return virtualKey > 0;

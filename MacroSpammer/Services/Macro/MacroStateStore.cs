@@ -141,12 +141,15 @@ public static class MacroStateStore
 
     private static MacroStep ToStep(PersistedStep persistedStep)
     {
+        var type = Enum.TryParse<MacroStepType>(persistedStep.Type, out var parsedType)
+            ? parsedType
+            : MacroStepType.Delay;
+        var mouseButton = Math.Clamp(persistedStep.MouseButton <= 0 ? 1 : persistedStep.MouseButton, 1, 5);
+
         return new MacroStep
         {
-            Type = Enum.TryParse<MacroStepType>(persistedStep.Type, out var type)
-                ? type
-                : MacroStepType.Delay,
-            KeyName = persistedStep.KeyName,
+            Type = type,
+            KeyName = GetPersistedStepKeyName(type, persistedStep.KeyName, mouseButton),
             VirtualKey = persistedStep.VirtualKey,
             DelayMs = Math.Max(0, persistedStep.DelayMs),
             RandomDelayMinMs = Math.Max(0, persistedStep.RandomDelayMinMs),
@@ -154,8 +157,17 @@ public static class MacroStateStore
             Text = persistedStep.Text,
             MouseX = persistedStep.MouseX,
             MouseY = persistedStep.MouseY,
+            MouseButton = mouseButton,
             IsRecordedDelay = persistedStep.IsRecordedDelay
         };
+    }
+
+    private static string GetPersistedStepKeyName(MacroStepType type, string keyName, int mouseButton)
+    {
+        if (type is MacroStepType.ForegroundMouseDown or MacroStepType.ForegroundMouseUp)
+            return $"M{mouseButton}";
+
+        return keyName;
     }
 
     private static PersistedTimeline ToPersistedTimeline(MacroTimeline timeline)
@@ -213,6 +225,7 @@ public static class MacroStateStore
             Text = step.Text,
             MouseX = step.MouseX,
             MouseY = step.MouseY,
+            MouseButton = Math.Clamp(step.MouseButton <= 0 ? 1 : step.MouseButton, 1, 5),
             IsRecordedDelay = step.IsRecordedDelay
         };
     }
@@ -265,6 +278,7 @@ public static class MacroStateStore
         public string Text { get; set; } = "";
         public int MouseX { get; set; }
         public int MouseY { get; set; }
+        public int MouseButton { get; set; } = 1;
         public bool IsRecordedDelay { get; set; }
     }
 }

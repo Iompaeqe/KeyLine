@@ -27,13 +27,13 @@ public static class DelayFormatter
         var text = Format(milliseconds);
 
         if (text.EndsWith("s"))
-            return (text[..^1], "sec");
+            return (text[..^1], "s");
 
         if (text.EndsWith("m"))
-            return (text[..^1], "min");
+            return (text[..^1], "m");
 
         if (text.EndsWith("h"))
-            return (text[..^1], "hours");
+            return (text[..^1], "h");
 
         return (text, "ms");
     }

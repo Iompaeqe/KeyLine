@@ -71,9 +71,10 @@ public partial class MouseStepControl : UserControl
 
         ActionTextBlock.Text = step.Type switch
         {
-            MacroStepType.MouseDown => "DOWN",
-            MacroStepType.MouseUp => "UP",
-            MacroStepType.MouseClick => "CLICK",
+            MacroStepType.CursorMove => "MOVE",
+            MacroStepType.MouseDown => "BG DOWN",
+            MacroStepType.MouseUp => "BG UP",
+            MacroStepType.MouseClick => "BG CLICK",
             _ => "MOUSE"
         };
 

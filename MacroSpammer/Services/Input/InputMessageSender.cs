@@ -95,11 +95,54 @@ public static class InputMessageSender
         SendMouseUp(hwnd, x, y);
     }
 
+    public static void SendForegroundMouseClick()
+    {
+        SendForegroundMouseDown(1);
+        Thread.Sleep(8);
+        SendForegroundMouseUp(1);
+    }
+
+    public static void SendForegroundMouseDown(int mouseButton)
+    {
+        var (flags, data) = GetMouseEvent(mouseButton, isDown: true);
+        NativeMethods.mouse_event(flags, 0, 0, data, UIntPtr.Zero);
+    }
+
+    public static void SendForegroundMouseUp(int mouseButton)
+    {
+        var (flags, data) = GetMouseEvent(mouseButton, isDown: false);
+        NativeMethods.mouse_event(flags, 0, 0, data, UIntPtr.Zero);
+    }
+
+    public static void MoveCursorToClientPoint(nint hwnd, int x, int y)
+    {
+        var point = new NativeMethods.POINT
+        {
+            X = x,
+            Y = y
+        };
+
+        if (NativeMethods.ClientToScreen(hwnd, ref point))
+            NativeMethods.SetCursorPos(point.X, point.Y);
+    }
+
     private static nint MakeMouseLParam(int x, int y)
     {
         var low = (ushort)(short)x;
         var high = (ushort)(short)y;
         return low | (high << 16);
+    }
+
+    private static (uint Flags, uint Data) GetMouseEvent(int mouseButton, bool isDown)
+    {
+        return Math.Clamp(mouseButton, 1, 5) switch
+        {
+            2 => (isDown ? NativeMethods.MOUSEEVENTF_RIGHTDOWN : NativeMethods.MOUSEEVENTF_RIGHTUP, 0),
+            3 => (isDown ? NativeMethods.MOUSEEVENTF_MIDDLEDOWN : NativeMethods.MOUSEEVENTF_MIDDLEUP, 0),
+            4 => (isDown ? NativeMethods.MOUSEEVENTF_XDOWN : NativeMethods.MOUSEEVENTF_XUP, NativeMethods.XBUTTON1),
+            5 => (isDown ? NativeMethods.MOUSEEVENTF_XDOWN : NativeMethods.MOUSEEVENTF_XUP, NativeMethods.XBUTTON2),
+            _ => (isDown ? NativeMethods.MOUSEEVENTF_LEFTDOWN : NativeMethods.MOUSEEVENTF_LEFTUP, 0)
+        };
     }
 
     private static nint MakeKeyUpLParam(int virtualKey)

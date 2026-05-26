@@ -105,6 +105,26 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
+    private async void CursorMoveMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddPopup.IsOpen = false;
+
+        var timeline = GetPopupTimeline();
+        var step = new MacroStep
+        {
+            Type = MacroStepType.CursorMove,
+            MouseX = 0,
+            MouseY = 0
+        };
+
+        timeline.Steps.Add(step);
+        SelectTimeline(timeline);
+        RefreshTimeline();
+        ScheduleSaveState();
+
+        await PickMouseCoordinatesForStepAsync(step);
+    }
+
     private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>
         AddMouseStep(MacroStepType.MouseDown);
 

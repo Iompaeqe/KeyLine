@@ -26,12 +26,13 @@ public partial class MainWindow
         _isSyncingOptions = true;
 
         UseStandardDelayCheckBox.IsChecked = timeline.UseStandardDelay;
-        StandardDelayTextBox.Text = timeline.StandardDelayMs.ToString();
+        SetFormattedDelayInput(StandardDelayTextBox, StandardDelayUnitTextBlock, timeline.StandardDelayMs);
         ShowKeyUpDownCheckBox.IsChecked = timeline.ShowKeyUpDown;
-        TextInputModeCheckBox.IsChecked = timeline.UseTextInputMode;
+        InputModeTextBlock.Text = timeline.UseTextInputMode ? "Text" : "Key";
 
-        ShowKeyUpDownCheckBox.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Collapsed;
-        ShowKeyUpDownCheckSeparator.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Collapsed;
+        ShowKeyUpDownCheckBox.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Hidden;
+        ShowKeyUpDownLeadingSeparator.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Hidden;
+        ShowKeyUpDownCheckSeparator.Visibility = timeline.UseStandardDelay ? Visibility.Visible : Visibility.Hidden;
 
         ActiveTimelineTextBlock.Text = $"{timeline.Name}/{_document.Timelines.Count}";
         UpdateTimelineOptionsPagerVisibility();
@@ -41,16 +42,22 @@ public partial class MainWindow
 
     private void UpdateTimelineOptionsPagerVisibility()
     {
-        var visibility = _document.Timelines.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        var hasMultipleTimelines = _document.Timelines.Count > 1;
 
         if (PreviousTimelineOptionsButton != null)
-            PreviousTimelineOptionsButton.Visibility = visibility;
+        {
+            PreviousTimelineOptionsButton.Visibility = Visibility.Visible;
+            PreviousTimelineOptionsButton.IsEnabled = hasMultipleTimelines;
+        }
 
         if (NextTimelineOptionsButton != null)
-            NextTimelineOptionsButton.Visibility = visibility;
+        {
+            NextTimelineOptionsButton.Visibility = Visibility.Visible;
+            NextTimelineOptionsButton.IsEnabled = hasMultipleTimelines;
+        }
 
         if (ActiveTimelineTextBlock != null)
-            ActiveTimelineTextBlock.Visibility = visibility;
+            ActiveTimelineTextBlock.Visibility = Visibility.Visible;
     }
 
     private void OptionsControl_Changed(object sender, RoutedEventArgs e)
@@ -81,8 +88,8 @@ public partial class MainWindow
         var timeline = _document.ActiveTimeline;
 
         timeline.UseStandardDelay = UseStandardDelayCheckBox.IsChecked == true;
-        timeline.StandardDelayMs = GetStandardDelayMs();
-        timeline.UseTextInputMode = TextInputModeCheckBox.IsChecked == true;
+        ApplyStandardDelayToActiveTimeline(GetStandardDelayMs());
+        timeline.UseTextInputMode = InputModeTextBlock.Text == "Text";
 
         if (!timeline.UseStandardDelay)
             timeline.ShowKeyUpDown = true;
@@ -90,13 +97,33 @@ public partial class MainWindow
             timeline.ShowKeyUpDown = ShowKeyUpDownCheckBox.IsChecked == true;
     }
 
+    private void ApplyStandardDelayToActiveTimeline(int standardDelayMs)
+    {
+        _document.ActiveTimeline.StandardDelayMs = standardDelayMs;
+        SetFormattedDelayInput(StandardDelayTextBox, StandardDelayUnitTextBlock, standardDelayMs);
+    }
+
     private bool AreTimelineOptionControlsReady() =>
         UseStandardDelayCheckBox != null &&
         StandardDelayTextBox != null &&
+        StandardDelayUnitTextBlock != null &&
         ShowKeyUpDownCheckBox != null &&
+        ShowKeyUpDownLeadingSeparator != null &&
         ShowKeyUpDownCheckSeparator != null &&
-        TextInputModeCheckBox != null &&
+        InputModeTextBlock != null &&
+        PreviousInputModeButton != null &&
+        NextInputModeButton != null &&
         ActiveTimelineTextBlock != null;
+
+    private void InputModePagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isSyncingOptions || !AreTimelineOptionControlsReady())
+            return;
+
+        InputModeTextBlock.Text = InputModeTextBlock.Text == "Text" ? "Key" : "Text";
+        ApplyOptionsToActiveTimeline();
+        ScheduleSaveState();
+    }
 
     private void PreviousTimelineOptionsButton_Click(object sender, RoutedEventArgs e)
     {

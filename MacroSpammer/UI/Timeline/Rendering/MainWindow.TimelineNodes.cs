@@ -13,7 +13,9 @@ public partial class MainWindow
         {
             MacroStepType.Delay or MacroStepType.RandomDelay => CreateDelayBlock(timeline, step),
             MacroStepType.Text => CreateTextStepBlock(timeline, step),
-            MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick => CreateMouseStepBlock(timeline, step),
+            MacroStepType.ForegroundMouseDown or MacroStepType.ForegroundMouseUp => CreateKeyStepBlock(timeline, step),
+            MacroStepType.ForegroundMouseClick => CreateForegroundMouseStepBlock(timeline, step),
+            MacroStepType.CursorMove or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick => CreateMouseStepBlock(timeline, step),
             MacroStepType.KeyDown or MacroStepType.KeyUp => CreateKeyStepBlock(timeline, step),
             _ => CreateTextStepBlock(timeline, step)
         };
@@ -85,6 +87,19 @@ public partial class MainWindow
             SelectTimeline(timeline);
             _selection.SelectStep(timeline, step);
             await PickMouseCoordinatesForStepAsync(step);
+        };
+
+        AttachStepMouseHandlers(control, timeline, step);
+        return control;
+    }
+
+    private UIElement CreateForegroundMouseStepBlock(MacroTimeline timeline, MacroStep step)
+    {
+        var control = new ForegroundMouseStepControl
+        {
+            Step = step,
+            IsSelected = IsStepSelected(timeline, step),
+            Tag = step
         };
 
         AttachStepMouseHandlers(control, timeline, step);

@@ -59,6 +59,12 @@ public partial class MainWindow
             TimerUnitTextBlock.Text = "ms";
             TimerMinutesTextBox.Text = timerMs.ToString();
         }
+        else if (ReferenceEquals(sender, StandardDelayTextBox))
+        {
+            var standardDelayMs = GetStandardDelayMs();
+            StandardDelayUnitTextBlock.Text = "ms";
+            StandardDelayTextBox.Text = standardDelayMs.ToString();
+        }
         else if (ReferenceEquals(sender, BaseDelayTextBox))
         {
             var baseDelayMs = GetBaseDelayMs();
@@ -94,6 +100,14 @@ public partial class MainWindow
         {
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, GetTimerMs());
         }
+        else if (ReferenceEquals(sender, StandardDelayTextBox))
+        {
+            var standardDelayMs = GetStandardDelayMs();
+            ApplyStandardDelayToActiveTimeline(standardDelayMs);
+            RefreshTimeline();
+            SetFormattedDelayInput(StandardDelayTextBox, StandardDelayUnitTextBlock, standardDelayMs);
+            ScheduleSaveState();
+        }
         else if (ReferenceEquals(sender, BaseDelayTextBox))
         {
             SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, GetBaseDelayMs());
@@ -103,7 +117,6 @@ public partial class MainWindow
     private static void SetFormattedDelayInput(TextBox textBox, TextBlock unitTextBlock, int milliseconds)
     {
         var (value, unit) = DelayFormatter.Split(milliseconds);
-        textBox.Padding = new Thickness(6, 0, 18, 0);
         textBox.Text = value;
         unitTextBlock.Text = unit;
     }

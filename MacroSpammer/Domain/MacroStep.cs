@@ -7,6 +7,10 @@ public enum MacroStepType
     Delay,
     RandomDelay,
     Text,
+    ForegroundMouseClick,
+    ForegroundMouseDown,
+    ForegroundMouseUp,
+    CursorMove,
     MouseDown,
     MouseUp,
     MouseClick
@@ -30,6 +34,8 @@ public sealed class MacroStep
     public int MouseX { get; set; }
 
     public int MouseY { get; set; }
+
+    public int MouseButton { get; set; } = 1;
 
     public bool IsRecordedDelay { get; set; }
 

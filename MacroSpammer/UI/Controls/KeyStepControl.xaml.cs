@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using MacroSpammer.Domain;
 using MacroSpammer.UI.Config;
@@ -62,7 +63,7 @@ public partial class KeyStepControl : UserControl
         var keyText = StepDisplayFormatter.GetKeyText(step);
         var isComboKey = StepDisplayFormatter.IsComboKey(keyText);
 
-        KeyTextBlock.Text = keyText;
+        SetKeyText(keyText, UiBrushes.Get(Color.FromRgb(45, 212, 191)));
         KeyTextBlock.FontSize = isComboKey ? ui.ComboFontSize : ui.NormalFontSize;
 
         KeyBorder.MinWidth = isComboKey ? ui.ComboMinWidth : ui.NormalMinWidth;
@@ -72,8 +73,8 @@ public partial class KeyStepControl : UserControl
         {
             Margin = isComboKey ? ui.ComboArrowMargin : ui.NormalArrowMargin;
 
-            UpArrow.Visibility = step.Type == MacroStepType.KeyUp ? Visibility.Visible : Visibility.Collapsed;
-            DownArrow.Visibility = step.Type == MacroStepType.KeyDown ? Visibility.Visible : Visibility.Collapsed;
+            UpArrow.Visibility = step.Type is MacroStepType.KeyUp or MacroStepType.ForegroundMouseUp ? Visibility.Visible : Visibility.Collapsed;
+            DownArrow.Visibility = step.Type is MacroStepType.KeyDown or MacroStepType.ForegroundMouseDown ? Visibility.Visible : Visibility.Collapsed;
         }
         else
         {
@@ -86,6 +87,8 @@ public partial class KeyStepControl : UserControl
         {
             MacroStepType.KeyDown => (ui.KeyDownBackground, ui.KeyDownBorder, ui.KeyDownText),
             MacroStepType.KeyUp => (ui.KeyUpBackground, ui.KeyUpBorder, ui.KeyUpText),
+            MacroStepType.ForegroundMouseDown => (Color.FromRgb(15, 73, 70), Color.FromRgb(45, 212, 191), Color.FromRgb(204, 251, 241)),
+            MacroStepType.ForegroundMouseUp => (Color.FromRgb(45, 55, 72), Color.FromRgb(94, 234, 212), Color.FromRgb(204, 251, 241)),
             _ => (ui.FallbackBackground, ui.FallbackBorder, ui.FallbackText)
         };
 
@@ -101,7 +104,34 @@ public partial class KeyStepControl : UserControl
             ? ui.SelectedBorderThickness
             : ui.NormalBorderThickness;
         KeyTextBlock.Foreground = UiBrushes.Get(fg);
+        SetKeyText(keyText, UiBrushes.Get(Color.FromRgb(45, 212, 191)));
         UpArrow.Foreground = UiBrushes.Get(fg);
         DownArrow.Foreground = UiBrushes.Get(fg);
+    }
+
+    private void SetKeyText(string text, Brush mouseBrush)
+    {
+        KeyTextBlock.Inlines.Clear();
+
+        var parts = text.Split('+');
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (i > 0)
+                KeyTextBlock.Inlines.Add(new Run("+"));
+
+            var part = parts[i];
+            var run = new Run(part);
+            if (IsMouseToken(part))
+                run.Foreground = mouseBrush;
+
+            KeyTextBlock.Inlines.Add(run);
+        }
+    }
+
+    private static bool IsMouseToken(string text)
+    {
+        return text.Length == 2 &&
+               text[0] == 'M' &&
+               text[1] is >= '1' and <= '5';
     }
 }

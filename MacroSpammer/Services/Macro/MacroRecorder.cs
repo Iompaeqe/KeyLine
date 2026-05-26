@@ -31,6 +31,21 @@ public sealed class MacroRecorder
         return RecordKey(e, MacroStepType.KeyUp, includeDelay);
     }
 
+    public IEnumerable<MacroStep> RecordMouseClick(bool includeDelay)
+    {
+        return RecordMouse(MacroStepType.ForegroundMouseClick, includeDelay);
+    }
+
+    public IEnumerable<MacroStep> RecordMouseDown(int mouseButton, bool includeDelay)
+    {
+        return RecordMouse(MacroStepType.ForegroundMouseDown, includeDelay, mouseButton);
+    }
+
+    public IEnumerable<MacroStep> RecordMouseUp(int mouseButton, bool includeDelay)
+    {
+        return RecordMouse(MacroStepType.ForegroundMouseUp, includeDelay, mouseButton);
+    }
+
     private IEnumerable<MacroStep> RecordKey(KeyEventArgs e, MacroStepType type, bool includeDelay)
     {
         if (!VirtualKeyParser.TryFromRecordedKey(e, out var virtualKey, out var keyName))
@@ -56,6 +71,33 @@ public sealed class MacroRecorder
             Type = type,
             KeyName = keyName,
             VirtualKey = virtualKey
+        };
+
+        _lastInputTimeUtc = DateTime.UtcNow;
+    }
+
+    private IEnumerable<MacroStep> RecordMouse(MacroStepType type, bool includeDelay, int mouseButton = 1)
+    {
+        if (includeDelay)
+        {
+            var delayMs = GetDelaySinceLastInput();
+
+            if (delayMs > 0)
+            {
+                yield return new MacroStep
+                {
+                    Type = MacroStepType.Delay,
+                    DelayMs = delayMs,
+                    IsRecordedDelay = true
+                };
+            }
+        }
+
+        yield return new MacroStep
+        {
+            Type = type,
+            MouseButton = Math.Clamp(mouseButton, 1, 5),
+            KeyName = $"M{Math.Clamp(mouseButton, 1, 5)}"
         };
 
         _lastInputTimeUtc = DateTime.UtcNow;

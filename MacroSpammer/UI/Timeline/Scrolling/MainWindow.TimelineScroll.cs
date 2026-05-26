@@ -117,6 +117,9 @@ public partial class MainWindow
 
     private void TimelineGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_recorder.IsRecording)
+            return;
+
         if (e.LeftButton != MouseButtonState.Pressed)
             return;
 
@@ -138,6 +141,18 @@ public partial class MainWindow
         e.Handled = true;
     }
 
+    private void TimelineGrid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_recorder.IsRecording || !IsInsideScrollableTimelineContent(e.GetPosition(TimelineGrid)))
+            return;
+
+        if (!TryGetRecordedMouseButton(e.ChangedButton, out var mouseButton))
+            return;
+
+        RecordMouseDown(mouseButton);
+        e.Handled = true;
+    }
+
     private void TimelineGrid_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (!_drag.IsTimelinePanning)
@@ -154,11 +169,41 @@ public partial class MainWindow
 
     private void TimelineGrid_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_recorder.IsRecording)
+            return;
+
         if (!_drag.IsTimelinePanning)
             return;
 
         StopTimelinePanning();
         e.Handled = true;
+    }
+
+    private void TimelineGrid_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_recorder.IsRecording || !IsInsideScrollableTimelineContent(e.GetPosition(TimelineGrid)))
+            return;
+
+        if (!TryGetRecordedMouseButton(e.ChangedButton, out var mouseButton))
+            return;
+
+        RecordMouseUp(mouseButton);
+        e.Handled = true;
+    }
+
+    private static bool TryGetRecordedMouseButton(MouseButton button, out int mouseButton)
+    {
+        mouseButton = button switch
+        {
+            MouseButton.Left => 1,
+            MouseButton.Right => 2,
+            MouseButton.Middle => 3,
+            MouseButton.XButton1 => 4,
+            MouseButton.XButton2 => 5,
+            _ => 0
+        };
+
+        return mouseButton != 0;
     }
 
     private void TimelineGrid_MouseLeave(object sender, MouseEventArgs e)

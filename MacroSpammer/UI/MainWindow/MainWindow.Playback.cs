@@ -27,7 +27,7 @@ public partial class MainWindow
     private bool _isUpdatingPlaybackCounters;
 
     private int GetStandardDelayMs() =>
-        int.TryParse(StandardDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
+        ParseDelayInput(StandardDelayTextBox.Text, StandardDelayUnitTextBlock.Text);
 
     private int GetBaseDelayMs() =>
         ParseDelayInput(BaseDelayTextBox.Text, BaseDelayUnitTextBlock.Text);
@@ -310,9 +310,11 @@ public partial class MainWindow
         UseStandardDelayCheckBox.IsEnabled = isEnabled;
         StandardDelayTextBox.IsEnabled = isEnabled;
         ShowKeyUpDownCheckBox.IsEnabled = isEnabled;
-        TextInputModeCheckBox.IsEnabled = isEnabled;
-        PreviousTimelineOptionsButton.IsEnabled = isEnabled;
-        NextTimelineOptionsButton.IsEnabled = isEnabled;
+        PreviousInputModeButton.IsEnabled = isEnabled;
+        NextInputModeButton.IsEnabled = isEnabled;
+        var canPageTimelineOptions = isEnabled && _document.Timelines.Count > 1;
+        PreviousTimelineOptionsButton.IsEnabled = canPageTimelineOptions;
+        NextTimelineOptionsButton.IsEnabled = canPageTimelineOptions;
         AddMacroTabButton.IsEnabled = isEnabled;
     }
 
@@ -355,7 +357,6 @@ public partial class MainWindow
 
     private void SetTimerCountdownText(string text)
     {
-        TimerMinutesTextBox.Padding = new Thickness(6, 0, 6, 0);
         SetPlaybackCounterText(TimerMinutesTextBox, text);
         TimerUnitTextBlock.Text = "";
     }

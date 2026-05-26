@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using MacroSpammer.Domain;
-using MacroSpammer.State;
 
 namespace MacroSpammer;
 
@@ -17,6 +16,7 @@ public partial class MainWindow
 
         RecordStopButtonHost.IsHitTestVisible = true;
         RecordStopButtonHost.Visibility = Visibility.Visible;
+        RecordingMouseNotice.Visibility = Visibility.Visible;
         StatusText.Text = $"● Recording {timeline.Name}";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
 
@@ -30,6 +30,7 @@ public partial class MainWindow
 
         RecordStopButtonHost.Visibility = Visibility.Collapsed;
         RecordStopButtonHost.IsHitTestVisible = false;
+        RecordingMouseNotice.Visibility = Visibility.Collapsed;
         StatusText.Text = "Stopped";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
 
@@ -37,6 +38,40 @@ public partial class MainWindow
     }
 
     private void RecordStopButton_Click(object sender, RoutedEventArgs e) => StopRecording();
+
+    private void RecordMouseDown(int mouseButton)
+    {
+        if (!_recorder.IsRecording)
+            return;
+
+        var timeline = _recordingTimeline ?? _document.ActiveTimeline;
+        var addedSteps = _recorder.RecordMouseDown(mouseButton, timeline.Steps.Count > 0).ToList();
+
+        AppendRecordedInputSteps(timeline, addedSteps);
+    }
+
+    private void RecordMouseUp(int mouseButton)
+    {
+        if (!_recorder.IsRecording)
+            return;
+
+        var timeline = _recordingTimeline ?? _document.ActiveTimeline;
+        var addedSteps = _recorder.RecordMouseUp(mouseButton, timeline.Steps.Count > 0).ToList();
+
+        AppendRecordedInputSteps(timeline, addedSteps);
+    }
+
+    private void AppendRecordedInputSteps(MacroTimeline timeline, List<MacroStep> addedSteps)
+    {
+        foreach (var step in addedSteps)
+            timeline.Steps.Add(step);
+
+        AppendRecordedStepsToTimelineRow(timeline, addedSteps);
+        ScrollToTimelineEndAfterRecordingAppend();
+
+        if (addedSteps.Count > 0)
+            ScheduleSaveState();
+    }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -56,15 +91,8 @@ public partial class MainWindow
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
         var addedSteps = _recorder.RecordKeyDown(e, timeline.Steps.Count > 0).ToList();
 
-        foreach (var step in addedSteps)
-            timeline.Steps.Add(step);
-
         e.Handled = true;
-        AppendRecordedStepsToTimelineRow(timeline, addedSteps);
-        ScrollToTimelineEndAfterRecordingAppend();
-
-        if (addedSteps.Count > 0)
-            ScheduleSaveState();
+        AppendRecordedInputSteps(timeline, addedSteps);
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -75,15 +103,8 @@ public partial class MainWindow
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
         var addedSteps = _recorder.RecordKeyUp(e, timeline.Steps.Count > 0).ToList();
 
-        foreach (var step in addedSteps)
-            timeline.Steps.Add(step);
-
         e.Handled = true;
-        AppendRecordedStepsToTimelineRow(timeline, addedSteps);
-        ScrollToTimelineEndAfterRecordingAppend();
-
-        if (addedSteps.Count > 0)
-            ScheduleSaveState();
+        AppendRecordedInputSteps(timeline, addedSteps);
     }
 
     private void ScrollToTimelineEndAfterRecordingAppend()

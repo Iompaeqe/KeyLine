@@ -24,6 +24,8 @@
                 <ResourceDictionary Source="../Styles/CheckBoxes.xaml" />
                 <ResourceDictionary Source="../Styles/ScrollBars.xaml" />
                 <ResourceDictionary Source="../Styles/ComboBoxes.xaml" />
+                <ResourceDictionary Source="../Styles/ToolTips.xaml" />
+                <ResourceDictionary Source="../Styles/Options.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="PlaybackLeftHalfButton" TargetType="Button">
@@ -282,80 +284,86 @@
                     </Grid>
 
                     <Border Grid.Column="2"
-                            Width="300"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            CornerRadius="8"
-                            Background="{StaticResource Card}"
-                            BorderBrush="{StaticResource Border}"
-                            BorderThickness="1"
-                            Padding="13,8">
+                            Style="{StaticResource OptionsPanelBorder}">
                         <StackPanel>
-                            <Grid Margin="0,0,0,5">
+                            <Grid Style="{StaticResource OptionsHeaderGrid}">
                                 <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
-                                <StackPanel Orientation="Horizontal"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Top">
+                                <StackPanel Style="{StaticResource OptionsPagerPanel}">
                                     <Button x:Name="PreviousTimelineOptionsButton"
-                                            Content="‹"
-                                            Width="24"
-                                            MinWidth="24"
-                                            Height="18"
-                                            Padding="0"
-                                            FontSize="13"
+                                            Content="&#x2039;"
+                                            Style="{StaticResource OptionsTimelinePagerButton}"
+                                            ToolTip="Show options for the previous timeline."
                                             Click="PreviousTimelineOptionsButton_Click" />
                                     <TextBlock x:Name="ActiveTimelineTextBlock"
                                                Text="T1/1"
-                                               Width="44"
-                                               TextAlignment="Center"
-                                               FontSize="10"
-                                               FontWeight="Bold"
-                                               Foreground="{StaticResource Muted}"
-                                               VerticalAlignment="Center" />
+                                               Style="{StaticResource OptionsActiveTimelineText}"
+                                               ToolTip="The timeline these options apply to." />
                                     <Button x:Name="NextTimelineOptionsButton"
-                                            Content="›"
-                                            Width="24"
-                                            MinWidth="24"
-                                            Height="18"
-                                            Padding="0"
-                                            FontSize="13"
+                                            Content="&#x203A;"
+                                            Style="{StaticResource OptionsTimelinePagerButton}"
+                                            ToolTip="Show options for the next timeline."
                                             Click="NextTimelineOptionsButton_Click" />
                                 </StackPanel>
                             </Grid>
 
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel Style="{StaticResource OptionsRow}">
                                 <CheckBox x:Name="UseStandardDelayCheckBox"
-                                          Content="Std delay"
+                                          Content="Std Delay"
+                                          ToolTip="Use one delay value for every node in this timeline."
                                           Checked="OptionsControl_Changed"
                                           Unchecked="OptionsControl_Changed"
-                                          Margin="0,0,14,0" />
+                                          Margin="0,0,8,0" />
 
-                                <TextBlock Text="ms"
-                                           Style="{StaticResource Dim}"
-                                           Margin="0,0,5,0" />
+                                <Grid Style="{StaticResource OptionsStandardDelayBox}">
+                                    <TextBox x:Name="StandardDelayTextBox"
+                                             Text="50"
+                                             Padding="2,0,11,0"
+                                             ToolTip="Delay between nodes in milliseconds."
+                                             PreviewTextInput="DelayInputTextBox_PreviewTextInput"
+                                             GotKeyboardFocus="DelayInputTextBox_GotKeyboardFocus"
+                                             LostFocus="DelayInputTextBox_LostFocus"
+                                             KeyDown="DelayInputTextBox_KeyDown" />
+                                    <TextBlock x:Name="StandardDelayUnitTextBlock"
+                                               Text="ms"
+                                               Style="{StaticResource OptionsUnitText}" />
+                                </Grid>
 
-                                <TextBox x:Name="StandardDelayTextBox"
-                                         Text="50"
-                                         Width="50"
-                                         TextChanged="StandardDelayTextBox_TextChanged" />
-
-                                <Border x:Name="ShowKeyUpDownCheckSeparator"
-                                        Width="1"
-                                        Background="#162035"
-                                        Margin="14,0"
-                                        Visibility="{Binding ElementName=ShowKeyUpDownCheckBox, Path=Visibility}" />
+                                <TextBlock x:Name="ShowKeyUpDownLeadingSeparator"
+                                           Text="&#x00B7;"
+                                           Style="{StaticResource OptionsSeparatorText}" />
 
                                 <CheckBox x:Name="ShowKeyUpDownCheckBox"
-                                          Margin="0,0,10,0"
-                                          Content="Show ↑↓"
+                                          Width="60"
+                                          Content="Key &#x2191;&#x2193;"
+                                          ToolTip="Show separate key down and key up nodes."
                                           IsChecked="True"
                                           Checked="OptionsControl_Changed"
                                           Unchecked="OptionsControl_Changed" />
 
-                                <CheckBox x:Name="TextInputModeCheckBox"
-                                          Content="Text keys"
-                                          Checked="OptionsControl_Changed"
-                                          Unchecked="OptionsControl_Changed" />
+                                <TextBlock x:Name="ShowKeyUpDownCheckSeparator"
+                                           Text="&#x00B7;"
+                                           Style="{StaticResource OptionsSeparatorText}" />
+
+                                <TextBlock Text="Input Type"
+                                           Style="{StaticResource OptionsLabel}"
+                                           ToolTip="Choose how keyboard nodes send input." />
+
+                                <StackPanel Style="{StaticResource OptionsRow}">
+                                    <Button x:Name="PreviousInputModeButton"
+                                            Content="&#x2039;"
+                                            Style="{StaticResource OptionsInputModePager}"
+                                            ToolTip="Switch input type."
+                                            Click="InputModePagerButton_Click" />
+                                    <TextBlock x:Name="InputModeTextBlock"
+                                               Text="Key"
+                                               Style="{StaticResource OptionsInputModeText}"
+                                               ToolTip="Key sends raw key messages. Text sends character input." />
+                                    <Button x:Name="NextInputModeButton"
+                                            Content="&#x203A;"
+                                            Style="{StaticResource OptionsInputModePager}"
+                                            ToolTip="Switch input type."
+                                            Click="InputModePagerButton_Click" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -374,8 +382,10 @@
                     <Grid x:Name="TimelineGrid"
                           ClipToBounds="True"
                           PreviewMouseLeftButtonDown="TimelineGrid_PreviewMouseLeftButtonDown"
+                          PreviewMouseDown="TimelineGrid_PreviewMouseDown"
                           PreviewMouseMove="TimelineGrid_PreviewMouseMove"
                           PreviewMouseLeftButtonUp="TimelineGrid_PreviewMouseLeftButtonUp"
+                          PreviewMouseUp="TimelineGrid_PreviewMouseUp"
                           MouseLeave="TimelineGrid_MouseLeave">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="24" />
@@ -422,6 +432,26 @@
                                         Orientation="Vertical"
                                         Background="Transparent" />
                         </ScrollViewer>
+
+                        <Border x:Name="RecordingMouseNotice"
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Top"
+                                Margin="0,6,0,0"
+                                Padding="10,4"
+                                CornerRadius="8"
+                                Background="#2A0808"
+                                BorderBrush="#7F1D1D"
+                                BorderThickness="1"
+                                Visibility="Collapsed"
+                                IsHitTestVisible="False"
+                                Panel.ZIndex="80">
+                            <TextBlock Text="Recording: click this timeline area to add mouse down/up"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#FCA5A5" />
+                        </Border>
 
 
                         <Grid x:Name="EmptyTimelinePanel"
@@ -506,6 +536,7 @@
                                        Style="{StaticResource Dim}"
                                        Margin="0,0,8,0" />
                             <TextBox x:Name="LoopCountTextBox"
+                                     Padding="2,0,11,0"
                                      Text="0"
                                      Width="54" />
 
@@ -515,7 +546,7 @@
                             <Grid Width="64">
                                 <TextBox x:Name="TimerMinutesTextBox"
                                          Text="0"
-                                         Padding="6,0,18,0"
+                                         Padding="2,0,11,0"
                                          PreviewTextInput="DelayInputTextBox_PreviewTextInput"
                                          GotKeyboardFocus="DelayInputTextBox_GotKeyboardFocus"
                                          LostFocus="DelayInputTextBox_LostFocus"
@@ -536,7 +567,7 @@
                             <Grid Width="64">
                                 <TextBox x:Name="BaseDelayTextBox"
                                          Text="50"
-                                         Padding="6,0,18,0"
+                                         Padding="2,0,11,0"
                                          PreviewTextInput="DelayInputTextBox_PreviewTextInput"
                                          GotKeyboardFocus="DelayInputTextBox_GotKeyboardFocus"
                                          LostFocus="DelayInputTextBox_LostFocus"
@@ -646,9 +677,9 @@
                                                       Color="#000000" />
                                 </Border.Effect>
 
-                                <StackPanel Width="132">
+                                <StackPanel Width="156">
                                     <Button x:Name="RecordMenuButton"
-                                            Content="Record keys"
+                                            Content="Record input"
                                             Height="30"
                                             Margin="0,0,0,5"
                                             Background="#102033"
@@ -681,17 +712,32 @@
                                             Foreground="#DDEBFF"
                                             Click="TextMenuButton_Click" />
 
-                                    <Button x:Name="MouseDownMenuButton"
-                                            Content="Mouse down"
+                                    <Button x:Name="CursorMoveMenuButton"
+                                            Content="Cursor move"
                                             Height="30"
                                             Margin="0,5,0,5"
+                                            Background="#12302F"
+                                            BorderBrush="#1E7770"
+                                            Foreground="#CCFBF1"
+                                            Click="CursorMoveMenuButton_Click" />
+
+                                    <Expander Header="Experimental"
+                                              Foreground="{StaticResource Muted}"
+                                              FontSize="11"
+                                              FontWeight="SemiBold"
+                                              Margin="0,4,0,0">
+                                        <StackPanel Margin="0,5,0,0">
+                                    <Button x:Name="MouseDownMenuButton"
+                                            Content="BG mouse down"
+                                            Height="30"
+                                                    Margin="0,0,0,5"
                                             Background="#221936"
                                             BorderBrush="#5B3A88"
                                             Foreground="#E9D5FF"
                                             Click="MouseDownMenuButton_Click" />
 
                                     <Button x:Name="MouseUpMenuButton"
-                                            Content="Mouse up"
+                                            Content="BG mouse up"
                                             Height="30"
                                             Margin="0,0,0,5"
                                             Background="#221936"
@@ -700,12 +746,14 @@
                                             Click="MouseUpMenuButton_Click" />
 
                                     <Button x:Name="MouseClickMenuButton"
-                                            Content="Mouse click"
+                                            Content="BG mouse click"
                                             Height="30"
                                             Background="#221936"
                                             BorderBrush="#5B3A88"
                                             Foreground="#E9D5FF"
                                             Click="MouseClickMenuButton_Click" />
+                                        </StackPanel>
+                                    </Expander>
                                 </StackPanel>
                             </Border>
                         </Popup>

@@ -185,6 +185,22 @@ public sealed class MacroRunner
                 InputMessageSender.SendText(hwnd, step.Text);
                 break;
 
+            case MacroStepType.ForegroundMouseClick:
+                InputMessageSender.SendForegroundMouseClick();
+                break;
+
+            case MacroStepType.ForegroundMouseDown:
+                InputMessageSender.SendForegroundMouseDown(step.MouseButton);
+                break;
+
+            case MacroStepType.ForegroundMouseUp:
+                InputMessageSender.SendForegroundMouseUp(step.MouseButton);
+                break;
+
+            case MacroStepType.CursorMove:
+                InputMessageSender.MoveCursorToClientPoint(hwnd, step.MouseX, step.MouseY);
+                break;
+
             case MacroStepType.MouseDown:
                 InputMessageSender.SendMouseDown(hwnd, step.MouseX, step.MouseY);
                 break;
