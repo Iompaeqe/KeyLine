@@ -46,7 +46,7 @@ public static class MacroTimelineBuilder
                 continue;
             }
 
-            if (step.Type == MacroStepType.Text)
+            if (step.Type is MacroStepType.Text or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick)
             {
                 FlushCombo();
                 result.Add(step);

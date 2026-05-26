@@ -17,6 +17,7 @@ public sealed class MacroRunner
         nint targetHwnd,
         IReadOnlyList<MacroStep> sourceSteps,
         int loopCount,
+        int baseDelayMs,
         bool useStandardDelay,
         int standardDelayMs,
         Action? loopCompleted = null)
@@ -30,6 +31,7 @@ public sealed class MacroRunner
 
         var executionSteps = BuildExecutionSteps(sourceSteps, useStandardDelay, standardDelayMs);
         var minimumDelayMs = loopCount == 0 ? InfiniteLoopMinimumDelayMs : 0;
+        var safeBaseDelayMs = Math.Max(Math.Max(0, baseDelayMs), minimumDelayMs);
 
         try
         {
@@ -39,13 +41,20 @@ public sealed class MacroRunner
             {
                 var didDelayThisLoop = false;
 
-                foreach (var step in executionSteps)
+                for (var i = 0; i < executionSteps.Count; i++)
                 {
+                    var step = executionSteps[i];
                     token.ThrowIfCancellationRequested();
                     await WaitIfPaused(token);
                     await ExecuteStep(targetHwnd, step, minimumDelayMs, token);
 
                     didDelayThisLoop |= step.Type is MacroStepType.Delay or MacroStepType.RandomDelay;
+
+                    if (ShouldApplyBaseDelay(executionSteps, i) && safeBaseDelayMs > 0)
+                    {
+                        await DelayWithPause(safeBaseDelayMs, token);
+                        didDelayThisLoop = true;
+                    }
                 }
 
                 if (!didDelayThisLoop && minimumDelayMs > 0)
@@ -119,6 +128,17 @@ public sealed class MacroRunner
         return result;
     }
 
+    private static bool ShouldApplyBaseDelay(IReadOnlyList<MacroStep> executionSteps, int index)
+    {
+        var step = executionSteps[index];
+        if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay)
+            return false;
+
+        var nextIndex = index + 1;
+        return nextIndex >= executionSteps.Count ||
+               executionSteps[nextIndex].Type is not (MacroStepType.Delay or MacroStepType.RandomDelay);
+    }
+
     private async Task ExecuteStep(nint hwnd, MacroStep step, int minimumDelayMs, CancellationToken token)
     {
         switch (step.Type)
@@ -143,6 +163,18 @@ public sealed class MacroRunner
 
             case MacroStepType.Text:
                 InputMessageSender.SendText(hwnd, step.Text);
+                break;
+
+            case MacroStepType.MouseDown:
+                InputMessageSender.SendMouseDown(hwnd, step.MouseX, step.MouseY);
+                break;
+
+            case MacroStepType.MouseUp:
+                InputMessageSender.SendMouseUp(hwnd, step.MouseX, step.MouseY);
+                break;
+
+            case MacroStepType.MouseClick:
+                InputMessageSender.SendMouseClick(hwnd, step.MouseX, step.MouseY);
                 break;
         }
     }

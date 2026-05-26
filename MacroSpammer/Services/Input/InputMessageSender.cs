@@ -33,4 +33,31 @@ public static class InputMessageSender
             NativeMethods.PostMessage(hwnd, NativeMethods.WM_CHAR, ch, 0);
         }
     }
+
+    public static void SendMouseDown(nint hwnd, int x, int y)
+    {
+        var lParam = MakeMouseLParam(x, y);
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_MOUSEMOVE, 0, lParam);
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_LBUTTONDOWN, NativeMethods.MK_LBUTTON, lParam);
+    }
+
+    public static void SendMouseUp(nint hwnd, int x, int y)
+    {
+        var lParam = MakeMouseLParam(x, y);
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_MOUSEMOVE, NativeMethods.MK_LBUTTON, lParam);
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_LBUTTONUP, 0, lParam);
+    }
+
+    public static void SendMouseClick(nint hwnd, int x, int y)
+    {
+        SendMouseDown(hwnd, x, y);
+        SendMouseUp(hwnd, x, y);
+    }
+
+    private static nint MakeMouseLParam(int x, int y)
+    {
+        var low = (ushort)(short)x;
+        var high = (ushort)(short)y;
+        return low | (high << 16);
+    }
 }

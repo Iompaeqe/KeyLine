@@ -485,6 +485,11 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="54" />
@@ -527,22 +532,26 @@
                                        IsHitTestVisible="False" />
                         </Grid>
 
-                        <Button x:Name="ClearButton" Grid.Column="9" Content="Clear" Width="76"
+                        <TextBlock Grid.Column="9" Text="Delay"
+                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
+                        <TextBox x:Name="BaseDelayTextBox" Grid.Column="10" Text="50" />
+
+                        <Button x:Name="ClearButton" Grid.Column="12" Content="Clear" Width="76"
                                 Click="ClearButton_Click" />
 
-                        <Button x:Name="ResetButton" Grid.Column="11" Content="Reset" Width="70" Visibility="Collapsed"
+                        <Button x:Name="ResetButton" Grid.Column="14" Content="Reset" Width="70" Visibility="Collapsed"
                                 Click="ResetButton_Click" />
 
-                        <Button x:Name="StartStopButton" Grid.Column="11" Grid.ColumnSpan="7" Content="▶  Start"
-                                    Background="#31205F" BorderBrush="#6D4AFF"
-                                    Foreground="#DDD6FE" Width="154"
-                                    Panel.ZIndex="10"
-                                    Click="StartStopButton_Click" />
+                        <Button x:Name="StartStopButton" Grid.Column="14" Grid.ColumnSpan="5" Content="▶  Start"
+                                Background="#31205F" BorderBrush="#6D4AFF"
+                                Foreground="#DDD6FE" Width="154"
+                                Panel.ZIndex="10"
+                                Click="StartStopButton_Click" />
 
 
                         <Grid x:Name="PlaybackSplitButton"
-                              Grid.Column="11"
-                              Grid.ColumnSpan="7"
+                              Grid.Column="14"
+                              Grid.ColumnSpan="5"
                               Width="154"
                               Height="30"
                               Panel.ZIndex="30"
@@ -583,8 +592,8 @@
                         </Grid>
 
                         <Grid x:Name="RecordStopButtonHost"
-                              Grid.Column="11"
-                              Grid.ColumnSpan="7"
+                              Grid.Column="14"
+                              Grid.ColumnSpan="5"
                               Panel.ZIndex="40"
                               IsHitTestVisible="False"
                               Visibility="Collapsed">
@@ -615,7 +624,8 @@
                                 </Border.Effect>
 
                                 <StackPanel Width="132">
-                                    <Button Content="Record keys"
+                                    <Button x:Name="RecordMenuButton"
+                                            Content="Record keys"
                                             Height="30"
                                             Margin="0,0,0,5"
                                             Background="#102033"
@@ -639,12 +649,40 @@
                                             Foreground="#DDEBFF"
                                             Click="RandomDelayMenuButton_Click" />
 
-                                    <Button Content="Add text"
+                                    <Button x:Name="TextMenuButton"
+                                            Content="Add text"
                                             Height="30"
+                                            Margin="0,0,0,5"
                                             Background="#102033"
                                             BorderBrush="#2C4A6D"
                                             Foreground="#DDEBFF"
                                             Click="TextMenuButton_Click" />
+
+                                    <Button x:Name="MouseDownMenuButton"
+                                            Content="Mouse down"
+                                            Height="30"
+                                            Margin="0,5,0,5"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseDownMenuButton_Click" />
+
+                                    <Button x:Name="MouseUpMenuButton"
+                                            Content="Mouse up"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseUpMenuButton_Click" />
+
+                                    <Button x:Name="MouseClickMenuButton"
+                                            Content="Mouse click"
+                                            Height="30"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="MouseClickMenuButton_Click" />
                                 </StackPanel>
                             </Border>
                         </Popup>

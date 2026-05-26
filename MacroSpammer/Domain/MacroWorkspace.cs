@@ -10,6 +10,8 @@ public sealed class MacroWorkspace
 
     public int TimerMinutes { get; set; }
 
+    public int BaseDelayMs { get; set; } = 50;
+
     public string TargetWindowTitle { get; set; } = "";
 
     public string TargetChildWindowTitle { get; set; } = "";

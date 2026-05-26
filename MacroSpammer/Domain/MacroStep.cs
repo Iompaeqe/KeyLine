@@ -6,7 +6,10 @@ public enum MacroStepType
     KeyUp,
     Delay,
     RandomDelay,
-    Text
+    Text,
+    MouseDown,
+    MouseUp,
+    MouseClick
 }
 
 public sealed class MacroStep
@@ -23,6 +26,10 @@ public sealed class MacroStep
     public int RandomDelayMaxMs { get; set; }
 
     public string Text { get; set; } = "";
+
+    public int MouseX { get; set; }
+
+    public int MouseY { get; set; }
 
     public bool IsRecordedDelay { get; set; }
 

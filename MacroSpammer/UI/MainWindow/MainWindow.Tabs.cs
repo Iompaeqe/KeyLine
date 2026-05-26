@@ -57,6 +57,7 @@ public partial class MainWindow
 
             LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
             TimerMinutesTextBox.Text = _activeWorkspace.TimerMinutes.ToString();
+            BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             SelectTimeline(_document.ActiveTimeline);
@@ -168,6 +169,7 @@ public partial class MainWindow
             _activeWorkspace.TimerMinutes = GetTimerMinutes();
         }
 
+        _activeWorkspace.BaseDelayMs = GetBaseDelayMs();
         CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }

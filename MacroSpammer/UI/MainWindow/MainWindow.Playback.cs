@@ -28,6 +28,9 @@ public partial class MainWindow
     private int GetStandardDelayMs() =>
         int.TryParse(StandardDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
 
+    private int GetBaseDelayMs() =>
+        int.TryParse(BaseDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
+
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
         if (_runners.Values.Any(runner => runner.IsRunning))
@@ -81,6 +84,7 @@ public partial class MainWindow
                 target.Handle,
                 timeline.Steps.ToList(),
                 loopCount,
+                GetBaseDelayMs(),
                 timeline.UseStandardDelay,
                 timeline.StandardDelayMs,
                 () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
