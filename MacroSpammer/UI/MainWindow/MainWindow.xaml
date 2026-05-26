@@ -351,6 +351,11 @@
                                           IsChecked="True"
                                           Checked="OptionsControl_Changed"
                                           Unchecked="OptionsControl_Changed" />
+
+                                <CheckBox x:Name="TextInputModeCheckBox"
+                                          Content="Text keys"
+                                          Checked="OptionsControl_Changed"
+                                          Unchecked="OptionsControl_Changed" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -484,25 +489,6 @@
                             <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="54" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="54" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="54" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="96"
@@ -512,96 +498,133 @@
                         <TextBlock x:Name="StatusText" Grid.Column="2"
                                    Text="Stopped" Style="{StaticResource Dim}" />
 
-                        <TextBlock Grid.Column="3" Text="Loops"
-                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
-                        <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
-
-                        <TextBlock Grid.Column="6" Text="Timer"
-                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
-                        <Grid Grid.Column="7">
-                            <TextBox x:Name="TimerMinutesTextBox"
+                        <StackPanel Grid.Column="3"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="Loops"
+                                       Style="{StaticResource Dim}"
+                                       Margin="0,0,8,0" />
+                            <TextBox x:Name="LoopCountTextBox"
                                      Text="0"
-                                     Padding="6,0,20,0" />
-                            <TextBlock Text="min"
-                                       HorizontalAlignment="Right"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,5,0"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource Muted}"
-                                       IsHitTestVisible="False" />
-                        </Grid>
+                                     Width="54" />
 
-                        <TextBlock Grid.Column="9" Text="Delay"
-                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
-                        <TextBox x:Name="BaseDelayTextBox" Grid.Column="10" Text="50" />
-
-                        <Button x:Name="ClearButton" Grid.Column="12" Content="Clear" Width="76"
-                                Click="ClearButton_Click" />
-
-                        <Button x:Name="ResetButton" Grid.Column="14" Content="Reset" Width="70" Visibility="Collapsed"
-                                Click="ResetButton_Click" />
-
-                        <Button x:Name="StartStopButton" Grid.Column="14" Grid.ColumnSpan="5" Content="▶  Start"
-                                Background="#31205F" BorderBrush="#6D4AFF"
-                                Foreground="#DDD6FE" Width="154"
-                                Panel.ZIndex="10"
-                                Click="StartStopButton_Click" />
-
-
-                        <Grid x:Name="PlaybackSplitButton"
-                              Grid.Column="14"
-                              Grid.ColumnSpan="5"
-                              Width="154"
-                              Height="30"
-                              Panel.ZIndex="30"
-                              Visibility="Collapsed">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="1" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Button x:Name="PauseResumeButton"
-                                        Grid.Column="0"
-                                        Content="Pause"
-                                        Style="{StaticResource PlaybackLeftHalfButton}"
-                                        Background="#3B2A05"
-                                        BorderBrush="#B45309"
-                                        BorderThickness="1"
-                                        Foreground="#FDE68A"
-                                        Visibility="Visible"
-                                        Click="PauseResumeButton_Click" />
-
-                                <Border Grid.Column="1"
-                                        Background="#10151D"
-                                        Opacity="0.95" />
-
-                                <Button x:Name="StopPlaybackButton"
-                                        Grid.Column="2"
-                                        Content="Stop"
-                                        Style="{StaticResource PlaybackRightHalfButton}"
-                                        Background="#3A0A0A"
-                                        BorderBrush="#B91C1C"
-                                        BorderThickness="1"
-                                        Foreground="#FCA5A5"
-                                        Visibility="Visible"
-                                        Click="StopPlaybackButton_Click" />
+                            <TextBlock Text="Timer"
+                                       Style="{StaticResource Dim}"
+                                       Margin="8,0,8,0" />
+                            <Grid Width="64">
+                                <TextBox x:Name="TimerMinutesTextBox"
+                                         Text="0"
+                                         Padding="6,0,18,0"
+                                         PreviewTextInput="DelayInputTextBox_PreviewTextInput"
+                                         GotKeyboardFocus="DelayInputTextBox_GotKeyboardFocus"
+                                         LostFocus="DelayInputTextBox_LostFocus"
+                                         KeyDown="DelayInputTextBox_KeyDown" />
+                                <TextBlock x:Name="TimerUnitTextBlock"
+                                           Text="ms"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,5,0"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource Muted}"
+                                           IsHitTestVisible="False" />
                             </Grid>
-                        </Grid>
+                            <TextBlock Text="Delay"
+                                       Style="{StaticResource Dim}"
+                                       Margin="8,0,8,0" />
+                            <Grid Width="64">
+                                <TextBox x:Name="BaseDelayTextBox"
+                                         Text="50"
+                                         Padding="6,0,18,0"
+                                         PreviewTextInput="DelayInputTextBox_PreviewTextInput"
+                                         GotKeyboardFocus="DelayInputTextBox_GotKeyboardFocus"
+                                         LostFocus="DelayInputTextBox_LostFocus"
+                                         KeyDown="DelayInputTextBox_KeyDown" />
+                                <TextBlock x:Name="BaseDelayUnitTextBlock"
+                                           Text="ms"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,5,0"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource Muted}"
+                                           IsHitTestVisible="False" />
+                            </Grid>
 
-                        <Grid x:Name="RecordStopButtonHost"
-                              Grid.Column="14"
-                              Grid.ColumnSpan="5"
-                              Panel.ZIndex="40"
-                              IsHitTestVisible="False"
-                              Visibility="Collapsed">
-                            <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
-                                    Background="#2A0808" BorderBrush="#7F1D1D"
-                                    Foreground="#FCA5A5" Width="154"
-                                    Click="RecordStopButton_Click" />
-                        </Grid>
+                            <Button x:Name="ClearButton"
+                                    Content="Clear"
+                                    Width="92"
+                                    Margin="10,0,0,0"
+                                    Click="ClearButton_Click" />
+
+                            <Button x:Name="ResetButton"
+                                    Content="Reset"
+                                    Width="70"
+                                    Margin="8,0,0,0"
+                                    Visibility="Collapsed"
+                                    Click="ResetButton_Click" />
+
+                            <Grid Width="154"
+                                  Height="30"
+                                  Margin="8,0,0,0">
+                                <Button x:Name="StartStopButton"
+                                        Content="▶  Start"
+                                        Background="#31205F"
+                                        BorderBrush="#6D4AFF"
+                                        Foreground="#DDD6FE"
+                                        Panel.ZIndex="10"
+                                        Click="StartStopButton_Click" />
+
+                                <Grid x:Name="PlaybackSplitButton"
+                                      Panel.ZIndex="30"
+                                      Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="1" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button x:Name="PauseResumeButton"
+                                            Grid.Column="0"
+                                            Content="Pause"
+                                            Style="{StaticResource PlaybackLeftHalfButton}"
+                                            Background="#3B2A05"
+                                            BorderBrush="#B45309"
+                                            BorderThickness="1"
+                                            Foreground="#FDE68A"
+                                            Visibility="Visible"
+                                            Click="PauseResumeButton_Click" />
+
+                                    <Border Grid.Column="1"
+                                            Background="#10151D"
+                                            Opacity="0.95" />
+
+                                    <Button x:Name="StopPlaybackButton"
+                                            Grid.Column="2"
+                                            Content="Stop"
+                                            Style="{StaticResource PlaybackRightHalfButton}"
+                                            Background="#3A0A0A"
+                                            BorderBrush="#B91C1C"
+                                            BorderThickness="1"
+                                            Foreground="#FCA5A5"
+                                            Visibility="Visible"
+                                            Click="StopPlaybackButton_Click" />
+                                </Grid>
+
+                                <Grid x:Name="RecordStopButtonHost"
+                                      Panel.ZIndex="40"
+                                      IsHitTestVisible="False"
+                                      Visibility="Collapsed">
+                                    <Button x:Name="RecordStopButton"
+                                            Content="◼  Stop Rec"
+                                            Background="#2A0808"
+                                            BorderBrush="#7F1D1D"
+                                            Foreground="#FCA5A5"
+                                            Click="RecordStopButton_Click" />
+                                </Grid>
+                            </Grid>
+                        </StackPanel>
 
                         <Popup x:Name="AddPopup"
                                Placement="Top"

@@ -8,7 +8,7 @@ public sealed class MacroWorkspace
 
     public int LoopCount { get; set; }
 
-    public int TimerMinutes { get; set; }
+    public int TimerMs { get; set; }
 
     public int BaseDelayMs { get; set; } = 50;
 

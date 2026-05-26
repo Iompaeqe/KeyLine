@@ -15,6 +15,8 @@ public sealed class MacroTimeline
 
     public bool ShowKeyUpDown { get; set; } = true;
 
+    public bool UseTextInputMode { get; set; }
+
     public bool HasSteps => Steps.Count > 0;
 
     public List<MacroStep> ToPlaybackList()

@@ -4,8 +4,30 @@ namespace MacroSpammer.Services.Input;
 
 public static class InputMessageSender
 {
-    public static void SendKeyDown(nint hwnd, int virtualKey)
+    private static readonly int[] ModifierKeys =
     {
+        NativeMethods.VK_SHIFT,
+        NativeMethods.VK_CONTROL,
+        NativeMethods.VK_MENU,
+        NativeMethods.VK_LSHIFT,
+        NativeMethods.VK_RSHIFT,
+        NativeMethods.VK_LCONTROL,
+        NativeMethods.VK_RCONTROL,
+        NativeMethods.VK_LMENU,
+        NativeMethods.VK_RMENU
+    };
+
+    public static bool IsModifierKey(int virtualKey) =>
+        virtualKey is NativeMethods.VK_SHIFT or NativeMethods.VK_CONTROL or NativeMethods.VK_MENU
+            or NativeMethods.VK_LSHIFT or NativeMethods.VK_RSHIFT
+            or NativeMethods.VK_LCONTROL or NativeMethods.VK_RCONTROL
+            or NativeMethods.VK_LMENU or NativeMethods.VK_RMENU;
+
+    public static void SendKeyDown(nint hwnd, int virtualKey, bool neutralizeModifiers = true)
+    {
+        if (neutralizeModifiers && !IsModifierKey(virtualKey))
+            SendModifierKeyUps(hwnd);
+
         var scanCode = NativeMethods.MapVirtualKey((uint)virtualKey, 0);
         var lParam = 1 | ((int)scanCode << 16);
 
@@ -14,16 +36,35 @@ public static class InputMessageSender
 
     public static void SendKeyUp(nint hwnd, int virtualKey)
     {
-        var scanCode = NativeMethods.MapVirtualKey((uint)virtualKey, 0);
-        var lParam = 1 | ((int)scanCode << 16) | (1 << 30) | unchecked((int)0x80000000);
-
-        NativeMethods.PostMessage(hwnd, NativeMethods.WM_KEYUP, virtualKey, lParam);
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_KEYUP, virtualKey, MakeKeyUpLParam(virtualKey));
     }
 
     public static void SendKeyPress(nint hwnd, int virtualKey)
     {
         SendKeyDown(hwnd, virtualKey);
         SendKeyUp(hwnd, virtualKey);
+    }
+
+    public static bool TrySendCharacter(nint hwnd, int virtualKey)
+    {
+        var ch = ToLowerInvariantCharacter(virtualKey);
+        if (ch == null)
+            return false;
+
+        NativeMethods.PostMessage(hwnd, NativeMethods.WM_CHAR, ch.Value, 0);
+        return true;
+    }
+
+    public static void SendModifierKeyUps(nint hwnd)
+    {
+        foreach (var virtualKey in ModifierKeys)
+            SendKeyUp(hwnd, virtualKey);
+
+        NativeMethods.PostMessage(
+            hwnd,
+            NativeMethods.WM_SYSKEYUP,
+            NativeMethods.VK_MENU,
+            MakeKeyUpLParam(NativeMethods.VK_MENU));
     }
 
     public static void SendText(nint hwnd, string text)
@@ -59,5 +100,37 @@ public static class InputMessageSender
         var low = (ushort)(short)x;
         var high = (ushort)(short)y;
         return low | (high << 16);
+    }
+
+    private static nint MakeKeyUpLParam(int virtualKey)
+    {
+        var scanCode = NativeMethods.MapVirtualKey((uint)virtualKey, 0);
+        return 1 | ((int)scanCode << 16) | (1 << 30) | unchecked((int)0x80000000);
+    }
+
+    private static int? ToLowerInvariantCharacter(int virtualKey)
+    {
+        if (virtualKey is >= 'A' and <= 'Z')
+            return char.ToLowerInvariant((char)virtualKey);
+
+        if (virtualKey is >= '0' and <= '9')
+            return virtualKey;
+
+        return virtualKey switch
+        {
+            0x20 => ' ',
+            0xBA => ';',
+            0xBB => '=',
+            0xBC => ',',
+            0xBD => '-',
+            0xBE => '.',
+            0xBF => '/',
+            0xC0 => '`',
+            0xDB => '[',
+            0xDC => '\\',
+            0xDD => ']',
+            0xDE => '\'',
+            _ => null
+        };
     }
 }

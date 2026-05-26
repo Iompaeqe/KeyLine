@@ -20,6 +20,7 @@ public partial class MainWindow
     private bool _isPlaybackStatusTimerInitialized;
     private string _originalLoopText = "0";
     private string _originalTimerText = "0";
+    private int _originalTimerMs;
     private int[] _runnerCompletedLoops = Array.Empty<int>();
     private int _remainingLoopCount;
     private bool _restoreInputsOnStop;
@@ -29,7 +30,7 @@ public partial class MainWindow
         int.TryParse(StandardDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
 
     private int GetBaseDelayMs() =>
-        int.TryParse(BaseDelayTextBox.Text, out var ms) ? Math.Max(0, ms) : 50;
+        ParseDelayInput(BaseDelayTextBox.Text, BaseDelayUnitTextBlock.Text);
 
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
@@ -53,10 +54,12 @@ public partial class MainWindow
             return;
 
         var loopCount = int.TryParse(LoopCountTextBox.Text, out var loops) ? Math.Max(0, loops) : 0;
-        var timerMinutes = GetTimerMinutes();
+        var timerMs = GetTimerMs();
+        var baseDelayMs = GetBaseDelayMs();
 
         _originalLoopText = LoopCountTextBox.Text;
         _originalTimerText = TimerMinutesTextBox.Text;
+        _originalTimerMs = timerMs;
         _remainingLoopCount = loopCount;
         _runnerCompletedLoops = new int[runnableTimelines.Count];
         _restoreInputsOnStop = false;
@@ -67,10 +70,8 @@ public partial class MainWindow
         StatusText.Text = $"Running {runnableTimelines.Count} timeline(s)";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
 
-        if (loopCount > 0)
-            SetPlaybackCounterText(LoopCountTextBox, loopCount.ToString());
-
-        StartPlaybackTimer(timerMinutes);
+        StartPlaybackTimer(timerMs);
+        SetPlaybackCounterText(LoopCountTextBox, loopCount > 0 ? loopCount.ToString() : "\u221E");
 
         var tasks = new List<Task>();
 
@@ -84,9 +85,10 @@ public partial class MainWindow
                 target.Handle,
                 timeline.Steps.ToList(),
                 loopCount,
-                GetBaseDelayMs(),
+                baseDelayMs,
                 timeline.UseStandardDelay,
                 timeline.StandardDelayMs,
+                timeline.UseTextInputMode,
                 () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
         }
 
@@ -183,11 +185,8 @@ public partial class MainWindow
         _runnerCompletedLoops = Array.Empty<int>();
         _remainingLoopCount = 0;
 
-        if (restoreInputs)
-        {
-            SetPlaybackCounterText(LoopCountTextBox, _originalLoopText);
-            SetPlaybackCounterText(TimerMinutesTextBox, _originalTimerText);
-        }
+        SetPlaybackCounterText(LoopCountTextBox, _originalLoopText);
+        SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _originalTimerMs);
 
         StartStopButton.Content = "▶  Start";
         StartStopButton.Visibility = Visibility.Visible;
@@ -200,20 +199,23 @@ public partial class MainWindow
         SetTimelineEditingEnabled(true);
         StatusText.Text = "Stopped";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+        SetCountdownRunningStyle(false);
     }
 
-    private void StartPlaybackTimer(int minutes)
+    private void StartPlaybackTimer(int milliseconds)
     {
         EnsurePlaybackStatusTimerInitialized();
 
-        if (minutes <= 0)
+        if (milliseconds <= 0)
         {
             _playbackTimerRemaining = TimeSpan.Zero;
             _playbackTimerDeadlineUtc = DateTime.MinValue;
+            SetTimerCountdownText("\u221E");
+            SetCountdownRunningStyle(true);
             return;
         }
 
-        _playbackTimerRemaining = TimeSpan.FromMinutes(minutes);
+        _playbackTimerRemaining = TimeSpan.FromMilliseconds(milliseconds);
         _playbackTimerDeadlineUtc = DateTime.UtcNow + _playbackTimerRemaining;
         _playbackStatusTimer.Start();
         UpdatePlaybackTimerStatus();
@@ -258,15 +260,16 @@ public partial class MainWindow
         var remaining = _playbackTimerDeadlineUtc - DateTime.UtcNow;
         if (remaining <= TimeSpan.Zero)
         {
-            SetPlaybackCounterText(TimerMinutesTextBox, "0");
+            SetTimerCountdownText("0:00");
             StatusText.Text = "Timer elapsed; stopping";
             StopAllRunners();
             _playbackStatusTimer.Stop();
             return;
         }
 
-        SetPlaybackCounterText(TimerMinutesTextBox, Math.Ceiling(remaining.TotalMinutes).ToString("0"));
-        StatusText.Text = $"Running - {FormatRemainingTime(remaining)} left";
+        SetTimerCountdownText(FormatRemainingTime(remaining));
+        StatusText.Text = "Running";
+        SetCountdownRunningStyle(true);
     }
 
     private void OnRunnerLoopCompleted(int runnerIndex, int loopCount)
@@ -307,6 +310,7 @@ public partial class MainWindow
         UseStandardDelayCheckBox.IsEnabled = isEnabled;
         StandardDelayTextBox.IsEnabled = isEnabled;
         ShowKeyUpDownCheckBox.IsEnabled = isEnabled;
+        TextInputModeCheckBox.IsEnabled = isEnabled;
         PreviousTimelineOptionsButton.IsEnabled = isEnabled;
         NextTimelineOptionsButton.IsEnabled = isEnabled;
         AddMacroTabButton.IsEnabled = isEnabled;
@@ -347,5 +351,28 @@ public partial class MainWindow
         {
             _isUpdatingPlaybackCounters = false;
         }
+    }
+
+    private void SetTimerCountdownText(string text)
+    {
+        TimerMinutesTextBox.Padding = new Thickness(6, 0, 6, 0);
+        SetPlaybackCounterText(TimerMinutesTextBox, text);
+        TimerUnitTextBlock.Text = "";
+    }
+
+    private void SetCountdownRunningStyle(bool isRunning)
+    {
+        if (isRunning)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+            LoopCountTextBox.Foreground = brush;
+            TimerMinutesTextBox.Foreground = brush;
+            TimerUnitTextBlock.Foreground = brush;
+            return;
+        }
+
+        LoopCountTextBox.ClearValue(ForegroundProperty);
+        TimerMinutesTextBox.ClearValue(ForegroundProperty);
+        TimerUnitTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(142, 160, 182));
     }
 }

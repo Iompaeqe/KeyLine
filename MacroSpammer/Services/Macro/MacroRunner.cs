@@ -20,6 +20,7 @@ public sealed class MacroRunner
         int baseDelayMs,
         bool useStandardDelay,
         int standardDelayMs,
+        bool useTextInputMode,
         Action? loopCompleted = null)
     {
         if (_cts != null)
@@ -32,6 +33,7 @@ public sealed class MacroRunner
         var executionSteps = BuildExecutionSteps(sourceSteps, useStandardDelay, standardDelayMs);
         var minimumDelayMs = loopCount == 0 ? InfiniteLoopMinimumDelayMs : 0;
         var safeBaseDelayMs = Math.Max(Math.Max(0, baseDelayMs), minimumDelayMs);
+        var heldModifierKeys = new HashSet<int>();
 
         try
         {
@@ -46,7 +48,7 @@ public sealed class MacroRunner
                     var step = executionSteps[i];
                     token.ThrowIfCancellationRequested();
                     await WaitIfPaused(token);
-                    await ExecuteStep(targetHwnd, step, minimumDelayMs, token);
+                    await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
 
                     didDelayThisLoop |= step.Type is MacroStepType.Delay or MacroStepType.RandomDelay;
 
@@ -139,16 +141,34 @@ public sealed class MacroRunner
                executionSteps[nextIndex].Type is not (MacroStepType.Delay or MacroStepType.RandomDelay);
     }
 
-    private async Task ExecuteStep(nint hwnd, MacroStep step, int minimumDelayMs, CancellationToken token)
+    private async Task ExecuteStep(
+        nint hwnd,
+        MacroStep step,
+        int minimumDelayMs,
+        ISet<int> heldModifierKeys,
+        bool useTextInputMode,
+        CancellationToken token)
     {
         switch (step.Type)
         {
             case MacroStepType.KeyDown:
-                InputMessageSender.SendKeyDown(hwnd, step.VirtualKey);
+                var isModifierKey = InputMessageSender.IsModifierKey(step.VirtualKey);
+                if (useTextInputMode && !isModifierKey && heldModifierKeys.Count == 0 &&
+                    InputMessageSender.TrySendCharacter(hwnd, step.VirtualKey))
+                    break;
+
+                InputMessageSender.SendKeyDown(hwnd, step.VirtualKey, !isModifierKey && heldModifierKeys.Count == 0);
+                if (isModifierKey)
+                    heldModifierKeys.Add(step.VirtualKey);
                 break;
 
             case MacroStepType.KeyUp:
+                if (useTextInputMode && !InputMessageSender.IsModifierKey(step.VirtualKey) && heldModifierKeys.Count == 0)
+                    break;
+
                 InputMessageSender.SendKeyUp(hwnd, step.VirtualKey);
+                if (InputMessageSender.IsModifierKey(step.VirtualKey))
+                    heldModifierKeys.Remove(step.VirtualKey);
                 break;
 
             case MacroStepType.Delay:

@@ -56,8 +56,10 @@ public partial class MainWindow
             ResetClearConfirmation();
 
             LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
-            TimerMinutesTextBox.Text = _activeWorkspace.TimerMinutes.ToString();
+            TimerMinutesTextBox.Text = _activeWorkspace.TimerMs.ToString();
             BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
+            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _activeWorkspace.TimerMs);
+            SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, _activeWorkspace.BaseDelayMs);
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             SelectTimeline(_document.ActiveTimeline);
@@ -161,12 +163,12 @@ public partial class MainWindow
         if (_runners.Values.Any(runner => runner.IsRunning))
         {
             _activeWorkspace.LoopCount = int.TryParse(_originalLoopText, out var loops) ? Math.Max(0, loops) : 0;
-            _activeWorkspace.TimerMinutes = int.TryParse(_originalTimerText, out var minutes) ? Math.Max(0, minutes) : 0;
+            _activeWorkspace.TimerMs = Math.Max(0, _originalTimerMs);
         }
         else
         {
             _activeWorkspace.LoopCount = GetLoopCount();
-            _activeWorkspace.TimerMinutes = GetTimerMinutes();
+            _activeWorkspace.TimerMs = GetTimerMs();
         }
 
         _activeWorkspace.BaseDelayMs = GetBaseDelayMs();

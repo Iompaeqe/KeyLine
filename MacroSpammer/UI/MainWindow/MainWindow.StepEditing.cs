@@ -179,6 +179,7 @@ public partial class MainWindow
 
         LoopCountTextBox.Text = "0";
         TimerMinutesTextBox.Text = "0";
+        SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, 0);
         ScheduleSaveState();
     }
 }
