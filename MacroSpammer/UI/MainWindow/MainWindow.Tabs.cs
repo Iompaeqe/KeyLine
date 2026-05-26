@@ -60,6 +60,7 @@ public partial class MainWindow
             BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _activeWorkspace.TimerMs);
             SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, _activeWorkspace.BaseDelayMs);
+            UpdateShortcutText();
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             SelectTimeline(_document.ActiveTimeline);

@@ -8,6 +8,7 @@ public sealed class MacroStateSnapshot
 {
     public List<MacroWorkspace> Workspaces { get; init; } = new();
     public int ActiveWorkspaceIndex { get; init; }
+    public bool ShortcutsEnabled { get; init; } = true;
 }
 
 public static class MacroStateStore
@@ -45,7 +46,8 @@ public static class MacroStateStore
             return new MacroStateSnapshot
             {
                 Workspaces = workspaces,
-                ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1)
+                ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1),
+                ShortcutsEnabled = state.ShortcutsEnabled
             };
         }
         catch
@@ -54,7 +56,7 @@ public static class MacroStateStore
         }
     }
 
-    public static void Save(IReadOnlyList<MacroWorkspace> workspaces, int activeWorkspaceIndex)
+    public static void Save(IReadOnlyList<MacroWorkspace> workspaces, int activeWorkspaceIndex, bool shortcutsEnabled)
     {
         var safeWorkspaces = workspaces.Count > 0
             ? workspaces
@@ -64,6 +66,7 @@ public static class MacroStateStore
         {
             Version = CurrentVersion,
             ActiveWorkspaceIndex = Math.Clamp(activeWorkspaceIndex, 0, safeWorkspaces.Count - 1),
+            ShortcutsEnabled = shortcutsEnabled,
             Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
         };
 
@@ -91,6 +94,7 @@ public static class MacroStateStore
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
+            ShortcutKeys = persistedWorkspace.ShortcutKeys,
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
             TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
         };
@@ -198,6 +202,7 @@ public static class MacroStateStore
             LoopCount = Math.Max(0, workspace.LoopCount),
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
+            ShortcutKeys = workspace.ShortcutKeys,
             TargetWindowTitle = workspace.TargetWindowTitle,
             TargetChildWindowTitle = workspace.TargetChildWindowTitle,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
@@ -234,6 +239,7 @@ public static class MacroStateStore
     {
         public int Version { get; set; }
         public int ActiveWorkspaceIndex { get; set; }
+        public bool ShortcutsEnabled { get; set; } = true;
         public List<PersistedWorkspace> Workspaces { get; set; } = new();
 
         // Legacy single-workspace state from v1.
@@ -252,6 +258,7 @@ public static class MacroStateStore
         public int TimerMinutes { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
+        public string ShortcutKeys { get; set; } = "";
         public string TargetWindowTitle { get; set; } = "";
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();

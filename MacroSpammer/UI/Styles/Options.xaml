@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Style x:Key="OptionsPanelBorder" TargetType="Border">
-        <Setter Property="Width" Value="400" />
+        <Setter Property="Width" Value="390" />
         <Setter Property="HorizontalAlignment" Value="Right" />
         <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="CornerRadius" Value="8" />
@@ -22,6 +22,16 @@
         <Setter Property="Orientation" Value="Horizontal" />
         <Setter Property="HorizontalAlignment" Value="Right" />
         <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <Style x:Key="OptionsShortcutText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="8,0,0,5" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
 
     <Style x:Key="OptionsRow" TargetType="StackPanel">
@@ -120,7 +130,7 @@
     <Style x:Key="OptionsInputModeText"
            TargetType="TextBlock"
            BasedOn="{StaticResource {x:Type TextBlock}}">
-        <Setter Property="Width" Value="30" />
+        <Setter Property="Width" Value="20" />
         <Setter Property="TextAlignment" Value="Center" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="FontWeight" Value="SemiBold" />

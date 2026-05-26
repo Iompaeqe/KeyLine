@@ -151,12 +151,12 @@
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                MaxWidth="540">
-                        <Grid MaxWidth="300"
+                                MaxWidth="580">
+                        <Grid MaxWidth="360"
                               Height="24"
                               ClipToBounds="True">
                             <ScrollViewer x:Name="MacroTabsScrollViewer"
-                                          MaxWidth="300"
+                                          MaxWidth="360"
                                           Height="24"
                                           HorizontalScrollBarVisibility="Hidden"
                                           VerticalScrollBarVisibility="Disabled"
@@ -287,7 +287,26 @@
                             Style="{StaticResource OptionsPanelBorder}">
                         <StackPanel>
                             <Grid Style="{StaticResource OptionsHeaderGrid}">
-                                <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top">
+                                    <TextBlock Text="OPTIONS" Style="{StaticResource Cap}" Margin="0" />
+                                    <TextBlock x:Name="ShortcutTextBlock"
+                                               Text="no shortcut"
+                                               Style="{StaticResource OptionsShortcutText}"
+                                               ToolTip="Click, then press 1 to 4 keys for a global macro shortcut."
+                                               Focusable="True"
+                                               MouseLeftButtonDown="ShortcutTextBlock_MouseLeftButtonDown"
+                                               PreviewKeyDown="ShortcutTextBlock_PreviewKeyDown"
+                                               PreviewKeyUp="ShortcutTextBlock_PreviewKeyUp"
+                                               LostKeyboardFocus="ShortcutTextBlock_LostKeyboardFocus" />
+                                    <TextBlock x:Name="ShortcutToggleTextBlock"
+                                               Text="on"
+                                               Style="{StaticResource OptionsShortcutText}"
+                                               Margin="6,0,0,5"
+                                               ToolTip="Enable or disable global macro shortcuts."
+                                               MouseLeftButtonDown="ShortcutToggleTextBlock_MouseLeftButtonDown" />
+                                </StackPanel>
                                 <StackPanel Style="{StaticResource OptionsPagerPanel}">
                                     <Button x:Name="PreviousTimelineOptionsButton"
                                             Content="&#x2039;"

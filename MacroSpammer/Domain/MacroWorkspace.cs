@@ -12,6 +12,8 @@ public sealed class MacroWorkspace
 
     public int BaseDelayMs { get; set; } = 50;
 
+    public string ShortcutKeys { get; set; } = "";
+
     public string TargetWindowTitle { get; set; } = "";
 
     public string TargetChildWindowTitle { get; set; } = "";

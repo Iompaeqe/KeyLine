@@ -136,7 +136,7 @@ public partial class MainWindow
             return;
 
         CaptureActiveWorkspaceState();
-        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex);
+        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex, _shortcutsEnabled);
     }
 
     private int GetLoopCount() =>
@@ -163,6 +163,7 @@ public partial class MainWindow
     protected override void OnClosing(CancelEventArgs e)
     {
         StopAllRunners();
+        StopGlobalShortcutHook();
         _stateSaveTimer.Stop();
         SaveStateNow();
 

@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private bool _isDraggingMacroTabs;
     private bool _didDragMacroTabs;
     private bool _isTimelineEditingEnabled = true;
+    private bool _shortcutsEnabled = true;
     private Point _macroTabsDragStartPoint;
     private double _macroTabsDragStartOffset;
 
@@ -50,6 +51,7 @@ public partial class MainWindow : Window
             ? savedState.Workspaces
             : new List<MacroWorkspace> { CreateWorkspace(1) };
         _activeWorkspaceIndex = savedState?.ActiveWorkspaceIndex ?? 0;
+        _shortcutsEnabled = savedState?.ShortcutsEnabled ?? true;
         _activeWorkspaceIndex = Math.Clamp(_activeWorkspaceIndex, 0, _workspaces.Count - 1);
         _activeWorkspace = _workspaces[_activeWorkspaceIndex];
         _document = _activeWorkspace.Document;
@@ -57,6 +59,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         InitializeStatePersistence();
+        ApplyShortcutHookState();
         ActivateWorkspace(_activeWorkspaceIndex, false);
 
         Loaded += MainWindow_Loaded;
