@@ -10,6 +10,9 @@ public partial class MainWindow
 {
     private void DeleteSelectedItem()
     {
+        if (_runners.Values.Any(runner => runner.IsRunning))
+            return;
+
         ResetClearConfirmation();
         ResetTimelineDeleteConfirmation();
 
@@ -166,6 +169,16 @@ public partial class MainWindow
 
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        StopAllRunners();
+        SetStoppedStatus();
+
+        LoopCountTextBox.Text = "0";
+        TimerMinutesTextBox.Text = "0";
         ScheduleSaveState();
     }
 }

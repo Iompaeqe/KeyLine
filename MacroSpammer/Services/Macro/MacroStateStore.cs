@@ -89,6 +89,7 @@ public static class MacroStateStore
                 : persistedWorkspace.Name,
             Document = ToDocument(persistedWorkspace.Timelines, persistedWorkspace.ActiveTimelineIndex),
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
+            TimerMinutes = Math.Max(0, persistedWorkspace.TimerMinutes),
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
             TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
         };
@@ -100,7 +101,8 @@ public static class MacroStateStore
         {
             Name = "Macro 1",
             Document = ToDocument(state.Timelines, state.ActiveTimelineIndex),
-            LoopCount = Math.Max(0, state.LoopCount)
+            LoopCount = Math.Max(0, state.LoopCount),
+            TimerMinutes = Math.Max(0, state.TimerMinutes)
         };
     }
 
@@ -144,6 +146,8 @@ public static class MacroStateStore
             KeyName = persistedStep.KeyName,
             VirtualKey = persistedStep.VirtualKey,
             DelayMs = Math.Max(0, persistedStep.DelayMs),
+            RandomDelayMinMs = Math.Max(0, persistedStep.RandomDelayMinMs),
+            RandomDelayMaxMs = Math.Max(0, persistedStep.RandomDelayMaxMs),
             Text = persistedStep.Text,
             IsRecordedDelay = persistedStep.IsRecordedDelay
         };
@@ -174,6 +178,7 @@ public static class MacroStateStore
                 0,
                 Math.Max(0, workspace.Document.Timelines.Count - 1)),
             LoopCount = Math.Max(0, workspace.LoopCount),
+            TimerMinutes = Math.Max(0, workspace.TimerMinutes),
             TargetWindowTitle = workspace.TargetWindowTitle,
             TargetChildWindowTitle = workspace.TargetChildWindowTitle,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
@@ -188,6 +193,8 @@ public static class MacroStateStore
             KeyName = step.KeyName,
             VirtualKey = step.VirtualKey,
             DelayMs = Math.Max(0, step.DelayMs),
+            RandomDelayMinMs = Math.Max(0, step.RandomDelayMinMs),
+            RandomDelayMaxMs = Math.Max(0, step.RandomDelayMaxMs),
             Text = step.Text,
             IsRecordedDelay = step.IsRecordedDelay
         };
@@ -202,6 +209,7 @@ public static class MacroStateStore
         // Legacy single-workspace state from v1.
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public int TimerMinutes { get; set; }
         public List<PersistedTimeline> Timelines { get; set; } = new();
     }
 
@@ -210,6 +218,7 @@ public static class MacroStateStore
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public int TimerMinutes { get; set; }
         public string TargetWindowTitle { get; set; } = "";
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
@@ -230,6 +239,8 @@ public static class MacroStateStore
         public string KeyName { get; set; } = "";
         public int VirtualKey { get; set; }
         public int DelayMs { get; set; }
+        public int RandomDelayMinMs { get; set; }
+        public int RandomDelayMaxMs { get; set; }
         public string Text { get; set; } = "";
         public bool IsRecordedDelay { get; set; }
     }

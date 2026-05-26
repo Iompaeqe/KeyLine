@@ -11,7 +11,7 @@ public partial class MainWindow
     {
         return step.Type switch
         {
-            MacroStepType.Delay => CreateDelayBlock(timeline, step),
+            MacroStepType.Delay or MacroStepType.RandomDelay => CreateDelayBlock(timeline, step),
             MacroStepType.Text => CreateTextStepBlock(timeline, step),
             MacroStepType.KeyDown or MacroStepType.KeyUp => CreateKeyStepBlock(timeline, step),
             _ => CreateTextStepBlock(timeline, step)

@@ -12,6 +12,7 @@ public partial class DelayStepControl : UserControl
 {
     private MacroStep? _step;
     private bool _isSelected;
+    private bool _isEditing;
 
     public event EventHandler? DelayCommitted;
 
@@ -45,7 +46,9 @@ public partial class DelayStepControl : UserControl
     {
         while (source != null)
         {
-            if (ReferenceEquals(source, ValueTextBox))
+            if (ReferenceEquals(source, ValueTextBox) ||
+                ReferenceEquals(source, MinValueTextBox) ||
+                ReferenceEquals(source, MaxValueTextBox))
                 return true;
 
             source = VisualTreeHelper.GetParent(source);
@@ -54,10 +57,32 @@ public partial class DelayStepControl : UserControl
         return false;
     }
 
-    public void FocusValueEditor()
+    public void FocusValueEditor(DependencyObject? source = null)
     {
-        ValueTextBox.Focus();
-        Keyboard.Focus(ValueTextBox);
+        var textBox = FindEditorTextBox(source) ??
+                      (Step?.Type == MacroStepType.RandomDelay ? MinValueTextBox : ValueTextBox);
+
+        textBox.Focus();
+        Keyboard.Focus(textBox);
+    }
+
+    private TextBox? FindEditorTextBox(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (ReferenceEquals(source, ValueTextBox))
+                return ValueTextBox;
+
+            if (ReferenceEquals(source, MinValueTextBox))
+                return MinValueTextBox;
+
+            if (ReferenceEquals(source, MaxValueTextBox))
+                return MaxValueTextBox;
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return null;
     }
 
     private void UpdateVisual()
@@ -67,10 +92,37 @@ public partial class DelayStepControl : UserControl
             return;
 
         var ui = GeneratedUiConfig.DelayStep;
-        var (value, unit) = DelayFormatter.Split(step.DelayMs);
 
-        ValueTextBox.Text = value;
-        UnitTextBlock.Text = unit;
+        if (step.Type == MacroStepType.RandomDelay)
+        {
+            RootBorder.Width = 84;
+            FixedDelayPanel.Visibility = Visibility.Collapsed;
+            RandomDelayPanel.Visibility = Visibility.Visible;
+            UnitTextBlock.Visibility = Visibility.Collapsed;
+            RandomUnitPanel.Visibility = Visibility.Visible;
+
+            var minMs = Math.Min(step.RandomDelayMinMs, step.RandomDelayMaxMs);
+            var maxMs = Math.Max(step.RandomDelayMinMs, step.RandomDelayMaxMs);
+            var (minValue, minUnit) = DelayFormatter.Split(minMs);
+            var (maxValue, maxUnit) = DelayFormatter.Split(maxMs);
+
+            MinValueTextBox.Text = minValue;
+            MaxValueTextBox.Text = maxValue;
+            MinUnitTextBlock.Text = minUnit;
+            MaxUnitTextBlock.Text = maxUnit;
+        }
+        else
+        {
+            RootBorder.Width = 54;
+            FixedDelayPanel.Visibility = Visibility.Visible;
+            RandomDelayPanel.Visibility = Visibility.Collapsed;
+            UnitTextBlock.Visibility = Visibility.Visible;
+            RandomUnitPanel.Visibility = Visibility.Collapsed;
+
+            var (value, unit) = DelayFormatter.Split(step.DelayMs);
+            ValueTextBox.Text = value;
+            UnitTextBlock.Text = unit;
+        }
 
         var bg = IsSelected ? ui.BackgroundSelected : ui.Background;
         var border = IsSelected ? ui.BorderSelected : ui.Border;
@@ -80,7 +132,11 @@ public partial class DelayStepControl : UserControl
         RootBorder.Background = UiBrushes.Get(bg);
         RootBorder.BorderBrush = UiBrushes.Get(border);
         ValueTextBox.Foreground = UiBrushes.Get(valueColor);
+        MinValueTextBox.Foreground = UiBrushes.Get(valueColor);
+        MaxValueTextBox.Foreground = UiBrushes.Get(valueColor);
         UnitTextBlock.Foreground = UiBrushes.Get(unitColor);
+        MinUnitTextBlock.Foreground = UiBrushes.Get(unitColor);
+        MaxUnitTextBlock.Foreground = UiBrushes.Get(unitColor);
         Divider.Background = UiBrushes.Get(border);
         Divider.Opacity = IsSelected ? ui.DividerOpacitySelected : ui.DividerOpacity;
     }
@@ -95,8 +151,22 @@ public partial class DelayStepControl : UserControl
         if (Step == null)
             return;
 
-        ValueTextBox.Text = Step.DelayMs.ToString();
-        ValueTextBox.SelectAll();
+        _isEditing = true;
+
+        if (Step.Type == MacroStepType.RandomDelay)
+        {
+            MinValueTextBox.Text = Step.RandomDelayMinMs.ToString();
+            MaxValueTextBox.Text = Step.RandomDelayMaxMs.ToString();
+            MinUnitTextBlock.Text = "ms";
+            MaxUnitTextBlock.Text = "ms";
+        }
+        else
+        {
+            ValueTextBox.Text = Step.DelayMs.ToString();
+        }
+
+        if (sender is TextBox textBox)
+            textBox.SelectAll();
     }
 
     private void ValueTextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -119,8 +189,26 @@ public partial class DelayStepControl : UserControl
         if (Step == null)
             return;
 
-        if (int.TryParse(ValueTextBox.Text, out var value))
+        if (!_isEditing)
+            return;
+
+        _isEditing = false;
+
+        if (Step.Type == MacroStepType.RandomDelay)
+        {
+            if (int.TryParse(MinValueTextBox.Text, out var min))
+                Step.RandomDelayMinMs = Math.Max(0, min);
+
+            if (int.TryParse(MaxValueTextBox.Text, out var max))
+                Step.RandomDelayMaxMs = Math.Max(0, max);
+
+            if (Step.RandomDelayMaxMs < Step.RandomDelayMinMs)
+                (Step.RandomDelayMinMs, Step.RandomDelayMaxMs) = (Step.RandomDelayMaxMs, Step.RandomDelayMinMs);
+        }
+        else if (int.TryParse(ValueTextBox.Text, out var value))
+        {
             Step.DelayMs = Math.Max(0, value);
+        }
 
         UpdateVisual();
         DelayCommitted?.Invoke(this, EventArgs.Empty);

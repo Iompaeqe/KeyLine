@@ -16,6 +16,9 @@ public partial class MainWindow
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_runners.Values.Any(runner => runner.IsRunning))
+            return;
+
         _popupTimeline = ResolveTimelineFromSender(sender) ?? _document.ActiveTimeline;
 
         if (sender is UIElement placementTarget)
@@ -53,6 +56,25 @@ public partial class MainWindow
         {
             Type = MacroStepType.Delay,
             DelayMs = 100,
+            IsRecordedDelay = false
+        });
+
+        timeline.UseStandardDelay = false;
+        SelectTimeline(timeline);
+        RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private void RandomDelayMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddPopup.IsOpen = false;
+
+        var timeline = GetPopupTimeline();
+        timeline.Steps.Add(new MacroStep
+        {
+            Type = MacroStepType.RandomDelay,
+            RandomDelayMinMs = 50,
+            RandomDelayMaxMs = 150,
             IsRecordedDelay = false
         });
 

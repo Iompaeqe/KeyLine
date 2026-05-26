@@ -16,6 +16,12 @@ public partial class MainWindow
             SelectTimeline(timeline);
             _selection.SelectTimeline(timeline);
 
+            if (!_isTimelineEditingEnabled)
+            {
+                e.Handled = true;
+                return;
+            }
+
             _drag.BeginTimelineHeaderDrag(
                 timeline,
                 e.GetPosition(TimelineHeaderGrid),
@@ -28,6 +34,9 @@ public partial class MainWindow
 
         element.PreviewMouseMove += (_, e) =>
         {
+            if (!_isTimelineEditingEnabled)
+                return;
+
             if (_drag.DraggedTimelineHeader == null ||
                 e.LeftButton != MouseButtonState.Pressed)
             {
@@ -66,6 +75,15 @@ public partial class MainWindow
         element.PreviewMouseRightButtonDown += (_, e) =>
         {
             CancelTimelineDragState();
+
+            if (!_isTimelineEditingEnabled)
+            {
+                SelectTimeline(timeline);
+                _selection.SelectTimeline(timeline);
+                e.Handled = true;
+                return;
+            }
+
             BeginOrConfirmTimelineDelete(timeline);
             e.Handled = true;
         };

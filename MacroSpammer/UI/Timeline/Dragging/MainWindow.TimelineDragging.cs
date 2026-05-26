@@ -45,13 +45,22 @@ public partial class MainWindow
         {
             EnsureTimelineDragGlobalHandlers();
 
-            if (step.Type == MacroStepType.Delay &&
+            if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay &&
                 element is DelayStepControl delayControl &&
                 delayControl.IsValueEditorSource(e.OriginalSource as DependencyObject))
             {
+                SelectTimeline(timeline);
+                _selection.SelectStep(timeline, step);
+
+                if (!_isTimelineEditingEnabled)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 CancelTimelineDragState();
                 _isDelayValueMouseEditPending = true;
-                delayControl.FocusValueEditor();
+                delayControl.FocusValueEditor(e.OriginalSource as DependencyObject);
                 e.Handled = true;
                 return;
             }
@@ -60,6 +69,13 @@ public partial class MainWindow
             {
                 SelectTimeline(timeline);
                 _selection.SelectStep(timeline, step);
+
+                if (!_isTimelineEditingEnabled)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 EditTextStep(timeline, step);
                 e.Handled = true;
                 return;
@@ -67,6 +83,13 @@ public partial class MainWindow
 
             SelectTimeline(timeline);
             _selection.SelectStep(timeline, step);
+
+            if (!_isTimelineEditingEnabled)
+            {
+                e.Handled = true;
+                return;
+            }
+
             _drag.BeginStepDrag(timeline, step, e.GetPosition(TimelineRowsPanel));
 
             element.CaptureMouse();
@@ -76,6 +99,9 @@ public partial class MainWindow
 
         element.PreviewMouseMove += (_, e) =>
         {
+            if (!_isTimelineEditingEnabled)
+                return;
+
             if (_drag.DraggedStep == null ||
                 _drag.DraggedStepTimeline == null ||
                 e.LeftButton != MouseButtonState.Pressed)
@@ -135,6 +161,13 @@ public partial class MainWindow
             CancelTimelineDragState();
             SelectTimeline(timeline);
             _selection.SelectStep(timeline, step);
+
+            if (!_isTimelineEditingEnabled)
+            {
+                e.Handled = true;
+                return;
+            }
+
             DeleteStep(timeline, step);
 
             e.Handled = true;

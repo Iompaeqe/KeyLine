@@ -5,6 +5,7 @@ public enum MacroStepType
     KeyDown,
     KeyUp,
     Delay,
+    RandomDelay,
     Text
 }
 
@@ -16,6 +17,10 @@ public sealed class MacroStep
     public int VirtualKey { get; set; }
 
     public int DelayMs { get; set; }
+
+    public int RandomDelayMinMs { get; set; }
+
+    public int RandomDelayMaxMs { get; set; }
 
     public string Text { get; set; } = "";
 

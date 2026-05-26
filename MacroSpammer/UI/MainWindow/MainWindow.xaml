@@ -25,6 +25,84 @@
                 <ResourceDictionary Source="../Styles/ScrollBars.xaml" />
                 <ResourceDictionary Source="../Styles/ComboBoxes.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="PlaybackLeftHalfButton" TargetType="Button">
+                <Setter Property="Height" Value="30" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontFamily" Value="Segoe UI" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid RenderTransformOrigin="0.5,0.5">
+                                <Border x:Name="B"
+                                        CornerRadius="7,0,0,7"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" />
+                                <Border x:Name="HoverOverlay"
+                                        CornerRadius="7,0,0,7"
+                                        Background="#FFFFFF"
+                                        Opacity="0"
+                                        IsHitTestVisible="False" />
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.08" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.14" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PlaybackRightHalfButton" TargetType="Button">
+                <Setter Property="Height" Value="30" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontFamily" Value="Segoe UI" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid RenderTransformOrigin="0.5,0.5">
+                                <Border x:Name="B"
+                                        CornerRadius="0,7,7,0"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" />
+                                <Border x:Name="HoverOverlay"
+                                        CornerRadius="0,7,7,0"
+                                        Background="#FFFFFF"
+                                        Opacity="0"
+                                        IsHitTestVisible="False" />
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.08" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.14" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -403,17 +481,26 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="54" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="104"
+                        <Button x:Name="AddTimelineButton" Content="＋ Timeline" Width="96"
                                 Background="#123A5A" BorderBrush="#256D9D"
                                 Foreground="#BAE6FD" Click="AddTimelineButton_Click" />
 
@@ -424,17 +511,86 @@
                                    Style="{StaticResource Dim}" Margin="0,0,8,0" />
                         <TextBox x:Name="LoopCountTextBox" Grid.Column="4" Text="0" />
 
-                        <Button x:Name="ClearButton" Grid.Column="6" Content="Clear" Width="100"
+                        <TextBlock Grid.Column="6" Text="Timer"
+                                   Style="{StaticResource Dim}" Margin="0,0,8,0" />
+                        <Grid Grid.Column="7">
+                            <TextBox x:Name="TimerMinutesTextBox"
+                                     Text="0"
+                                     Padding="6,0,20,0" />
+                            <TextBlock Text="min"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,5,0"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Muted}"
+                                       IsHitTestVisible="False" />
+                        </Grid>
+
+                        <Button x:Name="ClearButton" Grid.Column="9" Content="Clear" Width="76"
                                 Click="ClearButton_Click" />
 
-                        <Grid Grid.Column="8">
-                            <Button x:Name="StartStopButton" Content="▶  Start"
+                        <Button x:Name="ResetButton" Grid.Column="11" Content="Reset" Width="70" Visibility="Collapsed"
+                                Click="ResetButton_Click" />
+
+                        <Button x:Name="StartStopButton" Grid.Column="11" Grid.ColumnSpan="7" Content="▶  Start"
                                     Background="#31205F" BorderBrush="#6D4AFF"
-                                    Foreground="#DDD6FE" Width="130"
+                                    Foreground="#DDD6FE" Width="154"
+                                    Panel.ZIndex="10"
                                     Click="StartStopButton_Click" />
+
+
+                        <Grid x:Name="PlaybackSplitButton"
+                              Grid.Column="11"
+                              Grid.ColumnSpan="7"
+                              Width="154"
+                              Height="30"
+                              Panel.ZIndex="30"
+                              Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="1" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button x:Name="PauseResumeButton"
+                                        Grid.Column="0"
+                                        Content="Pause"
+                                        Style="{StaticResource PlaybackLeftHalfButton}"
+                                        Background="#3B2A05"
+                                        BorderBrush="#B45309"
+                                        BorderThickness="1"
+                                        Foreground="#FDE68A"
+                                        Visibility="Visible"
+                                        Click="PauseResumeButton_Click" />
+
+                                <Border Grid.Column="1"
+                                        Background="#10151D"
+                                        Opacity="0.95" />
+
+                                <Button x:Name="StopPlaybackButton"
+                                        Grid.Column="2"
+                                        Content="Stop"
+                                        Style="{StaticResource PlaybackRightHalfButton}"
+                                        Background="#3A0A0A"
+                                        BorderBrush="#B91C1C"
+                                        BorderThickness="1"
+                                        Foreground="#FCA5A5"
+                                        Visibility="Visible"
+                                        Click="StopPlaybackButton_Click" />
+                            </Grid>
+                        </Grid>
+
+                        <Grid x:Name="RecordStopButtonHost"
+                              Grid.Column="11"
+                              Grid.ColumnSpan="7"
+                              Panel.ZIndex="40"
+                              IsHitTestVisible="False"
+                              Visibility="Collapsed">
                             <Button x:Name="RecordStopButton" Content="◼  Stop Rec"
                                     Background="#2A0808" BorderBrush="#7F1D1D"
-                                    Foreground="#FCA5A5" Visibility="Collapsed" Width="130"
+                                    Foreground="#FCA5A5" Width="154"
                                     Click="RecordStopButton_Click" />
                         </Grid>
 
@@ -474,6 +630,14 @@
                                             BorderBrush="#2C4A6D"
                                             Foreground="#DDEBFF"
                                             Click="DelayMenuButton_Click" />
+
+                                    <Button Content="Random delay"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#102033"
+                                            BorderBrush="#2C4A6D"
+                                            Foreground="#DDEBFF"
+                                            Click="RandomDelayMenuButton_Click" />
 
                                     <Button Content="Add text"
                                             Height="30"

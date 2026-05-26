@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private MacroWorkspace? _renamingWorkspace;
     private bool _isDraggingMacroTabs;
     private bool _didDragMacroTabs;
+    private bool _isTimelineEditingEnabled = true;
     private Point _macroTabsDragStartPoint;
     private double _macroTabsDragStartOffset;
 

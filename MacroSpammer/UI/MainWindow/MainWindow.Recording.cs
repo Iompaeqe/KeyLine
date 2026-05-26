@@ -15,7 +15,8 @@ public partial class MainWindow
         _recordingTimeline = timeline;
         _recorder.Start();
 
-        RecordStopButton.Visibility = Visibility.Visible;
+        RecordStopButtonHost.IsHitTestVisible = true;
+        RecordStopButtonHost.Visibility = Visibility.Visible;
         StatusText.Text = $"● Recording {timeline.Name}";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
 
@@ -27,7 +28,8 @@ public partial class MainWindow
         _recorder.Stop();
         _recordingTimeline = null;
 
-        RecordStopButton.Visibility = Visibility.Collapsed;
+        RecordStopButtonHost.Visibility = Visibility.Collapsed;
+        RecordStopButtonHost.IsHitTestVisible = false;
         StatusText.Text = "Stopped";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
 

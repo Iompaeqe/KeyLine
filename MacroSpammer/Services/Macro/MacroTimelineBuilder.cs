@@ -36,7 +36,7 @@ public static class MacroTimelineBuilder
 
         foreach (var step in rawSteps)
         {
-            if (step.Type == MacroStepType.Delay)
+            if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay)
             {
                 // Standard delay mode hides delays visually, but if a delay is inside
                 // an active key group, keep it attached so drag/drop moves the real raw sequence.

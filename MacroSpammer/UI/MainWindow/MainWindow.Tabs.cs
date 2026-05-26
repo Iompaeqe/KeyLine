@@ -56,6 +56,7 @@ public partial class MainWindow
             ResetClearConfirmation();
 
             LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
+            TimerMinutesTextBox.Text = _activeWorkspace.TimerMinutes.ToString();
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             SelectTimeline(_document.ActiveTimeline);
@@ -156,7 +157,17 @@ public partial class MainWindow
             return;
 
         _activeWorkspace.Document = _document;
-        _activeWorkspace.LoopCount = GetLoopCount();
+        if (_runners.Values.Any(runner => runner.IsRunning))
+        {
+            _activeWorkspace.LoopCount = int.TryParse(_originalLoopText, out var loops) ? Math.Max(0, loops) : 0;
+            _activeWorkspace.TimerMinutes = int.TryParse(_originalTimerText, out var minutes) ? Math.Max(0, minutes) : 0;
+        }
+        else
+        {
+            _activeWorkspace.LoopCount = GetLoopCount();
+            _activeWorkspace.TimerMinutes = GetTimerMinutes();
+        }
+
         CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }

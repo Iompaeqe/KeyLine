@@ -21,9 +21,20 @@ public partial class MainWindow
         };
 
         LoopCountTextBox.TextChanged += LoopCountTextBox_TextChanged;
+        TimerMinutesTextBox.TextChanged += TimerMinutesTextBox_TextChanged;
     }
 
-    private void LoopCountTextBox_TextChanged(object sender, TextChangedEventArgs e) => ScheduleSaveState();
+    private void LoopCountTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_isUpdatingPlaybackCounters)
+            ScheduleSaveState();
+    }
+
+    private void TimerMinutesTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_isUpdatingPlaybackCounters)
+            ScheduleSaveState();
+    }
 
     private void ScheduleSaveState()
     {
@@ -46,8 +57,12 @@ public partial class MainWindow
     private int GetLoopCount() =>
         int.TryParse(LoopCountTextBox.Text, out var loops) ? Math.Max(0, loops) : 0;
 
+    private int GetTimerMinutes() =>
+        int.TryParse(TimerMinutesTextBox.Text, out var minutes) ? Math.Max(0, minutes) : 0;
+
     protected override void OnClosing(CancelEventArgs e)
     {
+        StopAllRunners();
         _stateSaveTimer.Stop();
         SaveStateNow();
 
