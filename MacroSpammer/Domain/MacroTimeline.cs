@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using MacroSpammer.Domain;
 
 namespace MacroSpammer.Domain;
 
