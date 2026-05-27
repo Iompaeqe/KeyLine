@@ -18,7 +18,7 @@ MacroSpammer is focused on simple window-targeted keyboard and mouse macros, wit
 
 ## Screenshot
 
-<img width="1330" height="601" alt="MacroSpammer screenshot" src="https://github.com/user-attachments/assets/aed82fff-b5e9-4586-8624-1a76b1a98592" />
+<img width="1437" height="1094" alt="image" src="https://github.com/user-attachments/assets/eeb7cc26-cf25-4446-ad2a-7c6b8c07d910" />
 
 ---
 
