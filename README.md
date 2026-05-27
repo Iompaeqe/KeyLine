@@ -2,17 +2,16 @@
 
 License: MIT
 
-A lightweight window-targeted macro recorder/spammer for Windows.
+A lightweight window-targeted macro recorder for Windows.
 
 My goal was simple:
 
 Select a target window → record/edit a macro → let it run in the background while continuing to use the PC normally.
 
 No giant scripting system.
-No bloated automation suite.
 Just a fast and practical macro recorder.
 
-The goal is to have a lightweight and practical macro tool focused specifically on window-targeted keyboard spam/macros, without turning into a massive automation framework.
+The goal is to have a lightweight and practical macro tool focused specifically on window-targeted keyboard and mouse macros, without turning into a massive automation framework.
 
 ---
 
@@ -24,71 +23,90 @@ The goal is to have a lightweight and practical macro tool focused specifically 
 
 ## How it works
 
-KeyLine sends keyboard input directly to selected windows using WinAPI window messages (`PostMessage` / `SendMessage`) instead of globally simulating keyboard input.
+KeyLine can send keyboard input directly to selected windows using WinAPI window messages (`PostMessage` / `SendMessage`) instead of only relying on global keyboard simulation.
 
-This allows macros to run on unfocused/background windows while you continue using your PC normally.
+This allows compatible macros to run on unfocused/background windows while you continue using your PC normally.
 
-Some applications handle this perfectly, while others may partially or completely ignore inputs depending on how they process keyboard messages internally.
+Some applications handle this well, while others may partially or completely ignore it depending on how they process input internally.
+
+Mouse input is also supported. Foreground mouse input works normally, while background mouse input is experimental and only works with some applications.
 
 ---
 
 ## Features
 
-- Record keyboard macros
-- Send input to unfocused windows
-- Multiple timelines
+### Macro Recording & Playback
+
+- Record keyboard input
+- Record mouse input
+- Send keyboard input to unfocused/background windows
+- Foreground mouse input support
+- Experimental background mouse input support
+- Cursor move nodes
+- Text input nodes
+- Delay and random delay nodes
+- Loop and timer support
+
+### Timeline Editor
+
+- Visual timeline-based macro editing
+- Multiple timelines per macro
 - Multiple macro tabs
-- Editable timeline nodes
 - Drag & reorder nodes
-- Delay nodes
-- Text nodes
-- Standard delay mode
-- Combo visualization (`CTRL+S+A`)
-- Loop support
-- Auto-save latest state
+- Edit, copy, paste, duplicate, and delete nodes
+- Copy, paste, and duplicate timelines
+- Copy, paste, and duplicate macros
+- Undo / redo support
 
 ---
 
-## Timeline system
+## Timeline System
 
 Macros are built from timeline nodes.
 
-Supported node types:
+Supported node types include:
+
 - Key Down
 - Key Up
-- Delay
 - Text
+- Delay
+- Random Delay
+- Mouse Down
+- Mouse Up
+- Cursor Move
+- Experimental Background Mouse Input
 
-Recording captures:
-- key down events
-- key up events
-- delays between inputs
+Recording captures keyboard inputs, mouse inputs, and the delays between them.
+
+After recording, nodes can be edited, reordered, copied, pasted, duplicated, removed, or adjusted directly inside the timeline.
 
 ---
 
-## Standard delay mode
+## Import / Export
 
-When enabled:
-- recorded delays are hidden
-- a fixed delay value is used between actions
+Macros can be exported and imported from the settings panel.
 
-This makes macros much easier to read and edit if you have no use for delay.
+---
+
+## Notes / Limitations
+
+KeyLine uses different input methods depending on the selected node/input type.
+
+Because Windows applications do not all process input the same way, compatibility can vary:
+
+- Background keyboard input works well in many normal desktop applications.
+- Some applications may ignore window-message-based keyboard input.
+- Foreground mouse input works normally.
+- Experimental background mouse input works in some applications.
+- Many games and protected applications may ignore background mouse input.
+
+This is a practical macro tool, not a guaranteed universal automation system.
 
 ---
 
 ## Planned Features
 
-Things I may add in the future:
-
-- Mouse support
-- Background mouse input for specific window positions (if reliable implementation is possible)
-- Save/load macro profiles
-- Timeline duplication
-- Import/export system
-- Better timeline visuals/animations
-- Per-node settings
-- Conditional execution
-- Randomized delays
-- Hold/toggle modes
-- Better multi-window workflow
-
+- Repeat / for-loop style timeline nodes
+- Resizable timeline view for better long macro visualization
+- Conditional nodes
+- New run behavior, Repeat while holding.
