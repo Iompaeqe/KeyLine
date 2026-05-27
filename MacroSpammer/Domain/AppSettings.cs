@@ -18,6 +18,7 @@ public sealed class AppSettings
 
     public string UndoShortcut { get; set; } = "17,90";
     public string RedoShortcut { get; set; } = "17,16,90";
+    public string SelectAllShortcut { get; set; } = "17,65";
     public string CopyShortcut { get; set; } = "17,67";
     public string PasteShortcut { get; set; } = "17,86";
     public string DuplicateShortcut { get; set; } = "17,68";
@@ -53,6 +54,7 @@ public sealed class AppSettings
         DefaultTextInputMode = source.DefaultTextInputMode;
         UndoShortcut = source.UndoShortcut;
         RedoShortcut = source.RedoShortcut;
+        SelectAllShortcut = source.SelectAllShortcut;
         CopyShortcut = source.CopyShortcut;
         PasteShortcut = source.PasteShortcut;
         DuplicateShortcut = source.DuplicateShortcut;

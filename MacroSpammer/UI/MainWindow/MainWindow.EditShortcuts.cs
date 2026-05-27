@@ -43,6 +43,13 @@ public partial class MainWindow
             return true;
         }
 
+        if (MatchesLocalShortcut(pressedKeys, _settings.SelectAllShortcut))
+        {
+            SelectAllNodesInActiveTimeline();
+            e.Handled = true;
+            return true;
+        }
+
         if (MatchesLocalShortcut(pressedKeys, _settings.CopyShortcut))
         {
             CopySelection();
@@ -227,6 +234,26 @@ public partial class MainWindow
         }
 
         _selection.SelectStep(timeline, step);
+    }
+
+    private void SelectAllNodesInActiveTimeline()
+    {
+        var timeline = _document.ActiveTimeline;
+        var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+            timeline.Steps.ToList(),
+            timeline.UseStandardDelay,
+            timeline.ShowKeyUpDown);
+
+        if (visibleSteps.Count == 0)
+        {
+            SelectTimeline(timeline);
+            RefreshTimeline();
+            return;
+        }
+
+        SelectTimeline(timeline);
+        _selection.SelectSteps(timeline, visibleSteps, visibleSteps[^1]);
+        RefreshTimeline();
     }
 
     private bool SelectStepRange(MacroTimeline timeline, MacroStep step)

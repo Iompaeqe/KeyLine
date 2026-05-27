@@ -119,6 +119,7 @@ public partial class SettingsView : UserControl
         BeginSection("Shortcuts");
         AddShortcut("Undo", _settings.UndoShortcut, value => _settings.UndoShortcut = value);
         AddShortcut("Redo", _settings.RedoShortcut, value => _settings.RedoShortcut = value);
+        AddShortcut("Select all nodes", _settings.SelectAllShortcut, value => _settings.SelectAllShortcut = value);
         AddShortcut("Copy selected nodes/timeline/macro", _settings.CopyShortcut, value => _settings.CopyShortcut = value);
         AddShortcut("Paste nodes/timeline/macro", _settings.PasteShortcut, value => _settings.PasteShortcut = value);
         AddShortcut("Duplicate selection", _settings.DuplicateShortcut, value => _settings.DuplicateShortcut = value);
