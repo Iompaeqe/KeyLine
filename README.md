@@ -18,7 +18,7 @@ The goal is to have a lightweight and practical macro tool focused specifically 
 
 ## Screenshot
 
-<img width="1330" height="601" alt="image" src="https://github.com/user-attachments/assets/aed82fff-b5e9-4586-8624-1a76b1a98592" />
+<img width="2081" height="686" alt="image" src="https://github.com/user-attachments/assets/e3ab7e74-3e2f-4e62-a425-1921ed6060de" />
 
 ---
 
