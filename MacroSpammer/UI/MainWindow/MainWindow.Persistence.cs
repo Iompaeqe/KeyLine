@@ -136,7 +136,7 @@ public partial class MainWindow
             return;
 
         CaptureActiveWorkspaceState();
-        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex, _shortcutsEnabled);
+        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex, _shortcutsEnabled, _settings);
     }
 
     private int GetLoopCount() =>
@@ -162,10 +162,23 @@ public partial class MainWindow
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        if (ShouldCancelCloseForTray())
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        if (!ConfirmCloseIfNeeded())
+        {
+            e.Cancel = true;
+            return;
+        }
+
         StopAllRunners();
         StopGlobalShortcutHook();
         _stateSaveTimer.Stop();
         SaveStateNow();
+        DisposeTrayIcon();
 
         base.OnClosing(e);
     }

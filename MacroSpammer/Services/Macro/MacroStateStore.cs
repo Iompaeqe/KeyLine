@@ -9,6 +9,7 @@ public sealed class MacroStateSnapshot
     public List<MacroWorkspace> Workspaces { get; init; } = new();
     public int ActiveWorkspaceIndex { get; init; }
     public bool ShortcutsEnabled { get; init; }
+    public AppSettings Settings { get; init; } = new();
 }
 
 public static class MacroStateStore
@@ -20,7 +21,7 @@ public static class MacroStateStore
         WriteIndented = true
     };
 
-    private static string StateDirectory =>
+    public static string StateDirectory =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "KeyLine");
@@ -58,7 +59,8 @@ public static class MacroStateStore
             {
                 Workspaces = workspaces,
                 ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1),
-                ShortcutsEnabled = state.ShortcutsEnabled
+                ShortcutsEnabled = state.ShortcutsEnabled,
+                Settings = state.Settings ?? new AppSettings()
             };
         }
         catch
@@ -67,7 +69,11 @@ public static class MacroStateStore
         }
     }
 
-    public static void Save(IReadOnlyList<MacroWorkspace> workspaces, int activeWorkspaceIndex, bool shortcutsEnabled)
+    public static void Save(
+        IReadOnlyList<MacroWorkspace> workspaces,
+        int activeWorkspaceIndex,
+        bool shortcutsEnabled,
+        AppSettings settings)
     {
         var safeWorkspaces = workspaces.Count > 0
             ? workspaces
@@ -78,6 +84,7 @@ public static class MacroStateStore
             Version = CurrentVersion,
             ActiveWorkspaceIndex = Math.Clamp(activeWorkspaceIndex, 0, safeWorkspaces.Count - 1),
             ShortcutsEnabled = shortcutsEnabled,
+            Settings = settings,
             Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
         };
 
@@ -255,6 +262,7 @@ public static class MacroStateStore
         public int Version { get; set; }
         public int ActiveWorkspaceIndex { get; set; }
         public bool ShortcutsEnabled { get; set; }
+        public AppSettings? Settings { get; set; }
         public List<PersistedWorkspace> Workspaces { get; set; } = new();
 
         // Legacy single-workspace state from v1.

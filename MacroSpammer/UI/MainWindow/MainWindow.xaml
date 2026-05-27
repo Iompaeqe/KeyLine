@@ -11,8 +11,10 @@
         Focusable="True"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
+        AllowDrop="True"
         PreviewKeyDown="Window_PreviewKeyDown"
-        PreviewKeyUp="Window_PreviewKeyUp">
+        PreviewKeyUp="Window_PreviewKeyUp"
+        Drop="Window_Drop">
 
     <Window.Resources>
         <ResourceDictionary>
@@ -233,6 +235,11 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="&#x2699;"
+                                Style="{StaticResource TitleGlyphButton}"
+                                ToolTip="Settings"
+                                Click="SettingsButton_Click" />
+
                         <Button Content="─"
                                 Style="{StaticResource TitleGlyphButton}"
                                 Click="MinimizeButton_Click" />
@@ -740,7 +747,8 @@
                                             Foreground="#CCFBF1"
                                             Click="CursorMoveMenuButton_Click" />
 
-                                    <Expander Header="Experimental"
+                                    <Expander x:Name="ExperimentalAddMenuExpander"
+                                              Header="Experimental"
                                               Foreground="{StaticResource Muted}"
                                               FontSize="11"
                                               FontWeight="SemiBold"
@@ -780,5 +788,14 @@
                 </Border>
             </Grid>
         </Border>
+
+        <Grid x:Name="SettingsModalOverlay"
+              Visibility="Collapsed"
+              Background="#AA020617"
+              Panel.ZIndex="2000">
+            <ContentControl x:Name="SettingsModalHost"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Grid>
     </Grid>
 </Window>

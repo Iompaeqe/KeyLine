@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private MacroDocument _document;
     private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
     private readonly MacroRecorder _recorder = new();
+    private readonly AppSettings _settings;
 
     private readonly Dictionary<object, Point> _timelineVisualPositions = new();
 
@@ -47,9 +48,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         var savedState = MacroStateStore.Load();
+        _settings = savedState?.Settings ?? new AppSettings();
         _workspaces = savedState?.Workspaces.Count > 0
             ? savedState.Workspaces
-            : new List<MacroWorkspace> { CreateWorkspace(1) };
+            : new List<MacroWorkspace> { CreateWorkspace(1, _settings) };
         _activeWorkspaceIndex = savedState?.ActiveWorkspaceIndex ?? 0;
         _shortcutsEnabled = savedState?.ShortcutsEnabled ?? false;
         _activeWorkspaceIndex = Math.Clamp(_activeWorkspaceIndex, 0, _workspaces.Count - 1);
@@ -63,6 +65,10 @@ public partial class MainWindow : Window
         ActivateWorkspace(_activeWorkspaceIndex, false);
 
         Loaded += MainWindow_Loaded;
+        StateChanged += MainWindow_StateChanged;
+
+        if (_settings.StartMinimized)
+            WindowState = WindowState.Minimized;
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)

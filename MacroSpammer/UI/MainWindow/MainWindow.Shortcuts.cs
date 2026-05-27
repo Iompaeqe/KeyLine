@@ -21,7 +21,7 @@ public partial class MainWindow
 
     private void StartGlobalShortcutHook()
     {
-        if (!_shortcutsEnabled)
+        if (!ShouldRunGlobalShortcutHook())
             return;
 
         StopGlobalShortcutHook();
@@ -88,6 +88,9 @@ public partial class MainWindow
 
     private void TryTriggerShortcut()
     {
+        if (TryTriggerPlaybackShortcut())
+            return;
+
         if (!_shortcutsEnabled)
             return;
 
@@ -103,6 +106,38 @@ public partial class MainWindow
         _triggeredShortcutSignature = signature;
         Dispatcher.BeginInvoke(new Action(() => ToggleMacroFromShortcut(matchIndex)));
     }
+
+    private bool TryTriggerPlaybackShortcut()
+    {
+        if (TryTriggerSettingsShortcut(_settings.EmergencyStopShortcut, "emergency-stop", StopAllPlaybackFromGlobalShortcut))
+            return true;
+
+        if (TryTriggerSettingsShortcut(_settings.StopAllMacrosShortcut, "stop-all", StopAllPlaybackFromGlobalShortcut))
+            return true;
+
+        return TryTriggerSettingsShortcut(_settings.PauseResumeAllMacrosShortcut, "pause-resume", PauseResumeAllPlaybackFromGlobalShortcut);
+    }
+
+    private bool TryTriggerSettingsShortcut(string shortcut, string name, Action action)
+    {
+        var shortcutKeys = ShortcutGesture.Parse(shortcut);
+        if (!ShortcutGesture.Matches(_globalPressedShortcutKeys, shortcutKeys))
+            return false;
+
+        var signature = $"settings:{name}:{ShortcutGesture.Serialize(shortcutKeys)}";
+        if (_triggeredShortcutSignature == signature)
+            return true;
+
+        _triggeredShortcutSignature = signature;
+        Dispatcher.BeginInvoke(new Action(action));
+        return true;
+    }
+
+    private bool ShouldRunGlobalShortcutHook() =>
+        _shortcutsEnabled ||
+        ShortcutGesture.Parse(_settings.EmergencyStopShortcut).Length > 0 ||
+        ShortcutGesture.Parse(_settings.StopAllMacrosShortcut).Length > 0 ||
+        ShortcutGesture.Parse(_settings.PauseResumeAllMacrosShortcut).Length > 0;
 
     private int FindMatchingShortcutWorkspaceIndex()
     {
@@ -161,7 +196,7 @@ public partial class MainWindow
 
     private void ApplyShortcutHookState()
     {
-        if (_shortcutsEnabled)
+        if (ShouldRunGlobalShortcutHook())
             StartGlobalShortcutHook();
         else
             StopGlobalShortcutHook();

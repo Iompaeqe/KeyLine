@@ -70,6 +70,7 @@ public partial class MainWindow
 
         StatusText.Text = $"Running {runnableTimelines.Count} timeline(s)";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+        PlayMacroSound();
 
         StartPlaybackTimer(timerMs);
         SetPlaybackCounterText(LoopCountTextBox, loopCount > 0 ? loopCount.ToString() : "\u221E");
@@ -96,6 +97,7 @@ public partial class MainWindow
         await Task.WhenAll(tasks);
 
         SetStoppedStatus(_restoreInputsOnStop);
+        PlayMacroSound();
     }
 
     private void PauseResumeButton_Click(object sender, RoutedEventArgs e)
@@ -220,6 +222,8 @@ public partial class MainWindow
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
         }
 
+        PlayMacroSound();
+
         try
         {
             var completionTask = Task.WhenAll(tasks);
@@ -237,6 +241,8 @@ public partial class MainWindow
                 StatusText.Text = "Stopped";
                 StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
             }
+
+            PlayMacroSound();
         }
     }
 
@@ -250,6 +256,34 @@ public partial class MainWindow
     {
         foreach (var runner in _runners.Values)
             runner.Resume();
+    }
+
+    private void StopAllPlaybackFromGlobalShortcut()
+    {
+        _restoreInputsOnStop = true;
+        StopAllRunners();
+        SetStoppedStatus(true);
+        PlayMacroSound();
+    }
+
+    private void PauseResumeAllPlaybackFromGlobalShortcut()
+    {
+        if (!_runners.Values.Any(runner => runner.IsRunning))
+            return;
+
+        if (_runners.Values.Any(runner => runner.IsPaused))
+        {
+            ResumeAllRunners();
+            ResumePlaybackTimer();
+            _isPlaybackPaused = false;
+            StatusText.Text = "Running";
+            return;
+        }
+
+        PauseAllRunners();
+        PausePlaybackTimer();
+        _isPlaybackPaused = true;
+        StatusText.Text = "Paused";
     }
 
     private void SetPlaybackUiRunning()
