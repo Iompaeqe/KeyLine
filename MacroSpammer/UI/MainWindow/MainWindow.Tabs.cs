@@ -16,11 +16,41 @@ public partial class MainWindow
         };
     }
 
+    private int GetNextWorkspaceNumber()
+    {
+        var usedNumbers = new HashSet<int>();
+
+        foreach (var workspace in _workspaces)
+        {
+            if (!TryParseDefaultWorkspaceNumber(workspace.Name, out var number))
+                continue;
+
+            usedNumbers.Add(number);
+        }
+
+        var candidate = 1;
+        while (usedNumbers.Contains(candidate))
+            candidate++;
+
+        return candidate;
+    }
+
+    private static bool TryParseDefaultWorkspaceNumber(string name, out int number)
+    {
+        number = 0;
+
+        const string prefix = "Macro ";
+        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return int.TryParse(name[prefix.Length..], out number) && number > 0;
+    }
+
     private void AddMacroTabButton_Click(object sender, RoutedEventArgs e)
     {
         CaptureActiveWorkspaceState();
 
-        var workspace = CreateWorkspace(_workspaces.Count + 1);
+        var workspace = CreateWorkspace(GetNextWorkspaceNumber());
         _workspaces.Add(workspace);
         ActivateWorkspace(_workspaces.Count - 1);
     }

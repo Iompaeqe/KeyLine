@@ -1,4 +1,4 @@
-# MacroSpammer
+# KeyLine
 
 License: MIT
 
@@ -10,7 +10,7 @@ Select a target window → record/edit a macro → let it run in the background 
 
 No giant scripting system.
 No bloated automation suite.
-Just a fast and practical macro spammer.
+Just a fast and practical macro recorder.
 
 The goal is to have a lightweight and practical macro tool focused specifically on window-targeted keyboard spam/macros, without turning into a massive automation framework.
 
@@ -24,7 +24,7 @@ The goal is to have a lightweight and practical macro tool focused specifically 
 
 ## How it works
 
-MacroSpammer sends keyboard input directly to selected windows using WinAPI window messages (`PostMessage` / `SendMessage`) instead of globally simulating keyboard input.
+KeyLine sends keyboard input directly to selected windows using WinAPI window messages (`PostMessage` / `SendMessage`) instead of globally simulating keyboard input.
 
 This allows macros to run on unfocused/background windows while you continue using your PC normally.
 
@@ -91,3 +91,4 @@ Things I may add in the future:
 - Randomized delays
 - Hold/toggle modes
 - Better multi-window workflow
+

@@ -1,7 +1,7 @@
 <Window x:Class="MacroSpammer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MacroSpammer"
+        Title="KeyLine"
         Icon="/Assets/AppIcon.ico"
         Width="900" Height="420"
         MinWidth="900" MinHeight="420" MaxHeight="420"
@@ -143,8 +143,8 @@
                                Margin="0,0,9,0"
                                VerticalAlignment="Center"
                                RenderOptions.BitmapScalingMode="HighQuality" />
-                        <TextBlock Text="MacroSpammer" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
-                        <TextBlock Text="  ·  macro recorder" FontSize="11" Foreground="{StaticResource Muted}"
+                        <TextBlock Text="KeyLine" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock Text="  ·  macro recorder" FontSize="11" Margin="5,0,0,0" Foreground="{StaticResource Muted}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
 

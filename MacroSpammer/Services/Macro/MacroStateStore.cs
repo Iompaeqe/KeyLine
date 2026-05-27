@@ -23,18 +23,29 @@ public static class MacroStateStore
     private static string StateDirectory =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "KeyLine");
+
+    private static string LegacyStateDirectory =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "MacroSpammer");
 
     private static string StatePath => Path.Combine(StateDirectory, "state.json");
+
+    private static string LegacyStatePath => Path.Combine(LegacyStateDirectory, "state.json");
 
     public static MacroStateSnapshot? Load()
     {
         try
         {
-            if (!File.Exists(StatePath))
+            var statePath = File.Exists(StatePath)
+                ? StatePath
+                : LegacyStatePath;
+
+            if (!File.Exists(statePath))
                 return null;
 
-            var json = File.ReadAllText(StatePath);
+            var json = File.ReadAllText(statePath);
             var state = JsonSerializer.Deserialize<PersistedState>(json, JsonOptions);
             if (state == null)
                 return null;

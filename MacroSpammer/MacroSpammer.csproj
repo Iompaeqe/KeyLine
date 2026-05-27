@@ -3,6 +3,9 @@
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net9.0-windows</TargetFramework>
+        <AssemblyName>KeyLine</AssemblyName>
+        <Product>KeyLine</Product>
+        <AssemblyTitle>KeyLine</AssemblyTitle>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
