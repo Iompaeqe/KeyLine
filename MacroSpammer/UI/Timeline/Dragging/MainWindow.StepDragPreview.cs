@@ -12,15 +12,18 @@ public partial class MainWindow
     {
         _stepDragPreviewRawSteps.Clear();
         _stepDragRawItems.Clear();
+        _stepDragOriginalRawSteps.Clear();
         _stepDragPreviewWidthByFirstRawItem.Clear();
         _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(timeline));
 
-        var draggedItems = GetRawStepsForDisplayStep(timeline, draggedStep);
+        var draggedItems = GetRawStepsForDrag(timeline, draggedStep);
         if (draggedItems.Count == 0)
             return;
 
         _stepDragRawItems.AddRange(draggedItems);
+        _stepDragOriginalRawSteps.AddRange(timeline.Steps);
         _stepDragPreviewRawSteps.AddRange(timeline.Steps);
+        _stepDragSlotWidth = GetDraggedStepSlotWidth(timeline, draggedStep);
 
         BuildStepDragPreviewLayoutCache(timeline);
 
@@ -43,7 +46,7 @@ public partial class MainWindow
 
         foreach (var displayStep in visibleSteps)
         {
-            var rawItems = GetRawStepsForDisplayStep(_stepDragPreviewRawSteps, displayStep);
+            var rawItems = GetRawStepsForPreviewDisplayStep(timeline, displayStep);
             if (rawItems.Count == 0)
                 continue;
 
@@ -93,6 +96,13 @@ public partial class MainWindow
         return width;
     }
 
+    private double GetDraggedStepSlotWidth(MacroTimeline timeline, MacroStep draggedStep)
+    {
+        var block = CreateStepBlock(timeline, draggedStep);
+        var size = MeasureTimelineItem(block);
+        return Math.Max(1, size.Width + TimelineItemGap);
+    }
+
     private bool UpdateStepDragPreviewFromMouse(Point currentPoint)
     {
         if (_lastStepDragPreviewMousePoint.HasValue)
@@ -121,29 +131,37 @@ public partial class MainWindow
         if (_drag.DraggedStepTimeline == null || _stepDragPreviewRawSteps.Count == 0 || _stepDragRawItems.Count == 0)
             return false;
 
+        if (_selection.HasMultipleStepSelection && _drag.DraggedStep != null &&
+            _selection.IsStepSelected(_drag.DraggedStepTimeline, _drag.DraggedStep))
+        {
+            return UpdateMultiStepDragPreviewOrderFromMouse(_drag.DraggedStepTimeline, mouseX);
+        }
+
         var changed = false;
-        var maxMoves = Math.Max(1, _stepDragPreviewRawSteps.Count);
+        var maxMoves = _selection.HasMultipleStepSelection ? 1 : Math.Max(1, _stepDragPreviewRawSteps.Count);
 
         for (var move = 0; move < maxMoves; move++)
         {
             var slots = BuildStepPreviewSlots(_drag.DraggedStepTimeline);
-            var draggedSlotIndex = slots.FindIndex(slot => slot.IsDraggedSlot);
+            var draggedSlotIndex = FindDraggedDisplaySlotIndex(slots);
 
             if (draggedSlotIndex < 0)
                 break;
 
             if (ShouldMoveDraggedSlotLeft(slots, draggedSlotIndex, mouseX))
             {
-                MoveDraggedPreviewBeforeRawAnchor(slots[draggedSlotIndex - 1].RawItems[0]);
+                if (!MoveSelectedPreviewSlotsLeft(slots))
+                    break;
+
                 changed = true;
                 continue;
             }
 
             if (ShouldMoveDraggedSlotRight(slots, draggedSlotIndex, mouseX))
             {
-                var anchorAfterRightNeighbor = GetAnchorAfterRightNeighbor(slots, draggedSlotIndex);
+                if (!MoveSelectedPreviewSlotsRight(slots))
+                    break;
 
-                MoveDraggedPreviewBeforeRawAnchor(anchorAfterRightNeighbor);
                 changed = true;
                 continue;
             }
@@ -164,11 +182,79 @@ public partial class MainWindow
         return draggedSlotIndex < slots.Count - 1 && mouseX > slots[draggedSlotIndex + 1].CenterX;
     }
 
-    private static MacroStep? GetAnchorAfterRightNeighbor(IReadOnlyList<StepPreviewSlot> slots, int draggedSlotIndex)
+    private int FindDraggedDisplaySlotIndex(IReadOnlyList<StepPreviewSlot> slots)
     {
-        return draggedSlotIndex + 2 < slots.Count
-            ? slots[draggedSlotIndex + 2].RawItems[0]
-            : null;
+        if (_drag.DraggedStep == null || _drag.DraggedStepTimeline == null)
+            return -1;
+
+        var draggedRawItems = GetRawStepsForPreviewDisplayStep(_drag.DraggedStepTimeline, _drag.DraggedStep);
+        for (var i = 0; i < slots.Count; i++)
+        {
+            if (slots[i].RawItems.Any(draggedRawItems.Contains))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private bool MoveSelectedPreviewSlotsLeft(IReadOnlyList<StepPreviewSlot> slots)
+    {
+        var changed = false;
+
+        for (var i = 1; i < slots.Count; i++)
+        {
+            if (!slots[i].IsDraggedSlot || slots[i - 1].IsDraggedSlot)
+                continue;
+
+            if (SwapPreviewSlotGroups(slots[i - 1], slots[i]))
+                changed = true;
+        }
+
+        return changed;
+    }
+
+    private bool MoveSelectedPreviewSlotsRight(IReadOnlyList<StepPreviewSlot> slots)
+    {
+        var changed = false;
+
+        for (var i = slots.Count - 2; i >= 0; i--)
+        {
+            if (!slots[i].IsDraggedSlot || slots[i + 1].IsDraggedSlot)
+                continue;
+
+            if (SwapPreviewSlotGroups(slots[i], slots[i + 1]))
+                changed = true;
+        }
+
+        return changed;
+    }
+
+    private bool SwapPreviewSlotGroups(StepPreviewSlot leftSlot, StepPreviewSlot rightSlot)
+    {
+        if (leftSlot.RawItems.Count == 0 || rightSlot.RawItems.Count == 0)
+            return false;
+
+        var leftIndex = _stepDragPreviewRawSteps.IndexOf(leftSlot.RawItems[0]);
+        var rightIndex = _stepDragPreviewRawSteps.IndexOf(rightSlot.RawItems[0]);
+        if (leftIndex < 0 || rightIndex < 0 || leftIndex >= rightIndex)
+            return false;
+
+        foreach (var item in rightSlot.RawItems)
+            _stepDragPreviewRawSteps.Remove(item);
+
+        foreach (var item in leftSlot.RawItems)
+            _stepDragPreviewRawSteps.Remove(item);
+
+        leftIndex = Math.Min(leftIndex, _stepDragPreviewRawSteps.Count);
+
+        for (var i = 0; i < rightSlot.RawItems.Count; i++)
+            _stepDragPreviewRawSteps.Insert(leftIndex + i, rightSlot.RawItems[i]);
+
+        var leftInsertIndex = leftIndex + rightSlot.RawItems.Count;
+        for (var i = 0; i < leftSlot.RawItems.Count; i++)
+            _stepDragPreviewRawSteps.Insert(leftInsertIndex + i, leftSlot.RawItems[i]);
+
+        return true;
     }
 
     private List<StepPreviewSlot> BuildStepPreviewSlots(MacroTimeline timeline)
@@ -184,7 +270,7 @@ public partial class MainWindow
 
         foreach (var displayStep in visibleSteps)
         {
-            var rawItems = GetRawStepsForDisplayStep(_stepDragPreviewRawSteps, displayStep);
+            var rawItems = GetRawStepsForPreviewDisplayStep(timeline, displayStep);
             if (rawItems.Count == 0)
                 continue;
 
@@ -203,40 +289,25 @@ public partial class MainWindow
         return slots;
     }
 
-    private void MoveDraggedPreviewBeforeRawAnchor(MacroStep? rawInsertAnchor)
-    {
-        if (_stepDragPreviewRawSteps.Count == 0 || _stepDragRawItems.Count == 0)
-            return;
-
-        foreach (var draggedItem in _stepDragRawItems)
-            _stepDragPreviewRawSteps.Remove(draggedItem);
-
-        var insertIndex = rawInsertAnchor == null
-            ? _stepDragPreviewRawSteps.Count
-            : _stepDragPreviewRawSteps.IndexOf(rawInsertAnchor);
-
-        if (insertIndex < 0)
-            insertIndex = _stepDragPreviewRawSteps.Count;
-
-        for (var i = 0; i < _stepDragRawItems.Count; i++)
-            _stepDragPreviewRawSteps.Insert(insertIndex + i, _stepDragRawItems[i]);
-    }
-
     private MacroStep? GetStepDragPreviewRawInsertAnchor()
     {
-        if (_stepDragPreviewRawSteps.Count == 0 || _stepDragRawItems.Count == 0)
+        if (_drag.DraggedStep == null || _drag.DraggedStepTimeline == null || _stepDragPreviewRawSteps.Count == 0)
             return null;
 
-        var draggedFirstIndex = _stepDragPreviewRawSteps.IndexOf(_stepDragRawItems[0]);
+        var draggedItems = GetRawStepsForPreviewDisplayStep(_drag.DraggedStepTimeline, _drag.DraggedStep);
+        if (draggedItems.Count == 0)
+            return null;
+
+        var draggedFirstIndex = _stepDragPreviewRawSteps.IndexOf(draggedItems[0]);
         if (draggedFirstIndex < 0)
             return null;
 
-        var afterDraggedIndex = draggedFirstIndex + _stepDragRawItems.Count;
+        var afterDraggedIndex = draggedFirstIndex + draggedItems.Count;
 
         for (var i = afterDraggedIndex; i < _stepDragPreviewRawSteps.Count; i++)
         {
             var candidate = _stepDragPreviewRawSteps[i];
-            if (!_stepDragRawItems.Contains(candidate))
+            if (!draggedItems.Contains(candidate))
                 return candidate;
         }
 
@@ -253,20 +324,6 @@ public partial class MainWindow
         }
 
         return timeline.Steps;
-    }
-
-    private List<MacroStep> GetRawStepsForDisplayStep(IReadOnlyCollection<MacroStep> rawSteps, MacroStep step)
-    {
-        if (step.IsSyntheticDisplayStep)
-        {
-            return step.SourceSteps
-                .Where(rawSteps.Contains)
-                .ToList();
-        }
-
-        return rawSteps.Contains(step)
-            ? new List<MacroStep> { step }
-            : new List<MacroStep>();
     }
 
     private double GetTimelineRowTopY(MacroTimeline timeline)

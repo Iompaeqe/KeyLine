@@ -11,12 +11,14 @@ public partial class MainWindow
 {
     private readonly List<MacroStep> _stepDragPreviewRawSteps = new();
     private readonly List<MacroStep> _stepDragRawItems = new();
+    private readonly List<MacroStep> _stepDragOriginalRawSteps = new();
 
     // Drag-preview layout cache.
     // Without this, every mouse move creates/measures WPF controls just to decide
     // whether the placeholder should move. That is the main performance killer.
     private readonly Dictionary<MacroStep, double> _stepDragPreviewWidthByFirstRawItem = new();
     private double _stepDragPreviewContentLeftX;
+    private double _stepDragSlotWidth;
     private Point? _lastStepDragPreviewMousePoint;
 
     private FrameworkElement? _draggedStepGhost;
@@ -34,6 +36,10 @@ public partial class MainWindow
     private bool _timelineDragGlobalHandlersAttached;
     private bool _isDelayValueMouseEditPending;
     private bool _isMouseNodeEditPending;
+    private MacroTimeline? _pendingClickSelectionTimeline;
+    private MacroStep? _pendingClickSelectionStep;
+    private ModifierKeys _pendingClickSelectionModifiers;
+    private bool _pendingClickWasSelected;
 
     private static DragUiConfig DragUi => GeneratedUiConfig.Drag;
 
@@ -50,8 +56,7 @@ public partial class MainWindow
                 element is DelayStepControl delayControl &&
                 delayControl.IsValueEditorSource(e.OriginalSource as DependencyObject))
             {
-                SelectTimeline(timeline);
-                _selection.SelectStep(timeline, step);
+                SelectStepFromPointer(timeline, step);
 
                 if (!_isTimelineEditingEnabled)
                 {
@@ -60,6 +65,7 @@ public partial class MainWindow
                 }
 
                 CancelTimelineDragState();
+                SaveUndoSnapshot();
                 _isDelayValueMouseEditPending = true;
                 delayControl.FocusValueEditor(e.OriginalSource as DependencyObject);
                 e.Handled = true;
@@ -71,17 +77,16 @@ public partial class MainWindow
                 mouseControl.IsEditorSource(e.OriginalSource as DependencyObject))
             {
                 CancelTimelineDragState();
+                SaveUndoSnapshot();
                 _isMouseNodeEditPending = true;
-                SelectTimeline(timeline);
-                _selection.SelectStep(timeline, step);
+                SelectStepFromPointer(timeline, step);
                 e.Handled = false;
                 return;
             }
 
             if (e.ClickCount >= 2 && step.Type == MacroStepType.Text)
             {
-                SelectTimeline(timeline);
-                _selection.SelectStep(timeline, step);
+                SelectStepFromPointer(timeline, step);
 
                 if (!_isTimelineEditingEnabled)
                 {
@@ -94,8 +99,11 @@ public partial class MainWindow
                 return;
             }
 
-            SelectTimeline(timeline);
-            _selection.SelectStep(timeline, step);
+            SetPendingClickSelection(
+                timeline,
+                step,
+                Keyboard.Modifiers,
+                _selection.IsStepSelected(timeline, step));
 
             if (!_isTimelineEditingEnabled)
             {
@@ -131,6 +139,7 @@ public partial class MainWindow
 
                 _drag.MarkStepDragging();
 
+                ApplyPendingSelectionForDrag();
                 BeginStepDragPreviewModel(_drag.DraggedStepTimeline, _drag.DraggedStep);
                 UpdateStepDragPreviewFromMouse(currentPoint);
 
@@ -165,6 +174,9 @@ public partial class MainWindow
                 return;
             }
 
+            if (!_drag.IsDraggingStep)
+                ApplyPendingClickSelection();
+
             CompleteStepDrop();
             e.Handled = true;
         };
@@ -178,8 +190,7 @@ public partial class MainWindow
         element.PreviewMouseRightButtonDown += (_, e) =>
         {
             CancelTimelineDragState();
-            SelectTimeline(timeline);
-            _selection.SelectStep(timeline, step);
+            SelectStepFromPointer(timeline, step);
 
             if (!_isTimelineEditingEnabled)
             {
@@ -191,5 +202,67 @@ public partial class MainWindow
 
             e.Handled = true;
         };
+    }
+
+    private void SetPendingClickSelection(MacroTimeline timeline, MacroStep step, ModifierKeys modifiers, bool wasSelected)
+    {
+        _pendingClickSelectionTimeline = timeline;
+        _pendingClickSelectionStep = step;
+        _pendingClickSelectionModifiers = modifiers;
+        _pendingClickWasSelected = wasSelected;
+    }
+
+    private void ApplyPendingClickSelection()
+    {
+        if (_pendingClickSelectionTimeline != null && _pendingClickSelectionStep != null)
+            SelectStepFromStoredClick(
+                _pendingClickSelectionTimeline,
+                _pendingClickSelectionStep,
+                _pendingClickSelectionModifiers);
+
+        ClearPendingClickSelection();
+    }
+
+    private void ApplyPendingSelectionForDrag()
+    {
+        if (_pendingClickSelectionTimeline == null || _pendingClickSelectionStep == null)
+            return;
+
+        if (!_pendingClickWasSelected && _pendingClickSelectionModifiers == ModifierKeys.None)
+        {
+            SelectTimeline(_pendingClickSelectionTimeline);
+            _selection.SelectStep(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
+        }
+
+        ClearPendingClickSelection();
+    }
+
+    private void SelectStepFromStoredClick(MacroTimeline timeline, MacroStep step, ModifierKeys modifiers)
+    {
+        if (modifiers.HasFlag(ModifierKeys.Control))
+        {
+            SelectTimeline(timeline);
+            ToggleStepSelection(timeline, step);
+            return;
+        }
+
+        if (modifiers.HasFlag(ModifierKeys.Shift) && _selection.AnchorStep != null &&
+            ReferenceEquals(_selection.SelectedTimeline, timeline))
+        {
+            SelectTimeline(timeline);
+            SelectStepRange(timeline, step);
+            return;
+        }
+
+        SelectTimeline(timeline);
+        _selection.SelectStep(timeline, step);
+    }
+
+    private void ClearPendingClickSelection()
+    {
+        _pendingClickSelectionTimeline = null;
+        _pendingClickSelectionStep = null;
+        _pendingClickSelectionModifiers = ModifierKeys.None;
+        _pendingClickWasSelected = false;
     }
 }

@@ -57,7 +57,7 @@ public partial class MainWindow
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        if (_drag.DraggedStep == null && _drag.DraggedTimelineHeader == null)
+        if (!_drag.IsDraggingStep && !_drag.IsDraggingTimelineHeader)
             return;
 
         CompleteStepDrop();

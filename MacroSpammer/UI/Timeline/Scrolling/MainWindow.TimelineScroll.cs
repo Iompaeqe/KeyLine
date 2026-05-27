@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using MacroSpammer.Domain;
 using MacroSpammer.State;
 
@@ -267,9 +269,20 @@ public partial class MainWindow
                 return true;
             }
 
-            source = VisualTreeHelper.GetParent(source);
+            source = GetSafeUiParent(source);
         }
 
         return false;
+    }
+
+    private static DependencyObject? GetSafeUiParent(DependencyObject source)
+    {
+        if (source is Visual or Visual3D)
+            return VisualTreeHelper.GetParent(source);
+
+        if (source is FrameworkContentElement contentElement)
+            return contentElement.Parent;
+
+        return null;
     }
 }

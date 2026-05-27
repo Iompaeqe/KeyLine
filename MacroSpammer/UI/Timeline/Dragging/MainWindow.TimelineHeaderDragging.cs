@@ -50,6 +50,7 @@ public partial class MainWindow
                 if (!_drag.ShouldStartTimelineHeaderDrag(currentPoint, TimelineHeaderDragThreshold))
                     return;
 
+                SaveUndoSnapshot();
                 _drag.MarkTimelineHeaderDragging();
             }
 

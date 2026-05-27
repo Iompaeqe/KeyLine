@@ -216,6 +216,12 @@ public partial class MainWindow
         }
 
         var timeline = _drag.DraggedStepTimeline;
+
+        if (_selection.HasMultipleStepSelection && _selection.IsStepSelected(timeline, _drag.DraggedStep!))
+        {
+            RefreshTimelineRow(timeline);
+            return;
+        }
         
         // Fast path: if we already have a render state for this row, just update positions
         if (_timelineRowRenderStates.TryGetValue(timeline, out var state))
@@ -472,10 +478,10 @@ public partial class MainWindow
             _drag.DraggedStep != null;
 
         var draggedItems = isDraggingThisTimeline
-            ? GetRawStepsForDisplayStep(timeline, _drag.DraggedStep!)
+            ? GetRawStepsForDrag(timeline, _drag.DraggedStep!)
             : new List<MacroStep>();
 
-        var placeholderAdded = false;
+        var placeholderCount = 0;
 
         foreach (var step in visibleSteps)
         {
@@ -487,8 +493,8 @@ public partial class MainWindow
 
             if (isDraggedDisplayStep)
             {
-                AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedStep!);
-                placeholderAdded = true;
+                AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, step);
+                placeholderCount++;
                 continue;
             }
 
@@ -510,7 +516,7 @@ public partial class MainWindow
             currentLeft += size.Width + TimelineItemGap;
         }
 
-        if (isDraggingThisTimeline && !placeholderAdded)
+        if (isDraggingThisTimeline && placeholderCount == 0)
             AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedStep!);
 
         var addBlock = CreateAddBlock(timeline);
@@ -530,6 +536,11 @@ public partial class MainWindow
     private static object GetDropPlaceholderAnimationKey(MacroTimeline timeline)
     {
         return (timeline, "drop-placeholder");
+    }
+
+    private object GetDropPlaceholderAnimationKey(MacroTimeline timeline, MacroStep step)
+    {
+        return (timeline, "drop-placeholder", GetTimelineAnimationKey(timeline, step));
     }
 
     private void AddPlaceholderVisualItem(
@@ -570,7 +581,7 @@ public partial class MainWindow
             Element = placeholder,
             Left = currentLeft,
             Size = draggedSize,
-            AnimationKey = GetDropPlaceholderAnimationKey(timeline)
+            AnimationKey = GetDropPlaceholderAnimationKey(timeline, draggedStep)
         });
 
         currentLeft += draggedSize.Width + TimelineItemGap;

@@ -8,6 +8,7 @@ public partial class MainWindow
     {
         if (_drag.IsDraggingStep && _drag.DraggedStepTimeline != null && _drag.DraggedStep != null)
         {
+            SaveUndoSnapshot();
             CaptureDroppedGhostPositionForAnimation();
 
             MoveStepBeforeRawAnchor(
@@ -31,8 +32,11 @@ public partial class MainWindow
 
         _stepDragPreviewRawSteps.Clear();
         _stepDragRawItems.Clear();
+        _stepDragOriginalRawSteps.Clear();
         _stepDragPreviewWidthByFirstRawItem.Clear();
+        _stepDragSlotWidth = 0;
         _lastStepDragPreviewMousePoint = null;
+        ClearPendingClickSelection();
 
         if (_drag.DraggedStepTimeline != null)
             _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(_drag.DraggedStepTimeline));

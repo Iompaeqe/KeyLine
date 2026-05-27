@@ -84,6 +84,7 @@ public partial class MainWindow
 
         control.TargetPickRequested += async (_, _) =>
         {
+            SaveUndoSnapshot();
             SelectTimeline(timeline);
             _selection.SelectStep(timeline, step);
             await PickMouseCoordinatesForStepAsync(step);
@@ -119,26 +120,25 @@ public partial class MainWindow
 
     private bool IsStepSelected(MacroTimeline timeline, MacroStep step)
     {
-        if (!_selection.HasStepSelection || _selection.SelectedTimeline == null || _selection.SelectedStep == null)
+        if (!_selection.HasStepSelection || _selection.SelectedTimeline == null || _selection.SelectedSteps.Count == 0)
             return false;
 
         if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
             return false;
 
-        if (ReferenceEquals(step, _selection.SelectedStep))
+        return _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(step, selectedStep));
+    }
+
+    private static bool IsSameSelectedStep(MacroStep step, MacroStep selectedStep)
+    {
+        if (ReferenceEquals(step, selectedStep))
             return true;
 
         if (step.IsSyntheticDisplayStep)
-        {
-            return step.SourceSteps.Contains(_selection.SelectedStep) ||
-                   (_selection.SelectedStep.IsSyntheticDisplayStep &&
-                    step.SourceSteps.SequenceEqual(_selection.SelectedStep.SourceSteps));
-        }
+            return step.SourceSteps.Contains(selectedStep) ||
+                   (selectedStep.IsSyntheticDisplayStep && step.SourceSteps.SequenceEqual(selectedStep.SourceSteps));
 
-        if (_selection.SelectedStep.IsSyntheticDisplayStep)
-            return _selection.SelectedStep.SourceSteps.Contains(step);
-
-        return false;
+        return selectedStep.IsSyntheticDisplayStep && selectedStep.SourceSteps.Contains(step);
     }
 
     private static Size MeasureTimelineItem(UIElement element)

@@ -2,6 +2,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using MacroSpammer.Domain;
+using MacroSpammer.Services.Macro;
+using MacroSpammer.UI.Timeline;
 
 namespace MacroSpammer;
 
@@ -14,7 +17,7 @@ public partial class MainWindow
 
         EndDraggedStepGhost();
 
-        var ghost = CreateStepBlock(_drag.DraggedStepTimeline, _drag.DraggedStep);
+        var ghost = CreateDraggedStepGhostElement(_drag.DraggedStepTimeline, _drag.DraggedStep);
 
         if (ghost is not FrameworkElement ghostElement)
             return;
@@ -45,6 +48,56 @@ public partial class MainWindow
 
         UpdateDraggedStepGhostTargetPosition(snap: true);
         StartDragGhostAnimation();
+    }
+
+    private UIElement CreateDraggedStepGhostElement(MacroTimeline timeline, MacroStep draggedStep)
+    {
+        var ghostSteps = GetDraggedDisplaySteps(timeline, draggedStep);
+        if (ghostSteps.Count <= 1)
+            return CreateStepBlock(timeline, draggedStep);
+
+        var canvas = new Canvas
+        {
+            Height = TimelineRowHeight,
+            IsHitTestVisible = false
+        };
+
+        var currentLeft = 0.0;
+        var maxHeight = 0.0;
+        foreach (var step in ghostSteps)
+        {
+            var block = CreateStepBlock(timeline, step);
+            if (block is not FrameworkElement element)
+                continue;
+
+            element.IsHitTestVisible = false;
+            var size = MainWindow.MeasureTimelineItem(element);
+            Canvas.SetLeft(element, currentLeft);
+            Canvas.SetTop(element, TimelineLayoutCalculator.GetItemTop(TimelineConnectorY, size.Height));
+            canvas.Children.Add(element);
+
+            currentLeft += size.Width + TimelineItemGap;
+            maxHeight = Math.Max(maxHeight, size.Height);
+        }
+
+        canvas.Width = Math.Max(1, currentLeft - TimelineItemGap);
+        canvas.Height = Math.Max(1, maxHeight);
+        return canvas;
+    }
+
+    private List<MacroStep> GetDraggedDisplaySteps(MacroTimeline timeline, MacroStep draggedStep)
+    {
+        if (!_selection.HasMultipleStepSelection || !_selection.IsStepSelected(timeline, draggedStep))
+            return new List<MacroStep> { draggedStep };
+
+        var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+            timeline.Steps.ToList(),
+            timeline.UseStandardDelay,
+            timeline.ShowKeyUpDown);
+
+        return visibleSteps
+            .Where(step => _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(step, selectedStep)))
+            .ToList();
     }
 
     private void UpdateDraggedStepGhostTargetPosition(bool snap = false)

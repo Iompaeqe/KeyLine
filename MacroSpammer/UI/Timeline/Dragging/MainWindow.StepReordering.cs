@@ -9,9 +9,16 @@ public partial class MainWindow
         MacroStep draggedStep,
         MacroStep? rawInsertAnchor)
     {
-        var draggedItems = GetRawStepsForDisplayStep(timeline, draggedStep);
+        var draggedItems = GetRawStepsForDrag(timeline, draggedStep);
         if (draggedItems.Count == 0)
             return;
+
+        if (_selection.HasMultipleStepSelection &&
+            _selection.IsStepSelected(timeline, draggedStep) &&
+            TryApplyStepDragPreviewOrder(timeline, draggedStep))
+        {
+            return;
+        }
 
         if (rawInsertAnchor != null && draggedItems.Contains(rawInsertAnchor))
             return;
@@ -39,7 +46,38 @@ public partial class MainWindow
 
         InsertDraggedItems(timeline, insertIndex, draggedItems);
 
-        _selection.SelectStep(timeline, draggedStep);
+        if (_selection.IsStepSelected(timeline, draggedStep))
+            _selection.SelectSteps(
+                timeline,
+                _selection.SelectedSteps.Where(step => timeline.Steps.Contains(step)).ToList(),
+                _selection.AnchorStep);
+        else
+            _selection.SelectStep(timeline, draggedStep);
+    }
+
+    private bool TryApplyStepDragPreviewOrder(MacroTimeline timeline, MacroStep draggedStep)
+    {
+        if (_stepDragPreviewRawSteps.Count != timeline.Steps.Count ||
+            _stepDragPreviewRawSteps.Any(step => !timeline.Steps.Contains(step)))
+        {
+            return false;
+        }
+
+        if (_stepDragPreviewRawSteps.SequenceEqual(timeline.Steps))
+            return true;
+
+        timeline.Steps.Clear();
+        foreach (var step in _stepDragPreviewRawSteps)
+            timeline.Steps.Add(step);
+
+        _selection.SelectSteps(
+            timeline,
+            _selection.SelectedSteps.Where(step => timeline.Steps.Contains(step)).ToList(),
+            _selection.AnchorStep);
+        if (!_selection.HasStepSelection)
+            _selection.SelectStep(timeline, draggedStep);
+
+        return true;
     }
 
     private static bool IsSameDragPosition(int oldFirstIndex, int draggedItemCount, int newIndexBeforeRemoval)
@@ -60,6 +98,13 @@ public partial class MainWindow
             timeline.Steps.Insert(insertIndex + i, draggedItems[i]);
     }
 
+    private List<MacroStep> GetRawStepsForDrag(MacroTimeline timeline, MacroStep draggedStep)
+    {
+        return _selection.IsStepSelected(timeline, draggedStep)
+            ? GetSelectedRawSteps(timeline)
+            : GetRawStepsForDisplayStep(timeline, draggedStep);
+    }
+
     private static List<MacroStep> GetRawStepsForDisplayStep(MacroTimeline timeline, MacroStep step)
     {
         if (step.IsSyntheticDisplayStep)
@@ -69,8 +114,31 @@ public partial class MainWindow
                 .ToList();
         }
 
-        return timeline.Steps.Contains(step)
-            ? new List<MacroStep> { step }
-            : new List<MacroStep>();
+        if (!timeline.Steps.Contains(step))
+            return new List<MacroStep>();
+
+        var rawSteps = new List<MacroStep> { step };
+        AddAttachedStandardDelaySteps(timeline, step, rawSteps);
+        return rawSteps
+            .Distinct()
+            .OrderBy(rawStep => timeline.Steps.IndexOf(rawStep))
+            .ToList();
+    }
+
+    private static void AddAttachedStandardDelaySteps(MacroTimeline timeline, MacroStep step, List<MacroStep> rawSteps)
+    {
+        if (!timeline.UseStandardDelay || step.Type is MacroStepType.Delay or MacroStepType.RandomDelay)
+            return;
+
+        var stepIndex = timeline.Steps.IndexOf(step);
+        if (stepIndex < 0)
+            return;
+
+        var delaySteps = GetContiguousDelayStepsBefore(timeline, stepIndex);
+        if (delaySteps.Count == 0)
+            delaySteps = GetContiguousDelayStepsAfter(timeline, stepIndex);
+
+        foreach (var delayStep in delaySteps)
+            rawSteps.Add(delayStep);
     }
 }
