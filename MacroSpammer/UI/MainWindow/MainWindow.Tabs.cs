@@ -8,12 +8,28 @@ namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private static MacroWorkspace CreateWorkspace(int number)
+    private static MacroWorkspace CreateWorkspace(int number, AppSettings? settings = null)
     {
-        return new MacroWorkspace
+        var workspace = new MacroWorkspace
         {
-            Name = $"Macro {number}"
+            Name = $"Macro {number}",
+            LoopCount = settings?.DefaultLoopCount ?? 0,
+            TimerMs = settings?.DefaultTimerMs ?? 0,
+            BaseDelayMs = settings?.DefaultBaseDelayMs ?? 50
         };
+
+        if (settings != null)
+            ApplyDefaultSettingsToTimeline(workspace.Document.ActiveTimeline, settings);
+
+        return workspace;
+    }
+
+    private static void ApplyDefaultSettingsToTimeline(MacroTimeline timeline, AppSettings settings)
+    {
+        timeline.UseStandardDelay = settings.DefaultStandardDelayEnabled;
+        timeline.StandardDelayMs = Math.Max(0, settings.DefaultStandardDelayMs);
+        timeline.ShowKeyUpDown = !settings.DefaultStandardDelayEnabled || settings.DefaultShowKeyUpDown;
+        timeline.UseTextInputMode = settings.DefaultTextInputMode;
     }
 
     private int GetNextWorkspaceNumber()
@@ -50,7 +66,7 @@ public partial class MainWindow
     {
         CaptureActiveWorkspaceState();
 
-        var workspace = CreateWorkspace(GetNextWorkspaceNumber());
+        var workspace = CreateWorkspace(GetNextWorkspaceNumber(), _settings);
         _workspaces.Add(workspace);
         ActivateWorkspace(_workspaces.Count - 1);
     }

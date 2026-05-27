@@ -30,6 +30,7 @@ public partial class MainWindow
     {
         ResetTimelineDeleteConfirmation();
 
+        SaveUndoSnapshot();
         if (_runners.TryGetValue(timeline, out var runner))
             runner.Stop();
 
@@ -48,33 +49,132 @@ public partial class MainWindow
     private void DeleteSelectedStep()
     {
         var timeline = _selection.SelectedTimeline;
-        var selectedStep = _selection.SelectedStep;
 
-        if (timeline == null || selectedStep == null)
+        if (timeline == null || _selection.SelectedStep == null)
             return;
 
-        DeleteStep(timeline, selectedStep);
+        if (!_selection.HasMultipleStepSelection)
+        {
+            DeleteStep(timeline, _selection.SelectedStep);
+            return;
+        }
+
+        DeleteSteps(timeline, _selection.SelectedSteps.ToList());
     }
 
     private void DeleteStep(MacroTimeline timeline, MacroStep step)
     {
         ResetTimelineDeleteConfirmation();
 
-        if (step.IsSyntheticDisplayStep)
-        {
-            foreach (var sourceStep in step.SourceSteps.ToList())
-                timeline.Steps.Remove(sourceStep);
-        }
-        else
-        {
-            timeline.Steps.Remove(step);
-        }
+        SaveUndoSnapshot();
+        var stepsToRemove = GetStepsToRemoveForDelete(timeline, step);
+        if (timeline.UseStandardDelay && stepsToRemove.Any(IsDelayCleanupActionStep))
+            AddStandardDelayCleanupSteps(timeline, stepsToRemove);
+
+        foreach (var stepToRemove in stepsToRemove)
+            timeline.Steps.Remove(stepToRemove);
 
         _selection.Clear();
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
     }
+
+    private void DeleteSteps(MacroTimeline timeline, IReadOnlyList<MacroStep> steps)
+    {
+        ResetTimelineDeleteConfirmation();
+
+        var stepsToRemove = new List<MacroStep>();
+        foreach (var step in steps)
+        {
+            var rawSteps = GetStepsToRemoveForDelete(timeline, step);
+            if (timeline.UseStandardDelay && rawSteps.Any(IsDelayCleanupActionStep))
+                AddStandardDelayCleanupSteps(timeline, rawSteps);
+
+            foreach (var rawStep in rawSteps)
+            {
+                if (!stepsToRemove.Contains(rawStep))
+                    stepsToRemove.Add(rawStep);
+            }
+        }
+
+        if (stepsToRemove.Count == 0)
+            return;
+
+        SaveUndoSnapshot();
+        foreach (var stepToRemove in stepsToRemove.OrderByDescending(timeline.Steps.IndexOf))
+            timeline.Steps.Remove(stepToRemove);
+
+        _selection.Clear();
+        SelectTimeline(timeline);
+        RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private static List<MacroStep> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroStep step)
+    {
+        if (step.IsSyntheticDisplayStep)
+        {
+            return step.SourceSteps
+                .Where(timeline.Steps.Contains)
+                .ToList();
+        }
+
+        return timeline.Steps.Contains(step)
+            ? new List<MacroStep> { step }
+            : new List<MacroStep>();
+    }
+
+    private static void AddStandardDelayCleanupSteps(MacroTimeline timeline, List<MacroStep> stepsToRemove)
+    {
+        if (stepsToRemove.Count == 0)
+            return;
+
+        var indexes = stepsToRemove
+            .Select(timeline.Steps.IndexOf)
+            .Where(index => index >= 0)
+            .Order()
+            .ToList();
+
+        if (indexes.Count == 0)
+            return;
+
+        var cleanupSteps = GetContiguousDelayStepsBefore(timeline, indexes[0]);
+        if (cleanupSteps.Count == 0)
+            cleanupSteps = GetContiguousDelayStepsAfter(timeline, indexes[^1]);
+
+        foreach (var cleanupStep in cleanupSteps)
+        {
+            if (!stepsToRemove.Contains(cleanupStep))
+                stepsToRemove.Add(cleanupStep);
+        }
+    }
+
+    private static List<MacroStep> GetContiguousDelayStepsBefore(MacroTimeline timeline, int stepIndex)
+    {
+        var result = new List<MacroStep>();
+
+        for (var i = stepIndex - 1; i >= 0 && IsDelayCleanupStep(timeline.Steps[i]); i--)
+            result.Add(timeline.Steps[i]);
+
+        return result;
+    }
+
+    private static List<MacroStep> GetContiguousDelayStepsAfter(MacroTimeline timeline, int stepIndex)
+    {
+        var result = new List<MacroStep>();
+
+        for (var i = stepIndex + 1; i < timeline.Steps.Count && IsDelayCleanupStep(timeline.Steps[i]); i++)
+            result.Add(timeline.Steps[i]);
+
+        return result;
+    }
+
+    private static bool IsDelayCleanupStep(MacroStep step) =>
+        step.Type is MacroStepType.Delay or MacroStepType.RandomDelay;
+
+    private static bool IsDelayCleanupActionStep(MacroStep step) =>
+        !IsDelayCleanupStep(step);
 
     private void EditTextStep(MacroTimeline timeline, MacroStep step)
     {
@@ -84,6 +184,7 @@ public partial class MainWindow
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.ResultText))
             return;
 
+        SaveUndoSnapshot();
         step.Text = dialog.ResultText;
         SelectTimeline(timeline);
         RefreshTimeline();
@@ -156,6 +257,7 @@ public partial class MainWindow
     {
         ResetTimelineDeleteConfirmation();
 
+        SaveUndoSnapshot();
         if (_runners.TryGetValue(timeline, out var runner))
             runner.Stop();
 

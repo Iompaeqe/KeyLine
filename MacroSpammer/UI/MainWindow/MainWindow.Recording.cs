@@ -63,6 +63,12 @@ public partial class MainWindow
 
     private void AppendRecordedInputSteps(MacroTimeline timeline, List<MacroStep> addedSteps)
     {
+        if (_settings.MergeRepeatedDelayNodes)
+            MergeRepeatedRecordedDelayNodes(timeline, addedSteps);
+
+        if (addedSteps.Count > 0)
+            SaveUndoSnapshot();
+
         foreach (var step in addedSteps)
             timeline.Steps.Add(step);
 
@@ -73,10 +79,30 @@ public partial class MainWindow
             ScheduleSaveState();
     }
 
+    private static void MergeRepeatedRecordedDelayNodes(MacroTimeline timeline, List<MacroStep> addedSteps)
+    {
+        if (addedSteps.Count == 0 ||
+            timeline.Steps.LastOrDefault() is not { } lastStep ||
+            !IsMergeableRecordedDelay(lastStep) ||
+            !IsMergeableRecordedDelay(addedSteps[0]))
+        {
+            return;
+        }
+
+        lastStep.DelayMs += addedSteps[0].DelayMs;
+        addedSteps.RemoveAt(0);
+    }
+
+    private static bool IsMergeableRecordedDelay(MacroStep step) =>
+        step.Type == MacroStepType.Delay && step.IsRecordedDelay;
+
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (!_recorder.IsRecording)
             CancelTimelineDragState();
+
+        if (!_recorder.IsRecording && TryHandleEditingShortcut(e))
+            return;
 
         if (!_recorder.IsRecording && e.Key == Key.Delete)
         {

@@ -8,7 +8,9 @@ public partial class MainWindow
 {
     private void AddTimelineButton_Click(object sender, RoutedEventArgs e)
     {
+        SaveUndoSnapshot();
         var timeline = _document.AddTimeline();
+        ApplyDefaultSettingsToTimeline(timeline, _settings);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
@@ -25,7 +27,16 @@ public partial class MainWindow
             AddPopup.PlacementTarget = placementTarget;
 
         AddPopup.Placement = PlacementMode.Top;
+        UpdateExperimentalAddMenuVisibility();
         AddPopup.IsOpen = true;
+    }
+
+    private void UpdateExperimentalAddMenuVisibility()
+    {
+        if (ExperimentalAddMenuExpander != null)
+            ExperimentalAddMenuExpander.Visibility = _settings.ExperimentalFeaturesEnabled
+                ? Visibility.Visible
+                : Visibility.Collapsed;
     }
 
     private MacroTimeline? ResolveTimelineFromSender(object sender)
@@ -51,6 +62,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
+        SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
         timeline.Steps.Add(new MacroStep
         {
@@ -69,6 +81,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
+        SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
         timeline.Steps.Add(new MacroStep
         {
@@ -94,6 +107,7 @@ public partial class MainWindow
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.ResultText))
             return;
 
+        SaveUndoSnapshot();
         timeline.Steps.Add(new MacroStep
         {
             Type = MacroStepType.Text,
@@ -109,6 +123,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
+        SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
         var step = new MacroStep
         {
@@ -136,6 +151,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
+        SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
         timeline.Steps.Add(new MacroStep
         {
