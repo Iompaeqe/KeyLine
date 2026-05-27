@@ -72,6 +72,7 @@ public partial class MainWindow
         });
 
         timeline.UseStandardDelay = false;
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
@@ -92,6 +93,7 @@ public partial class MainWindow
         });
 
         timeline.UseStandardDelay = false;
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
@@ -114,6 +116,7 @@ public partial class MainWindow
             Text = dialog.ResultText
         });
 
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
@@ -133,6 +136,7 @@ public partial class MainWindow
         };
 
         timeline.Steps.Add(step);
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();
@@ -160,6 +164,7 @@ public partial class MainWindow
             MouseY = 0
         });
 
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();

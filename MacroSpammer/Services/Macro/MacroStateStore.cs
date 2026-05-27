@@ -14,7 +14,7 @@ public sealed class MacroStateSnapshot
 
 public static class MacroStateStore
 {
-    private const int CurrentVersion = 1;
+    private const int CurrentVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -55,12 +55,16 @@ public static class MacroStateStore
                 ? state.Workspaces.Select(ToWorkspace).ToList()
                 : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
 
+            var settings = state.Settings ?? new AppSettings();
+            if (state.Version < 2)
+                settings.MergeRepeatedDelayNodes = false;
+
             return new MacroStateSnapshot
             {
                 Workspaces = workspaces,
                 ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1),
                 ShortcutsEnabled = state.ShortcutsEnabled,
-                Settings = state.Settings ?? new AppSettings()
+                Settings = settings
             };
         }
         catch

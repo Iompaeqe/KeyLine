@@ -74,6 +74,7 @@ public partial class MainWindow
         foreach (var stepToRemove in stepsToRemove)
             timeline.Steps.Remove(stepToRemove);
 
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         _selection.Clear();
         SelectTimeline(timeline);
         RefreshTimeline();
@@ -105,6 +106,7 @@ public partial class MainWindow
         foreach (var stepToRemove in stepsToRemove.OrderByDescending(timeline.Steps.IndexOf))
             timeline.Steps.Remove(stepToRemove);
 
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         _selection.Clear();
         SelectTimeline(timeline);
         RefreshTimeline();

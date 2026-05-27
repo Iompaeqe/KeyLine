@@ -22,7 +22,7 @@ public sealed class AppSettings
     public string PasteShortcut { get; set; } = "17,86";
     public string DuplicateShortcut { get; set; } = "17,68";
 
-    public bool MergeRepeatedDelayNodes { get; set; } = true;
+    public bool MergeRepeatedDelayNodes { get; set; }
 
     public bool PlaySoundOnMacroStartStop { get; set; }
     public string PlaybackSoundName { get; set; } = "Beep";

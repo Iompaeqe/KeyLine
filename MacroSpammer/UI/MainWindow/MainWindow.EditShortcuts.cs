@@ -340,6 +340,7 @@ public partial class MainWindow
             timeline.Steps.Insert(insertIndex + i, clones[i]);
 
         _selection.SelectSteps(timeline, clones);
+        MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
     }
 

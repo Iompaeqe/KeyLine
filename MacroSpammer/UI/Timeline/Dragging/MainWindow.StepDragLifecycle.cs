@@ -17,6 +17,7 @@ public partial class MainWindow
                 _drag.StepDropRawInsertAnchor);
 
             SeedDraggedNodeAnimationFromGhost();
+            MergeAdjacentDelayNodesIfEnabled(_drag.DraggedStepTimeline);
         }
 
         CancelTimelineDragState();
