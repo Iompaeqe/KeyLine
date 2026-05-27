@@ -1,8 +1,8 @@
-# MacroSpammer
+# KeyLine
 
 License: MIT
 
-A lightweight window-targeted macro recorder/spammer for Windows.
+A lightweight window-targeted macro recorder for Windows.
 
 My goal was simple:
 
@@ -10,15 +10,15 @@ Select a target window → record/edit a macro → let it run in the background 
 
 No giant scripting system.  
 No bloated automation suite.  
-Just a fast and practical macro tool.
+Just a fast and practical input automation tool.
 
-MacroSpammer is focused on simple window-targeted keyboard and mouse macros, with a visual timeline editor that makes macros easy to record, edit, and run.
+KeyLine supports keyboard and mouse macros, multiple timelines, multiple macro tabs, global shortcuts, and a compact visual timeline editor.
 
 ---
 
 ## Screenshot
 
-<img width="1437" height="1094" alt="image" src="https://github.com/user-attachments/assets/eeb7cc26-cf25-4446-ad2a-7c6b8c07d910" />
+<img width="1330" height="601" alt="MacroSpammer screenshot" src="https://github.com/user-attachments/assets/aed82fff-b5e9-4586-8624-1a76b1a98592" />
 
 ---
 
@@ -28,7 +28,7 @@ MacroSpammer can send keyboard input directly to selected windows using WinAPI w
 
 This allows compatible macros to run on unfocused/background windows while you continue using your PC normally.
 
-Some applications handle this perfectly, while others may partially or completely ignore it depending on how they process input internally.
+Some applications handle this well, while others may partially or completely ignore it depending on how they process input internally.
 
 Mouse input is also supported. Foreground mouse input works normally, while background mouse input is experimental and only works with some applications.
 
@@ -36,25 +36,57 @@ Mouse input is also supported. Foreground mouse input works normally, while back
 
 ## Features
 
-- Window-targeted keyboard macro playback
-- Keyboard and mouse recording
-- Mouse button support for `M1` through `M5`
+### Macro Recording & Playback
+
+- Record keyboard input
+- Record mouse input
+- Send keyboard input to unfocused/background windows
 - Foreground mouse input support
 - Experimental background mouse input support
+- Mouse button support for `M1` through `M5`
 - Cursor move nodes
-- Mouse coordinate target picker
-- Multiple macro tabs
-- Multiple timelines per macro
-- Visual timeline editing
-- Drag & reorder timeline nodes
-- Standard delay mode
+- Text input nodes
+- Delay and random delay nodes
 - Loop and timer support
-- Global macro shortcuts
-- Multiple macros can run at the same time
+- Standard delay mode
 - Per-timeline input mode: `Key` or `Text`
-- Target window selector
-- Auto-save latest state
-- Compact UI with tooltips
+
+### Timeline Editor
+
+- Visual timeline-based macro editing
+- Multiple timelines per macro
+- Multiple macro tabs
+- Drag & reorder nodes
+- Edit, copy, paste, duplicate, and delete nodes
+- Copy, paste, and duplicate timelines
+- Copy, paste, and duplicate macros
+- Undo / redo support
+- Multi-select support
+- Select all support
+
+### Shortcuts
+
+- Global macro shortcuts
+- Global start / stop / pause shortcuts
+- Emergency stop shortcut
+- Configurable editor shortcuts
+- Shortcuts can use multi-key combinations
+- Multiple macros can run at the same time
+
+### Settings
+
+- Global settings panel
+- Launch on Windows startup
+- Start minimized
+- Minimize to tray
+- Close to tray
+- Default macro values
+- Recording options
+- Playback options
+- Import / export macros
+- Reset settings
+- Reset macros
+- Experimental nodes can be enabled/disabled from settings
 
 ---
 
@@ -77,7 +109,7 @@ Supported node types include:
 
 Recording captures keyboard inputs, mouse inputs, and the delays between them.
 
-After recording, nodes can be edited, reordered, removed, or adjusted directly inside the timeline.
+After recording, nodes can be edited, reordered, copied, pasted, duplicated, removed, or adjusted directly inside the timeline.
 
 ---
 
@@ -102,13 +134,11 @@ This makes macros easier to read and edit when exact recorded timing is not need
 
 ---
 
-## Global Shortcuts
+## Import / Export
 
-Each macro can have a global shortcut.
+Macros can be exported and imported from the settings panel.
 
-Shortcuts can start macros while MacroSpammer is not focused, and different macros can run at the same time through their shortcuts.
-
-This also allows MacroSpammer to be used as a simple key remapper.
+Imported macros are added as new macros, making it easier to back up, share, or move macros between installations.
 
 ---
 
@@ -119,7 +149,7 @@ MacroSpammer uses different input methods depending on the selected node/input t
 Because Windows applications do not all process input the same way, compatibility can vary:
 
 - Background keyboard input works well in many normal desktop applications.
-- Some applications may ignore windows-message-based keyboard input.
+- Some applications may ignore window-message-based keyboard input.
 - Foreground mouse input works normally.
 - Experimental background mouse input works in some applications.
 - Many games and protected applications may ignore background mouse input.
@@ -130,11 +160,11 @@ This is a practical macro tool, not a guaranteed universal automation system.
 
 ## Possible Future Features
 
-- Import/export macro profiles
-- Macro, timeline, and node duplication
+Things I may add in the future:
+
+- Repeat / for-loop style timeline nodes
 - Better macro tab status indicators
 - Better multi-window workflow
 - Conditional execution
-- Repeat / for-loop style timeline nodes
 - Hold/toggle modes
 - More advanced timeline visuals
