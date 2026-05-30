@@ -12,6 +12,7 @@ public sealed class MacroRunner
 
     public bool IsRunning => _cts != null;
     public bool IsPaused => _pauseGate != null;
+    public CancellationToken CancellationToken => _cts?.Token ?? CancellationToken.None;
 
     public async Task StartAsync(
         nint targetHwnd,

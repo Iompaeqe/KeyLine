@@ -1,5 +1,11 @@
 namespace MacroSpammer.Domain;
 
+public enum MacroLoopType
+{
+    Async,
+    Sync
+}
+
 public sealed class MacroWorkspace
 {
     public string Name { get; set; } = "Macro 1";
@@ -11,6 +17,8 @@ public sealed class MacroWorkspace
     public int TimerMs { get; set; }
 
     public int BaseDelayMs { get; set; } = 50;
+
+    public MacroLoopType LoopType { get; set; } = MacroLoopType.Async;
 
     public string ShortcutKeys { get; set; } = "";
 

@@ -14,6 +14,7 @@ public sealed class AppSettings
     public int DefaultBaseDelayMs { get; set; } = 50;
     public int DefaultTimerMs { get; set; }
     public int DefaultLoopCount { get; set; }
+    public MacroLoopType DefaultLoopType { get; set; } = MacroLoopType.Async;
     public bool DefaultTextInputMode { get; set; }
 
     public string UndoShortcut { get; set; } = "17,90";
@@ -28,7 +29,6 @@ public sealed class AppSettings
     public bool PlaySoundOnMacroStartStop { get; set; }
     public string PlaybackSoundName { get; set; } = "Beep";
     public string EmergencyStopShortcut { get; set; } = "17,18,27";
-    public string StopAllMacrosShortcut { get; set; } = "";
     public string PauseResumeAllMacrosShortcut { get; set; } = "";
 
     public bool ExperimentalFeaturesEnabled { get; set; }
@@ -51,6 +51,7 @@ public sealed class AppSettings
         DefaultBaseDelayMs = source.DefaultBaseDelayMs;
         DefaultTimerMs = source.DefaultTimerMs;
         DefaultLoopCount = source.DefaultLoopCount;
+        DefaultLoopType = source.DefaultLoopType;
         DefaultTextInputMode = source.DefaultTextInputMode;
         UndoShortcut = source.UndoShortcut;
         RedoShortcut = source.RedoShortcut;
@@ -62,7 +63,6 @@ public sealed class AppSettings
         PlaySoundOnMacroStartStop = source.PlaySoundOnMacroStartStop;
         PlaybackSoundName = source.PlaybackSoundName;
         EmergencyStopShortcut = source.EmergencyStopShortcut;
-        StopAllMacrosShortcut = source.StopAllMacrosShortcut;
         PauseResumeAllMacrosShortcut = source.PauseResumeAllMacrosShortcut;
         ExperimentalFeaturesEnabled = source.ExperimentalFeaturesEnabled;
     }

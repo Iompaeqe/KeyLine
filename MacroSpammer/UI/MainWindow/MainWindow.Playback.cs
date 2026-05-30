@@ -94,7 +94,14 @@ public partial class MainWindow
                 () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
         }
 
-        await Task.WhenAll(tasks);
+        if (_activeWorkspace.LoopType == MacroLoopType.Sync && loopCount != 1)
+        {
+            await RunSyncedPlayback(target.Handle, runnableTimelines, loopCount, baseDelayMs);
+        }
+        else
+        {
+            await Task.WhenAll(tasks);
+        }
 
         SetStoppedStatus(_restoreInputsOnStop);
         PlayMacroSound();
@@ -284,6 +291,43 @@ public partial class MainWindow
         PausePlaybackTimer();
         _isPlaybackPaused = true;
         StatusText.Text = "Paused";
+    }
+
+    private async Task RunSyncedPlayback(nint targetHwnd, List<MacroTimeline> runnableTimelines, int loopCount, int baseDelayMs)
+    {
+        var currentLoop = 0;
+
+        while (true)
+        {
+            var tasks = new List<Task>();
+            for (var i = 0; i < runnableTimelines.Count; i++)
+            {
+                var timeline = runnableTimelines[i];
+                var runnerIndex = i;
+                var runner = GetRunner(timeline);
+
+                // Run exactly one loop
+                tasks.Add(Task.Run(() => runner.StartAsync(
+                    targetHwnd,
+                    timeline.Steps.ToList(),
+                    1, // Force 1 loop for sync
+                    baseDelayMs,
+                    timeline.UseStandardDelay,
+                    timeline.StandardDelayMs,
+                    timeline.UseTextInputMode,
+                    () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
+            }
+
+            await Task.WhenAll(tasks);
+
+            // Check if any runner was cancelled (meaning stop was requested)
+            if (_runners.Values.Any(r => r.CancellationToken.IsCancellationRequested))
+                break;
+
+            currentLoop++;
+            if (loopCount > 0 && currentLoop >= loopCount)
+                break;
+        }
     }
 
     private void SetPlaybackUiRunning()
