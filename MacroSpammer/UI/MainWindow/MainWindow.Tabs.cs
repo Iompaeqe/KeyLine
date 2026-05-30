@@ -104,6 +104,7 @@ public partial class MainWindow
             LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
             TimerMinutesTextBox.Text = _activeWorkspace.TimerMs.ToString();
             BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
+            LoopTypeTextBlock.Text = _activeWorkspace.LoopType == MacroLoopType.Sync ? "synced" : "asynced";
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _activeWorkspace.TimerMs);
             SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, _activeWorkspace.BaseDelayMs);
             UpdateShortcutText();
@@ -142,14 +143,17 @@ public partial class MainWindow
                 continue;
             }
 
+            var grid = new Grid
+            {
+                Margin = new Thickness(i == 0 ? 0 : 4, 0, 0, 0)
+            };
+
             var button = new Button
             {
-                Content = isPendingDelete ? $"{workspace.Name} - Confirm" : workspace.Name,
                 Height = 22,
                 MinWidth = isPendingDelete ? 104 : 68,
                 MaxWidth = isPendingDelete ? 128 : 92,
-                Padding = new Thickness(10, 0, 10, 1),
-                Margin = new Thickness(i == 0 ? 0 : 4, 0, 0, 0),
+                Padding = new Thickness(10, 0, isPendingDelete ? 10 : 20, 1),
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Background = new SolidColorBrush(isPendingDelete
@@ -169,6 +173,9 @@ public partial class MainWindow
                     : Color.FromRgb(142, 160, 182)),
                 Tag = workspace
             };
+
+            button.Padding = new Thickness(10, 0, 10, 1);
+            button.Content = isPendingDelete ? $"{workspace.Name} - Confirm" : workspace.Name;
 
             button.Click += (_, _) =>
             {
@@ -193,7 +200,53 @@ public partial class MainWindow
                 BeginOrConfirmWorkspaceDelete(workspace);
                 e.Handled = true;
             };
-            MacroTabsPanel.Children.Add(button);
+
+            grid.Children.Add(button);
+
+            if (!isPendingDelete)
+            {
+                var editIcon = new TextBlock
+                {
+                    Text = "✎",
+                    FontSize = 10,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Margin = new Thickness(0, 0, 6, 2),
+                    Foreground = button.Foreground,
+                    Visibility = Visibility.Collapsed,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    IsHitTestVisible = true,
+                    ToolTip = "Rename macro"
+                };
+
+                editIcon.MouseLeftButtonDown += (_, e) =>
+                {
+                    BeginWorkspaceRename(workspace);
+                    e.Handled = true;
+                };
+
+                // Show icon on hover
+                grid.MouseEnter += (_, _) =>
+                {
+                    editIcon.Visibility = Visibility.Visible;
+                    button.Padding = new Thickness(10, 0, 20, 1);
+                };
+                grid.MouseLeave += (_, _) =>
+                {
+                    editIcon.Visibility = Visibility.Collapsed;
+                    button.Padding = new Thickness(10, 0, 10, 1);
+                };
+                editIcon.MouseEnter += (_, _) => editIcon.Opacity = 1.0;
+                editIcon.MouseLeave += (_, _) => editIcon.Opacity = 0.6;
+
+                grid.Children.Add(editIcon);
+            }
+            else
+            {
+                button.Padding = new Thickness(10, 0, 10, 1);
+            }
+
+            MacroTabsPanel.Children.Add(grid);
         }
 
         Dispatcher.BeginInvoke(
@@ -219,6 +272,7 @@ public partial class MainWindow
         }
 
         _activeWorkspace.BaseDelayMs = GetBaseDelayMs();
+        _activeWorkspace.LoopType = LoopTypeTextBlock.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
         CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }
