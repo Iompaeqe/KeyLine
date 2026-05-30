@@ -112,9 +112,6 @@ public partial class MainWindow
         if (TryTriggerSettingsShortcut(_settings.EmergencyStopShortcut, "emergency-stop", StopAllPlaybackFromGlobalShortcut))
             return true;
 
-        if (TryTriggerSettingsShortcut(_settings.StopAllMacrosShortcut, "stop-all", StopAllPlaybackFromGlobalShortcut))
-            return true;
-
         return TryTriggerSettingsShortcut(_settings.PauseResumeAllMacrosShortcut, "pause-resume", PauseResumeAllPlaybackFromGlobalShortcut);
     }
 
@@ -136,7 +133,6 @@ public partial class MainWindow
     private bool ShouldRunGlobalShortcutHook() =>
         _shortcutsEnabled ||
         ShortcutGesture.Parse(_settings.EmergencyStopShortcut).Length > 0 ||
-        ShortcutGesture.Parse(_settings.StopAllMacrosShortcut).Length > 0 ||
         ShortcutGesture.Parse(_settings.PauseResumeAllMacrosShortcut).Length > 0;
 
     private int FindMatchingShortcutWorkspaceIndex()
@@ -204,8 +200,53 @@ public partial class MainWindow
 
     private void ShortcutTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_isShortcutClearConfirmationActive)
+        {
+            CommitShortcutCapture(Array.Empty<int>());
+            ResetShortcutClearConfirmation();
+            e.Handled = true;
+            return;
+        }
+
         BeginShortcutCapture();
         e.Handled = true;
+    }
+
+    private void ShortcutBorder_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_activeWorkspace.ShortcutKeys))
+            return;
+
+        if (_isShortcutClearConfirmationActive)
+        {
+            CommitShortcutCapture(Array.Empty<int>());
+            ResetShortcutClearConfirmation();
+        }
+        else
+        {
+            BeginShortcutClearConfirmation();
+        }
+
+        e.Handled = true;
+    }
+
+    private void BeginShortcutClearConfirmation()
+    {
+        _isShortcutClearConfirmationActive = true;
+        CancelShortcutCapture();
+        
+        ShortcutTextBlock.Text = "clear? confirm";
+        ShortcutTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(254, 202, 202));
+        ShortcutBorder.Background = new SolidColorBrush(Color.FromRgb(127, 29, 29));
+        ShortcutBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+    }
+
+    private void ResetShortcutClearConfirmation()
+    {
+        _isShortcutClearConfirmationActive = false;
+        ShortcutBorder.ClearValue(BackgroundProperty);
+        ShortcutBorder.ClearValue(BorderBrushProperty);
+        UpdateShortcutText();
     }
 
     private void ShortcutTextBlock_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -265,6 +306,12 @@ public partial class MainWindow
 
     private void ShortcutTextBlock_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
+        if (_isShortcutClearConfirmationActive)
+        {
+            ResetShortcutClearConfirmation();
+            return;
+        }
+
         if (!_isCapturingShortcut)
             return;
 
@@ -276,22 +323,32 @@ public partial class MainWindow
 
     private void BeginShortcutCapture()
     {
+        ResetShortcutClearConfirmation();
         _isCapturingShortcut = true;
         _capturedShortcutKeys.Clear();
         _shortcutCaptureDownKeys.Clear();
         ShortcutTextBlock.Text = "press shortcut";
-        ShortcutTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248));
+        ShortcutTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
         ShortcutTextBlock.Focus();
     }
 
     private void CommitShortcutCapture(IEnumerable<int> virtualKeys)
     {
-        _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(virtualKeys);
-        if (!_shortcutsEnabled && !string.IsNullOrWhiteSpace(_activeWorkspace.ShortcutKeys))
+        if (virtualKeys.Any())
         {
-            _shortcutsEnabled = true;
+            _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(virtualKeys);
+            if (!_shortcutsEnabled)
+            {
+                _shortcutsEnabled = true;
+                ApplyShortcutHookState();
+                SuppressCurrentlyHeldShortcutKeys(_activeWorkspace.ShortcutKeys);
+            }
+        }
+        else
+        {
+            _activeWorkspace.ShortcutKeys = "";
+            _shortcutsEnabled = false;
             ApplyShortcutHookState();
-            SuppressCurrentlyHeldShortcutKeys(_activeWorkspace.ShortcutKeys);
         }
 
         _isCapturingShortcut = false;
@@ -321,7 +378,7 @@ public partial class MainWindow
             return;
 
         ShortcutTextBlock.Text = ShortcutGesture.Format(_activeWorkspace.ShortcutKeys);
-        ShortcutTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(142, 160, 182));
+        ShortcutTextBlock.ClearValue(ForegroundProperty);
         UpdateShortcutToggleText();
     }
 
@@ -331,9 +388,14 @@ public partial class MainWindow
             return;
 
         ShortcutToggleTextBlock.Text = _shortcutsEnabled ? "on" : "off";
-        ShortcutToggleTextBlock.Foreground = new SolidColorBrush(_shortcutsEnabled
-            ? Color.FromRgb(52, 211, 153)
-            : Color.FromRgb(142, 160, 182));
+        if (_shortcutsEnabled)
+        {
+            ShortcutToggleTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
+        }
+        else
+        {
+            ShortcutToggleTextBlock.ClearValue(ForegroundProperty);
+        }
     }
 
     private void UpdateShortcutCaptureText()

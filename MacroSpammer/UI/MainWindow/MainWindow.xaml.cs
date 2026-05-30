@@ -35,13 +35,14 @@ public partial class MainWindow : Window
     private bool _isDraggingMacroTabs;
     private bool _didDragMacroTabs;
     private bool _isTimelineEditingEnabled = true;
-    private bool _shortcutsEnabled = true;
+    private bool _shortcutsEnabled = false;
     private Point _macroTabsDragStartPoint;
     private double _macroTabsDragStartOffset;
 
     private MacroTimeline? _pendingClearTimeline;
     private bool _isClearConfirmationActive;
     private MacroTimeline? _pendingDeleteTimeline;
+    private bool _isShortcutClearConfirmationActive;
 
     private bool _didInitialTimelineRefresh;
 
@@ -142,5 +143,16 @@ public partial class MainWindow : Window
     private static int GetYLParam(IntPtr lParam)
     {
         return unchecked((short)((long)lParam >> 16));
+    }
+
+    private void LoopTypeTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isTimelineEditingEnabled)
+            return;
+
+        LoopTypeTextBlock.Text = LoopTypeTextBlock.Text == "asynced" ? "synced" : "asynced";
+        _activeWorkspace.LoopType = LoopTypeTextBlock.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
+        CaptureActiveWorkspaceState(); // Ensure all state is synced
+        ScheduleSaveState();
     }
 }

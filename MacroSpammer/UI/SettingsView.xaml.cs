@@ -136,7 +136,6 @@ public partial class SettingsView : UserControl
             NotifyChanged();
         });
         AddShortcut("Emergency stop shortcut", _settings.EmergencyStopShortcut, value => _settings.EmergencyStopShortcut = value);
-        AddShortcut("Stop all macros hotkey", _settings.StopAllMacrosShortcut, value => _settings.StopAllMacrosShortcut = value);
         AddShortcut("Pause/resume all macros hotkey", _settings.PauseResumeAllMacrosShortcut, value => _settings.PauseResumeAllMacrosShortcut = value);
     }
 
