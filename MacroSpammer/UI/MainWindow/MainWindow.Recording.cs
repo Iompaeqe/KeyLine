@@ -88,6 +88,9 @@ public partial class MainWindow
         if (!_recorder.IsRecording)
             CancelTimelineDragState();
 
+        if (_isCapturingShortcut)
+            return;
+
         if (!_recorder.IsRecording && TryHandleEditingShortcut(e))
             return;
 

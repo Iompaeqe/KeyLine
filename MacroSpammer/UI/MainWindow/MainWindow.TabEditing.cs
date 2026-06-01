@@ -17,9 +17,14 @@ public partial class MainWindow
         if (index < 0)
             return;
 
-        StopAllRunners();
-        _runners.Clear();
-        SetStoppedStatus();
+        if (IsWorkspaceRunning(workspace))
+        {
+            _pendingDeleteWorkspace = null;
+            RefreshMacroTabs();
+            StatusText.Text = "Stop this macro before deleting it";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+            return;
+        }
 
         if (_recorder.IsRecording)
             StopRecording();
@@ -32,13 +37,23 @@ public partial class MainWindow
         else if (_activeWorkspaceIndex >= _workspaces.Count)
             _activeWorkspaceIndex = _workspaces.Count - 1;
 
-        ActivateWorkspace(_activeWorkspaceIndex);
+        ActivateWorkspace(_activeWorkspaceIndex, false);
+        ScheduleSaveState();
     }
 
     private void BeginOrConfirmWorkspaceDelete(MacroWorkspace workspace)
     {
         if (_workspaces.Count <= 1)
             return;
+
+        if (IsWorkspaceRunning(workspace))
+        {
+            _pendingDeleteWorkspace = null;
+            RefreshMacroTabs();
+            StatusText.Text = "Stop this macro before deleting it";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+            return;
+        }
 
         if (ReferenceEquals(_pendingDeleteWorkspace, workspace))
         {
@@ -98,6 +113,13 @@ public partial class MainWindow
 
     private void BeginWorkspaceRename(MacroWorkspace workspace)
     {
+        if (IsWorkspaceRunning(workspace))
+        {
+            StatusText.Text = "Stop this macro before renaming it";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+            return;
+        }
+
         _pendingDeleteWorkspace = null;
         _renamingWorkspace = workspace;
         RefreshMacroTabs();

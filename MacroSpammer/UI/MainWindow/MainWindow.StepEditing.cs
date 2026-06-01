@@ -276,14 +276,4 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void ResetButton_Click(object sender, RoutedEventArgs e)
-    {
-        StopAllRunners();
-        SetStoppedStatus();
-
-        LoopCountTextBox.Text = "0";
-        TimerMinutesTextBox.Text = "0";
-        SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, 0);
-        ScheduleSaveState();
-    }
 }

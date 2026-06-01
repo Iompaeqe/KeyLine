@@ -1,7 +1,6 @@
 using System.Windows;
-using System.Windows.Controls;
 using MacroSpammer.Domain;
-using MacroSpammer.UI.Controls;
+using MacroSpammer.UI.Steps;
 
 namespace MacroSpammer;
 
@@ -60,6 +59,7 @@ public partial class MainWindow
         control.DelayCommitted += (_, _) =>
         {
             RefreshTimeline();
+            RefreshInspector();
             ScheduleSaveState();
         };
 

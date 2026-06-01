@@ -21,6 +21,7 @@ public partial class MainWindow
     private bool TryHandleEditingShortcut(KeyEventArgs e)
     {
         if (_runners.Values.Any(runner => runner.IsRunning) ||
+            _isCapturingShortcut ||
             SettingsModalOverlay.Visibility == Visibility.Visible ||
             IsTextEditingShortcutSource(e.OriginalSource as DependencyObject))
         {
@@ -187,6 +188,7 @@ public partial class MainWindow
         target.TimerMs = snapshot.TimerMs;
         target.BaseDelayMs = snapshot.BaseDelayMs;
         target.ShortcutKeys = snapshot.ShortcutKeys;
+        target.TargetWindowSearchName = snapshot.TargetWindowSearchName;
         target.TargetWindowHandle = snapshot.TargetWindowHandle;
         target.TargetWindowTitle = snapshot.TargetWindowTitle;
         target.TargetChildWindowHandle = snapshot.TargetChildWindowHandle;
@@ -223,6 +225,7 @@ public partial class MainWindow
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             ToggleStepSelection(timeline, step);
+            RefreshInspector();
             return;
         }
 
@@ -230,10 +233,14 @@ public partial class MainWindow
             ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
             if (SelectStepRange(timeline, step))
+            {
+                RefreshInspector();
                 return;
+            }
         }
 
         _selection.SelectStep(timeline, step);
+        RefreshInspector();
     }
 
     private void SelectAllNodesInActiveTimeline()
@@ -253,6 +260,7 @@ public partial class MainWindow
 
         SelectTimeline(timeline);
         _selection.SelectSteps(timeline, visibleSteps, visibleSteps[^1]);
+        RefreshInspector();
         RefreshTimeline();
     }
 

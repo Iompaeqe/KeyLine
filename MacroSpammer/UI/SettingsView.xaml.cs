@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using MacroSpammer.Domain;
+using MacroSpammer.UI;
 using MacroSpammer.Services.Input;
 
 namespace MacroSpammer;
@@ -209,7 +210,7 @@ public partial class SettingsView : UserControl
         if (isEnabled)
             return;
 
-        checkBox.ToolTip = "Enable standard delay to edit this setting.";
+        checkBox.ToolTip = TooltipNotes.StandardDelayRequiresEnable;
         checkBox.Template = CreateDisabledCheckBoxTemplate();
     }
 

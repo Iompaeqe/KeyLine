@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using MacroSpammer.UI.Config;
 
-namespace MacroSpammer.UI.Controls;
+namespace MacroSpammer.UI.Steps;
 
 public partial class AddStepControl : UserControl
 {

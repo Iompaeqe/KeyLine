@@ -15,6 +15,14 @@ public partial class MainWindow
 
             SelectTimeline(timeline);
             _selection.SelectTimeline(timeline);
+            RefreshInspector();
+
+            if (e.ClickCount >= 2)
+            {
+                OpenInspectorFromSelection();
+                e.Handled = true;
+                return;
+            }
 
             if (!_isTimelineEditingEnabled)
             {
@@ -81,6 +89,7 @@ public partial class MainWindow
             {
                 SelectTimeline(timeline);
                 _selection.SelectTimeline(timeline);
+                RefreshInspector();
                 e.Handled = true;
                 return;
             }
@@ -106,6 +115,7 @@ public partial class MainWindow
 
         _document.MoveTimeline(draggedTimeline, targetIndex);
         _selection.SelectTimeline(draggedTimeline);
+        RefreshInspector();
         RefreshTimeline();
         ScheduleSaveState();
     }
@@ -125,6 +135,7 @@ public partial class MainWindow
 
         SelectTimeline(timeline);
         _selection.SelectTimeline(timeline);
+        RefreshInspector();
 
         if (ReferenceEquals(_pendingDeleteTimeline, timeline))
         {

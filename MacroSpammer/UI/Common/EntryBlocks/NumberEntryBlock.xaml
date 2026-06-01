@@ -1,0 +1,11 @@
+<UserControl x:Class="MacroSpammer.UI.Common.EntryBlocks.NumberEntryBlock"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False">
+    <TextBox x:Name="ValueTextBox"
+             Width="62"
+             Height="20"
+             Padding="5,1,5,1"
+             HorizontalContentAlignment="Right"
+             ToolTip="{Binding ToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+</UserControl>

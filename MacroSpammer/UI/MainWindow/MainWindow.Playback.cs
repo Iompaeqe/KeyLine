@@ -16,34 +16,27 @@ public partial class MainWindow
     private readonly object _loopCountdownLock = new();
     private DateTime _playbackTimerDeadlineUtc;
     private TimeSpan _playbackTimerRemaining;
-    private bool _isPlaybackPaused;
     private bool _isPlaybackStatusTimerInitialized;
-    private string _originalLoopText = "0";
     private string _originalTimerText = "0";
     private int _originalTimerMs;
     private int[] _runnerCompletedLoops = Array.Empty<int>();
+    private int[] _runnerTargetLoops = Array.Empty<int>();
     private int _remainingLoopCount;
     private bool _restoreInputsOnStop;
+    private bool _playbackStopRequested;
     private bool _isUpdatingPlaybackCounters;
     private readonly HashSet<MacroWorkspace> _shortcutStartingWorkspaces = new();
 
-    private int GetStandardDelayMs() =>
-        ParseDelayInput(StandardDelayTextBox.Text, StandardDelayUnitTextBlock.Text);
-
-    private int GetBaseDelayMs() =>
-        ParseDelayInput(BaseDelayTextBox.Text, BaseDelayUnitTextBlock.Text);
-
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_runners.Values.Any(runner => runner.IsRunning))
+        if (IsWorkspaceRunning(_activeWorkspace))
         {
-            if (_isPlaybackPaused)
-                ResumePausedPlayback();
+            ResumeWorkspacePlayback(_activeWorkspace);
 
             return;
         }
 
-        var target = GetTargetHandle();
+        var target = GetPlaybackTarget(_activeWorkspace, updateSelection: true);
         if (target == null)
             return;
 
@@ -54,27 +47,42 @@ public partial class MainWindow
         if (runnableTimelines.Count == 0)
             return;
 
-        var loopCount = int.TryParse(LoopCountTextBox.Text, out var loops) ? Math.Max(0, loops) : 0;
         var timerMs = GetTimerMs();
-        var baseDelayMs = GetBaseDelayMs();
 
-        _originalLoopText = LoopCountTextBox.Text;
         _originalTimerText = TimerMinutesTextBox.Text;
         _originalTimerMs = timerMs;
-        _remainingLoopCount = loopCount;
         _runnerCompletedLoops = new int[runnableTimelines.Count];
+        _runnerTargetLoops = runnableTimelines
+            .Select(timeline => Math.Max(0, timeline.LoopCount))
+            .ToArray();
+        _remainingLoopCount = GetDisplayedRemainingLoopCount();
         _restoreInputsOnStop = false;
+        _playbackStopRequested = false;
+        _shortcutStartingWorkspaces.Add(_activeWorkspace);
 
         SetPlaybackUiRunning();
         SetTimelineEditingEnabled(false);
+        RefreshMacroTabs();
 
         StatusText.Text = $"Running {runnableTimelines.Count} timeline(s)";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
         PlayMacroSound();
 
         StartPlaybackTimer(timerMs);
-        SetPlaybackCounterText(LoopCountTextBox, loopCount > 0 ? loopCount.ToString() : "\u221E");
+        SetRemainingLoopStatus(GetPlaybackLoopCounterText());
 
+        if (_activeWorkspace.LoopType == MacroLoopType.Sync && runnableTimelines.Count > 1)
+            await RunSyncedPlayback(target.Handle, runnableTimelines);
+        else
+            await RunAsyncPlayback(target.Handle, runnableTimelines);
+
+        _shortcutStartingWorkspaces.Remove(_activeWorkspace);
+        SetStoppedStatus(_restoreInputsOnStop);
+        PlayMacroSound();
+    }
+
+    private Task RunAsyncPlayback(nint targetHwnd, IReadOnlyList<MacroTimeline> runnableTimelines)
+    {
         var tasks = new List<Task>();
 
         for (var i = 0; i < runnableTimelines.Count; i++)
@@ -82,55 +90,53 @@ public partial class MainWindow
             var timeline = runnableTimelines[i];
             var runnerIndex = i;
             var runner = GetRunner(timeline);
+            var steps = timeline.Steps.ToList();
+            var loopCount = Math.Max(0, timeline.LoopCount);
+            var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
+            var useStandardDelay = timeline.UseStandardDelay;
+            var standardDelayMs = timeline.StandardDelayMs;
+            var useTextInputMode = timeline.UseTextInputMode;
 
             tasks.Add(Task.Run(() => runner.StartAsync(
-                target.Handle,
-                timeline.Steps.ToList(),
+                targetHwnd,
+                steps,
                 loopCount,
                 baseDelayMs,
-                timeline.UseStandardDelay,
-                timeline.StandardDelayMs,
-                timeline.UseTextInputMode,
-                () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
+                useStandardDelay,
+                standardDelayMs,
+                useTextInputMode,
+                () => OnRunnerLoopCompleted(runnerIndex))));
         }
 
-        if (_activeWorkspace.LoopType == MacroLoopType.Sync && loopCount != 1)
-        {
-            await RunSyncedPlayback(target.Handle, runnableTimelines, loopCount, baseDelayMs);
-        }
-        else
-        {
-            await Task.WhenAll(tasks);
-        }
-
-        SetStoppedStatus(_restoreInputsOnStop);
-        PlayMacroSound();
+        return Task.WhenAll(tasks);
     }
 
     private void PauseResumeButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_runners.Values.Any(runner => runner.IsRunning))
+        if (!IsWorkspaceRunning(_activeWorkspace))
             return;
 
-        if (_isPlaybackPaused)
+        if (IsWorkspacePaused(_activeWorkspace))
         {
-            ResumePausedPlayback();
+            ResumeWorkspacePlayback(_activeWorkspace);
             return;
         }
 
-        PauseAllRunners();
-        PausePlaybackTimer();
-        _isPlaybackPaused = true;
+        PauseWorkspaceRunners(_activeWorkspace);
+        if (ReferenceEquals(_activeWorkspace, _workspaces[_activeWorkspaceIndex]))
+            PausePlaybackTimer();
+
         SetPauseResumeButtonMode(true);
         PlaybackSplitButton.Visibility = Visibility.Visible;
         StartStopButton.Visibility = Visibility.Collapsed;
         StatusText.Text = "Paused";
+        RefreshMacroTabs();
     }
 
     private void StopPlaybackButton_Click(object sender, RoutedEventArgs e)
     {
         _restoreInputsOnStop = true;
-        StopAllRunners();
+        StopWorkspaceRunners(_activeWorkspace);
         SetStoppedStatus(true);
     }
 
@@ -146,6 +152,8 @@ public partial class MainWindow
 
     private void StopAllRunners()
     {
+        _playbackStopRequested = true;
+
         foreach (var runner in _runners.Values)
             runner.Stop();
     }
@@ -170,6 +178,30 @@ public partial class MainWindow
         _shortcutStartingWorkspaces.Remove(workspace);
     }
 
+    private void PauseWorkspaceRunners(MacroWorkspace workspace)
+    {
+        foreach (var timeline in workspace.Document.Timelines)
+        {
+            if (_runners.TryGetValue(timeline, out var runner))
+                runner.Pause();
+        }
+    }
+
+    private void ResumeWorkspaceRunners(MacroWorkspace workspace)
+    {
+        foreach (var timeline in workspace.Document.Timelines)
+        {
+            if (_runners.TryGetValue(timeline, out var runner))
+                runner.Resume();
+        }
+    }
+
+    private bool IsWorkspacePaused(MacroWorkspace workspace) =>
+        workspace.Document.Timelines.Any(timeline =>
+            _runners.TryGetValue(timeline, out var runner) &&
+            runner.IsRunning &&
+            runner.IsPaused);
+
     private async void StartWorkspacePlaybackFromShortcut(int workspaceIndex)
     {
         if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
@@ -178,12 +210,14 @@ public partial class MainWindow
         var workspace = _workspaces[workspaceIndex];
         if (!_shortcutStartingWorkspaces.Add(workspace))
             return;
+        RefreshMacroTabs();
 
-        var target = ResolveSavedTargetWindow(workspace);
+        var target = GetPlaybackTarget(workspace, updateSelection: workspaceIndex == _activeWorkspaceIndex);
         if (target == null)
         {
             _shortcutStartingWorkspaces.Remove(workspace);
-            if (workspaceIndex == _activeWorkspaceIndex)
+            RefreshMacroTabs();
+            if (workspaceIndex == _activeWorkspaceIndex && string.IsNullOrWhiteSpace(workspace.ErrorMessage))
                 StatusText.Text = "Shortcut target not found";
             return;
         }
@@ -195,20 +229,21 @@ public partial class MainWindow
         if (runnableTimelines.Count == 0)
         {
             _shortcutStartingWorkspaces.Remove(workspace);
+            RefreshMacroTabs();
             if (workspaceIndex == _activeWorkspaceIndex)
                 StatusText.Text = "No steps to run";
             return;
         }
 
-        var loopCount = Math.Max(0, workspace.LoopCount);
         var timerMs = Math.Max(0, workspace.TimerMs);
-        var baseDelayMs = Math.Max(0, workspace.BaseDelayMs);
         var tasks = new List<Task>();
 
         foreach (var timeline in runnableTimelines)
         {
             var runner = GetRunner(timeline);
             var steps = timeline.Steps.ToList();
+            var loopCount = Math.Max(0, timeline.LoopCount);
+            var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
             var useStandardDelay = timeline.UseStandardDelay;
             var standardDelayMs = timeline.StandardDelayMs;
             var useTextInputMode = timeline.UseTextInputMode;
@@ -225,6 +260,11 @@ public partial class MainWindow
 
         if (workspaceIndex == _activeWorkspaceIndex)
         {
+            _originalTimerText = TimerMinutesTextBox.Text;
+            _originalTimerMs = timerMs;
+            SetPlaybackUiRunning();
+            SetTimelineEditingEnabled(false);
+            StartPlaybackTimer(timerMs);
             StatusText.Text = $"Running {workspace.Name}";
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
         }
@@ -242,11 +282,11 @@ public partial class MainWindow
         finally
         {
             _shortcutStartingWorkspaces.Remove(workspace);
+            RefreshMacroTabs();
 
             if (workspaceIndex == _activeWorkspaceIndex && !IsWorkspaceRunning(workspace))
             {
-                StatusText.Text = "Stopped";
-                StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+                SetStoppedStatus();
             }
 
             PlayMacroSound();
@@ -282,51 +322,64 @@ public partial class MainWindow
         {
             ResumeAllRunners();
             ResumePlaybackTimer();
-            _isPlaybackPaused = false;
             StatusText.Text = "Running";
             return;
         }
 
         PauseAllRunners();
         PausePlaybackTimer();
-        _isPlaybackPaused = true;
         StatusText.Text = "Paused";
     }
 
-    private async Task RunSyncedPlayback(nint targetHwnd, List<MacroTimeline> runnableTimelines, int loopCount, int baseDelayMs)
+    private async Task RunSyncedPlayback(nint targetHwnd, List<MacroTimeline> runnableTimelines)
     {
-        var currentLoop = 0;
+        var completedLoops = new int[runnableTimelines.Count];
 
-        while (true)
+        while (!_playbackStopRequested)
         {
             var tasks = new List<Task>();
+            var startedIndexes = new List<int>();
+
             for (var i = 0; i < runnableTimelines.Count; i++)
             {
                 var timeline = runnableTimelines[i];
+                var targetLoops = Math.Max(0, timeline.LoopCount);
+
+                if (targetLoops > 0 && completedLoops[i] >= targetLoops)
+                    continue;
+
                 var runnerIndex = i;
                 var runner = GetRunner(timeline);
+                var steps = timeline.Steps.ToList();
+                var baseDelayMs = targetLoops == 0
+                    ? Math.Max(10, timeline.BaseDelayMs)
+                    : Math.Max(0, timeline.BaseDelayMs);
+                var useStandardDelay = timeline.UseStandardDelay;
+                var standardDelayMs = timeline.StandardDelayMs;
+                var useTextInputMode = timeline.UseTextInputMode;
 
-                // Run exactly one loop
+                startedIndexes.Add(i);
                 tasks.Add(Task.Run(() => runner.StartAsync(
                     targetHwnd,
-                    timeline.Steps.ToList(),
-                    1, // Force 1 loop for sync
+                    steps,
+                    1,
                     baseDelayMs,
-                    timeline.UseStandardDelay,
-                    timeline.StandardDelayMs,
-                    timeline.UseTextInputMode,
-                    () => OnRunnerLoopCompleted(runnerIndex, loopCount))));
+                    useStandardDelay,
+                    standardDelayMs,
+                    useTextInputMode,
+                    () => OnRunnerLoopCompleted(runnerIndex))));
             }
+
+            if (tasks.Count == 0)
+                break;
 
             await Task.WhenAll(tasks);
 
-            // Check if any runner was cancelled (meaning stop was requested)
-            if (_runners.Values.Any(r => r.CancellationToken.IsCancellationRequested))
+            if (_playbackStopRequested)
                 break;
 
-            currentLoop++;
-            if (loopCount > 0 && currentLoop >= loopCount)
-                break;
+            foreach (var index in startedIndexes)
+                completedLoops[index]++;
         }
     }
 
@@ -340,11 +393,12 @@ public partial class MainWindow
         SetPauseResumeButtonMode(false);
     }
 
-    private void ResumePausedPlayback()
+    private void ResumeWorkspacePlayback(MacroWorkspace workspace)
     {
-        ResumeAllRunners();
-        ResumePlaybackTimer();
-        _isPlaybackPaused = false;
+        ResumeWorkspaceRunners(workspace);
+        if (ReferenceEquals(workspace, _activeWorkspace))
+            ResumePlaybackTimer();
+
         RecordStopButtonHost.Visibility = Visibility.Collapsed;
         RecordStopButtonHost.IsHitTestVisible = false;
         StartStopButton.Visibility = Visibility.Collapsed;
@@ -352,21 +406,38 @@ public partial class MainWindow
         PlaybackSplitButton.IsHitTestVisible = true;
         SetPauseResumeButtonMode(false);
         StatusText.Text = "Running";
+        RefreshMacroTabs();
     }
 
-    private void SetStoppedStatus(bool restoreInputs = false)
+    private void RefreshActiveWorkspacePlaybackUi()
+    {
+        if (IsWorkspaceRunning(_activeWorkspace))
+        {
+            SetPlaybackUiRunning();
+            SetTimelineEditingEnabled(false);
+            RefreshMacroTabs();
+            SetPauseResumeButtonMode(IsWorkspacePaused(_activeWorkspace));
+            StatusText.Text = IsWorkspacePaused(_activeWorkspace) ? "Paused" : $"Running {_activeWorkspace.Name}";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+            return;
+        }
+
+        SetStoppedStatus(resetTimer: false);
+    }
+
+    private void SetStoppedStatus(bool restoreInputs = false, bool resetTimer = true)
     {
         _playbackStatusTimer.Stop();
         _playbackTimerRemaining = TimeSpan.Zero;
         _playbackTimerDeadlineUtc = DateTime.MinValue;
-        _isPlaybackPaused = false;
         _runnerCompletedLoops = Array.Empty<int>();
+        _runnerTargetLoops = Array.Empty<int>();
         _remainingLoopCount = 0;
 
-        SetPlaybackCounterText(LoopCountTextBox, _originalLoopText);
-        SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _originalTimerMs);
+        if (resetTimer)
+            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _originalTimerMs);
 
-        StartStopButton.Content = "▶  Start";
+        StartStopButton.Content = "\u25B6  Start";
         StartStopButton.Visibility = Visibility.Visible;
         SetPauseResumeButtonMode(false);
         PlaybackSplitButton.Visibility = Visibility.Collapsed;
@@ -378,6 +449,8 @@ public partial class MainWindow
         StatusText.Text = "Stopped";
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
         SetCountdownRunningStyle(false);
+        SyncOptionsFromActiveTimeline();
+        RefreshMacroTabs();
     }
 
     private void StartPlaybackTimer(int milliseconds)
@@ -440,7 +513,7 @@ public partial class MainWindow
         {
             SetTimerCountdownText("0:00");
             StatusText.Text = "Timer elapsed; stopping";
-            StopAllRunners();
+            StopWorkspaceRunners(_activeWorkspace);
             _playbackStatusTimer.Stop();
             return;
         }
@@ -450,30 +523,57 @@ public partial class MainWindow
         SetCountdownRunningStyle(true);
     }
 
-    private void OnRunnerLoopCompleted(int runnerIndex, int loopCount)
+    private void OnRunnerLoopCompleted(int runnerIndex)
     {
-        if (loopCount <= 0 || runnerIndex < 0 || runnerIndex >= _runnerCompletedLoops.Length)
+        if (runnerIndex < 0 || runnerIndex >= _runnerCompletedLoops.Length)
             return;
 
-        int remaining;
+        string counterText;
+        var shouldStop = false;
+
         lock (_loopCountdownLock)
         {
             _runnerCompletedLoops[runnerIndex]++;
-            var completedFullCycles = _runnerCompletedLoops.Min();
-            remaining = Math.Max(0, loopCount - completedFullCycles);
+            var remaining = GetDisplayedRemainingLoopCount();
 
             if (remaining == _remainingLoopCount)
                 return;
 
             _remainingLoopCount = remaining;
+            counterText = GetPlaybackLoopCounterText();
+            shouldStop = _runnerTargetLoops.Length > 0 &&
+                         _runnerTargetLoops.All(target => target > 0) &&
+                         remaining <= 0;
         }
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            SetPlaybackCounterText(LoopCountTextBox, remaining.ToString());
-            if (remaining <= 0)
-                StopAllRunners();
+            SetRemainingLoopStatus(counterText);
+            if (shouldStop)
+                StopWorkspaceRunners(_activeWorkspace);
         }));
+    }
+
+    private int GetDisplayedRemainingLoopCount()
+    {
+        if (_runnerTargetLoops.Length == 0 || _runnerCompletedLoops.Length == 0)
+            return 0;
+
+        if (_runnerTargetLoops.Any(target => target <= 0))
+            return int.MaxValue;
+
+        var remaining = 0;
+
+        for (var i = 0; i < _runnerTargetLoops.Length && i < _runnerCompletedLoops.Length; i++)
+            remaining = Math.Max(remaining, Math.Max(0, _runnerTargetLoops[i] - _runnerCompletedLoops[i]));
+
+        return remaining;
+    }
+
+    private string GetPlaybackLoopCounterText()
+    {
+        var remaining = GetDisplayedRemainingLoopCount();
+        return remaining == int.MaxValue ? "\u221E" : remaining.ToString();
     }
 
     private void SetTimelineEditingEnabled(bool isEnabled)
@@ -485,15 +585,12 @@ public partial class MainWindow
 
         AddTimelineButton.IsEnabled = isEnabled;
         ClearButton.IsEnabled = isEnabled;
-        UseStandardDelayCheckBox.IsEnabled = isEnabled;
-        StandardDelayTextBox.IsEnabled = isEnabled;
-        ShowKeyUpDownCheckBox.IsEnabled = isEnabled;
-        PreviousInputModeButton.IsEnabled = isEnabled;
-        NextInputModeButton.IsEnabled = isEnabled;
-        var canPageTimelineOptions = isEnabled && _document.Timelines.Count > 1;
-        PreviousTimelineOptionsButton.IsEnabled = canPageTimelineOptions;
-        NextTimelineOptionsButton.IsEnabled = canPageTimelineOptions;
-        AddMacroTabButton.IsEnabled = isEnabled;
+        AddMacroTabButton.IsEnabled = true;
+        LoopTypePager.IsEnabled = isEnabled;
+        TargetWindowSearchPill.IsEnabled = isEnabled;
+        WindowComboBox.IsEnabled = isEnabled;
+        HandleComboBox.IsEnabled = isEnabled;
+        RefreshInspector();
     }
 
     private static string FormatRemainingTime(TimeSpan remaining)
@@ -544,14 +641,20 @@ public partial class MainWindow
         if (isRunning)
         {
             var brush = new SolidColorBrush(Color.FromRgb(52, 211, 153));
-            LoopCountTextBox.Foreground = brush;
             TimerMinutesTextBox.Foreground = brush;
             TimerUnitTextBlock.Foreground = brush;
             return;
         }
 
-        LoopCountTextBox.ClearValue(ForegroundProperty);
         TimerMinutesTextBox.ClearValue(ForegroundProperty);
         TimerUnitTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(142, 160, 182));
+    }
+
+    private void SetRemainingLoopStatus(string remainingText)
+    {
+        if (remainingText == "\u221E")
+            StatusText.Text = "Running; loops \u221E";
+        else
+            StatusText.Text = $"Running; loops left {remainingText}";
     }
 }

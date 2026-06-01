@@ -6,7 +6,7 @@ using MacroSpammer.Domain;
 using MacroSpammer.Services.Timeline;
 using MacroSpammer.UI.Config;
 
-namespace MacroSpammer.UI.Controls;
+namespace MacroSpammer.UI.Steps;
 
 public partial class DelayStepControl : UserControl
 {
@@ -44,26 +44,17 @@ public partial class DelayStepControl : UserControl
 
     public bool IsValueEditorSource(DependencyObject? source)
     {
-        while (source != null)
-        {
-            if (ReferenceEquals(source, ValueTextBox) ||
-                ReferenceEquals(source, MinValueTextBox) ||
-                ReferenceEquals(source, MaxValueTextBox))
-                return true;
-
-            source = VisualTreeHelper.GetParent(source);
-        }
-
-        return false;
+        return FindEditorTextBox(source) != null;
     }
 
     public void FocusValueEditor(DependencyObject? source = null)
     {
-        var textBox = FindEditorTextBox(source) ??
-                      (Step?.Type == MacroStepType.RandomDelay ? MinValueTextBox : ValueTextBox);
+        var textBox = FindEditorTextBox(source);
+        if (textBox == null)
+            return;
 
         textBox.Focus();
-        Keyboard.Focus(textBox);
+        textBox.SelectAll();
     }
 
     private TextBox? FindEditorTextBox(DependencyObject? source)

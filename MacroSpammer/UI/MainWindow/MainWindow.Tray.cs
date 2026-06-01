@@ -12,12 +12,18 @@ public partial class MainWindow
 
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
-        if (WindowState == WindowState.Minimized && _settings.MinimizeToTray)
+        if (WindowState != WindowState.Minimized)
+            return;
+
+        _inspectorWindow?.Hide();
+
+        if (_settings.MinimizeToTray)
             HideToTray();
     }
 
     private void HideToTray()
     {
+        _inspectorWindow?.Hide();
         EnsureTrayIcon();
         Hide();
     }

@@ -967,20 +967,28 @@ public partial class MainWindow
         return border;
     }
 
-    private static UIElement CreateTimelineHeaderContent(MacroTimeline timeline, bool isActive, bool isPendingDelete)
+    private UIElement CreateTimelineHeaderContent(MacroTimeline timeline, bool isActive, bool isPendingDelete)
     {
         if (!isPendingDelete)
         {
+            var useVerticalText = timeline.Name.Length > 4;
             return new TextBlock
             {
                 Text = timeline.Name,
                 FontWeight = FontWeights.Black,
-                FontSize = 14,
+                FontSize = useVerticalText ? 12 : 14,
+                MaxWidth = useVerticalText
+                    ? Math.Max(36, TimelineRowHeight - 12)
+                    : Math.Max(28, TimelineHeaderWidth - 8),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
+                LayoutTransform = useVerticalText ? new RotateTransform(-90) : null,
                 Foreground = new SolidColorBrush(isActive
                     ? Color.FromRgb(224, 242, 254)
-                    : Color.FromRgb(148, 163, 184))
+                    : Color.FromRgb(148, 163, 184)),
+                ToolTip = timeline.Name
             };
         }
 

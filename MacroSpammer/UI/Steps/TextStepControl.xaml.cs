@@ -5,7 +5,7 @@ using MacroSpammer.Domain;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Timeline;
 
-namespace MacroSpammer.UI.Controls;
+namespace MacroSpammer.UI.Steps;
 
 public partial class TextStepControl : UserControl
 {

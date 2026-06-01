@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using MacroSpammer.Domain;
+using MacroSpammer.UI;
 
 namespace MacroSpammer;
 
@@ -13,8 +14,8 @@ public partial class MainWindow
         var workspace = new MacroWorkspace
         {
             Name = $"Macro {number}",
-            LoopCount = settings?.DefaultLoopCount ?? 0,
             TimerMs = settings?.DefaultTimerMs ?? 0,
+            LoopCount = settings?.DefaultLoopCount ?? 0,
             BaseDelayMs = settings?.DefaultBaseDelayMs ?? 50
         };
 
@@ -30,6 +31,8 @@ public partial class MainWindow
         timeline.StandardDelayMs = Math.Max(0, settings.DefaultStandardDelayMs);
         timeline.ShowKeyUpDown = !settings.DefaultStandardDelayEnabled || settings.DefaultShowKeyUpDown;
         timeline.UseTextInputMode = settings.DefaultTextInputMode;
+        timeline.LoopCount = Math.Max(0, settings.DefaultLoopCount);
+        timeline.BaseDelayMs = Math.Max(0, settings.DefaultBaseDelayMs);
     }
 
     private int GetNextWorkspaceNumber()
@@ -82,10 +85,6 @@ public partial class MainWindow
         if (saveCurrent)
             CaptureActiveWorkspaceState();
 
-        StopAllRunners();
-        _runners.Clear();
-        SetStoppedStatus();
-
         if (_recorder.IsRecording)
             StopRecording();
 
@@ -101,17 +100,18 @@ public partial class MainWindow
             _timelineVisualPositions.Clear();
             ResetClearConfirmation();
 
-            LoopCountTextBox.Text = _activeWorkspace.LoopCount.ToString();
             TimerMinutesTextBox.Text = _activeWorkspace.TimerMs.ToString();
-            BaseDelayTextBox.Text = _activeWorkspace.BaseDelayMs.ToString();
-            LoopTypeTextBlock.Text = _activeWorkspace.LoopType == MacroLoopType.Sync ? "synced" : "asynced";
+            LoopTypePager.Text = _activeWorkspace.LoopType == MacroLoopType.Sync ? "synced" : "asynced";
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _activeWorkspace.TimerMs);
-            SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, _activeWorkspace.BaseDelayMs);
+            TargetWindowSearchTextBox.Text = _activeWorkspace.TargetWindowSearchName;
             UpdateShortcutText();
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
+            if (!HasResolvedTargetSelection() && !string.IsNullOrWhiteSpace(_activeWorkspace.TargetWindowSearchName))
+                TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
             SelectTimeline(_document.ActiveTimeline);
             RefreshTimeline();
+            RefreshActiveWorkspacePlaybackUi();
         }
         finally
         {
@@ -136,6 +136,8 @@ public partial class MainWindow
             var isActive = i == _activeWorkspaceIndex;
             var isPendingDelete = ReferenceEquals(workspace, _pendingDeleteWorkspace);
             var isRenaming = ReferenceEquals(workspace, _renamingWorkspace);
+            var isRunning = IsWorkspaceRunning(workspace);
+            var hasError = !string.IsNullOrWhiteSpace(workspace.ErrorMessage);
 
             if (isRenaming)
             {
@@ -158,20 +160,43 @@ public partial class MainWindow
                 FontWeight = FontWeights.SemiBold,
                 Background = new SolidColorBrush(isPendingDelete
                     ? Color.FromRgb(127, 29, 29)
+                    : hasError
+                    ? Color.FromRgb(127, 29, 29)
+                    : isRunning && isActive
+                    ? Color.FromRgb(5, 150, 105)
+                    : isRunning
+                    ? Color.FromRgb(5, 46, 38)
                     : isActive
                     ? Color.FromRgb(18, 58, 90)
                     : Color.FromRgb(17, 24, 39)),
                 BorderBrush = new SolidColorBrush(isPendingDelete
                     ? Color.FromRgb(248, 113, 113)
+                    : hasError
+                    ? Color.FromRgb(248, 113, 113)
+                    : isRunning && isActive
+                    ? Color.FromRgb(52, 211, 153)
+                    : isRunning
+                    ? Color.FromRgb(6, 95, 70)
                     : isActive
                     ? Color.FromRgb(37, 109, 157)
                     : Color.FromRgb(38, 50, 68)),
                 Foreground = new SolidColorBrush(isPendingDelete
                     ? Color.FromRgb(254, 202, 202)
+                    : hasError
+                    ? Color.FromRgb(254, 202, 202)
+                    : isRunning && isActive
+                    ? Color.FromRgb(236, 253, 245)
+                    : isRunning
+                    ? Color.FromRgb(167, 243, 208)
                     : isActive
                     ? Color.FromRgb(186, 230, 253)
                     : Color.FromRgb(142, 160, 182)),
-                Tag = workspace
+                Tag = workspace,
+                ToolTip = hasError
+                    ? workspace.ErrorMessage
+                    : isRunning
+                        ? TooltipNotes.MacroTabRunning
+                        : TooltipNotes.MacroTabSwitchRenameDelete
             };
 
             button.Padding = new Thickness(10, 0, 10, 1);
@@ -216,7 +241,7 @@ public partial class MainWindow
                     Visibility = Visibility.Collapsed,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     IsHitTestVisible = true,
-                    ToolTip = "Rename macro"
+                    ToolTip = TooltipNotes.RenameMacro
                 };
 
                 editIcon.MouseLeftButtonDown += (_, e) =>
@@ -260,19 +285,19 @@ public partial class MainWindow
             return;
 
         _activeWorkspace.Document = _document;
-        if (_runners.Values.Any(runner => runner.IsRunning))
+        if (IsWorkspaceRunning(_activeWorkspace))
         {
-            _activeWorkspace.LoopCount = int.TryParse(_originalLoopText, out var loops) ? Math.Max(0, loops) : 0;
             _activeWorkspace.TimerMs = Math.Max(0, _originalTimerMs);
         }
         else
         {
-            _activeWorkspace.LoopCount = GetLoopCount();
             _activeWorkspace.TimerMs = GetTimerMs();
         }
 
-        _activeWorkspace.BaseDelayMs = GetBaseDelayMs();
-        _activeWorkspace.LoopType = LoopTypeTextBlock.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
+        _activeWorkspace.LoopCount = _document.ActiveTimeline.LoopCount;
+        _activeWorkspace.BaseDelayMs = _document.ActiveTimeline.BaseDelayMs;
+        _activeWorkspace.LoopType = LoopTypePager.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
+        _activeWorkspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
         CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }

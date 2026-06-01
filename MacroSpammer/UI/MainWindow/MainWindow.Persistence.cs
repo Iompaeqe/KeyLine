@@ -24,15 +24,7 @@ public partial class MainWindow
             SaveStateNow();
         };
 
-        LoopCountTextBox.TextChanged += LoopCountTextBox_TextChanged;
         TimerMinutesTextBox.TextChanged += TimerMinutesTextBox_TextChanged;
-        BaseDelayTextBox.TextChanged += BaseDelayTextBox_TextChanged;
-    }
-
-    private void LoopCountTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (!_isUpdatingPlaybackCounters)
-            ScheduleSaveState();
     }
 
     private void TimerMinutesTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -40,8 +32,6 @@ public partial class MainWindow
         if (!_isUpdatingPlaybackCounters)
             ScheduleSaveState();
     }
-
-    private void BaseDelayTextBox_TextChanged(object sender, TextChangedEventArgs e) => ScheduleSaveState();
 
     private void DelayInputTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
@@ -58,18 +48,6 @@ public partial class MainWindow
             var timerMs = GetTimerMs();
             TimerUnitTextBlock.Text = "ms";
             TimerMinutesTextBox.Text = timerMs.ToString();
-        }
-        else if (ReferenceEquals(sender, StandardDelayTextBox))
-        {
-            var standardDelayMs = GetStandardDelayMs();
-            StandardDelayUnitTextBlock.Text = "ms";
-            StandardDelayTextBox.Text = standardDelayMs.ToString();
-        }
-        else if (ReferenceEquals(sender, BaseDelayTextBox))
-        {
-            var baseDelayMs = GetBaseDelayMs();
-            BaseDelayUnitTextBlock.Text = "ms";
-            BaseDelayTextBox.Text = baseDelayMs.ToString();
         }
 
         if (sender is TextBox textBox)
@@ -100,18 +78,6 @@ public partial class MainWindow
         {
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, GetTimerMs());
         }
-        else if (ReferenceEquals(sender, StandardDelayTextBox))
-        {
-            var standardDelayMs = GetStandardDelayMs();
-            ApplyStandardDelayToActiveTimeline(standardDelayMs);
-            RefreshTimeline();
-            SetFormattedDelayInput(StandardDelayTextBox, StandardDelayUnitTextBlock, standardDelayMs);
-            ScheduleSaveState();
-        }
-        else if (ReferenceEquals(sender, BaseDelayTextBox))
-        {
-            SetFormattedDelayInput(BaseDelayTextBox, BaseDelayUnitTextBlock, GetBaseDelayMs());
-        }
     }
 
     private static void SetFormattedDelayInput(TextBox textBox, TextBlock unitTextBlock, int milliseconds)
@@ -140,7 +106,7 @@ public partial class MainWindow
     }
 
     private int GetLoopCount() =>
-        int.TryParse(LoopCountTextBox.Text, out var loops) ? Math.Max(0, loops) : 0;
+        Math.Max(0, _document.ActiveTimeline.LoopCount);
 
     private int GetTimerMs() => ParseDelayInput(TimerMinutesTextBox.Text, TimerUnitTextBlock.Text);
 
@@ -176,6 +142,8 @@ public partial class MainWindow
 
         StopAllRunners();
         StopGlobalShortcutHook();
+        _inspectorWindow?.Close();
+        _inspectorWindow = null;
         _stateSaveTimer.Stop();
         SaveStateNow();
         DisposeTrayIcon();

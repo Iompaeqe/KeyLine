@@ -329,7 +329,7 @@ public partial class MainWindow
         _shortcutCaptureDownKeys.Clear();
         ShortcutTextBlock.Text = "press shortcut";
         ShortcutTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
-        ShortcutTextBlock.Focus();
+        ShortcutPill.Focus();
     }
 
     private void CommitShortcutCapture(IEnumerable<int> virtualKeys)
@@ -355,6 +355,7 @@ public partial class MainWindow
         _capturedShortcutKeys.Clear();
         _shortcutCaptureDownKeys.Clear();
         UpdateShortcutText();
+        Keyboard.ClearFocus();
         ScheduleSaveState();
     }
 
@@ -370,6 +371,7 @@ public partial class MainWindow
         _capturedShortcutKeys.Clear();
         _shortcutCaptureDownKeys.Clear();
         UpdateShortcutText();
+        Keyboard.ClearFocus();
     }
 
     private void UpdateShortcutText()

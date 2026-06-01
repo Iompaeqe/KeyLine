@@ -36,6 +36,88 @@
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
+      <Page Update="UI\Common\EntryBlocks\NumberEntryBlock.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Common\EntryBlocks\PagerEntryBlock.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Common\EntryBlocks\TimeEntryBlock.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Common\EntryBlocks\OptionsPillBlock.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Common\Styles\Buttons.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\CheckBoxes.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\Colors.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\ComboBoxes.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\Options.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\ScrollBars.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\TextBlocks.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\TextBoxes.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Common\Styles\ToolTips.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="UI\Steps\AddStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Steps\DelayStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Steps\KeyStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Steps\MouseStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Steps\TextStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Steps\ForegroundMouseStepControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="UI\Inspector\InspectorWindow.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
     </ItemGroup>
 
 </Project>

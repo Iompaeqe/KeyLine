@@ -3,7 +3,7 @@ using System.Windows.Input;
 using MacroSpammer.Domain;
 using System.Windows.Media;
 using MacroSpammer.UI.Config;
-using MacroSpammer.UI.Controls;
+using MacroSpammer.UI.Steps;
 
 namespace MacroSpammer;
 
@@ -84,17 +84,10 @@ public partial class MainWindow
                 return;
             }
 
-            if (e.ClickCount >= 2 && step.Type == MacroStepType.Text)
+            if (e.ClickCount >= 2 && !step.IsSyntheticDisplayStep)
             {
                 SelectStepFromPointer(timeline, step);
-
-                if (!_isTimelineEditingEnabled)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                EditTextStep(timeline, step);
+                OpenInspectorFromSelection();
                 e.Handled = true;
                 return;
             }
@@ -243,6 +236,7 @@ public partial class MainWindow
         {
             SelectTimeline(timeline);
             ToggleStepSelection(timeline, step);
+            RefreshInspector();
             return;
         }
 
@@ -251,11 +245,13 @@ public partial class MainWindow
         {
             SelectTimeline(timeline);
             SelectStepRange(timeline, step);
+            RefreshInspector();
             return;
         }
 
         SelectTimeline(timeline);
         _selection.SelectStep(timeline, step);
+        RefreshInspector();
     }
 
     private void ClearPendingClickSelection()

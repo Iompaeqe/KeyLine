@@ -1,0 +1,36 @@
+﻿<UserControl x:Class="MacroSpammer.UI.MainWindow.Controls.AppTitleBlock"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="36"
+             MinWidth="180"
+             VerticalAlignment="Center">
+
+    <Border Background="{StaticResource Bg}"
+            Padding="4,0">
+
+    <StackPanel Orientation="Horizontal"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Width="180">
+
+        <Image Source="/Assets/TitleLogo.png"
+               Width="24"
+               Height="24"
+               Margin="0,0,9,0"
+               VerticalAlignment="Center"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+
+        <TextBlock Text="KeyLine"
+                   Foreground="{StaticResource Text}"
+                   FontSize="13"
+                   FontWeight="Bold"
+                   VerticalAlignment="Center" />
+
+        <TextBlock Text="  ·  macro recorder"
+                   Foreground="{StaticResource Muted}"
+                   FontSize="11"
+                   Margin="5,0,0,0"
+                   VerticalAlignment="Center" />
+    </StackPanel>
+    </Border>
+</UserControl>

@@ -12,6 +12,7 @@ internal static class NativeMethods
     public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
 
     public const int GWL_EXSTYLE = -20;
+    public const int WS_EX_APPWINDOW = 0x00040000;
     public const int WS_EX_TRANSPARENT = 0x00000020;
     public const int WS_EX_TOOLWINDOW = 0x00000080;
 

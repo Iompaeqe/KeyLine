@@ -1,18 +1,18 @@
 <Application x:Class="MacroSpammer.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:MacroSpammer"
              StartupUri="UI/MainWindow/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="UI/Styles/Colors.xaml" />
-                <ResourceDictionary Source="UI/Styles/TextBlocks.xaml" />
-                <ResourceDictionary Source="UI/Styles/Buttons.xaml" />
-                <ResourceDictionary Source="UI/Styles/TextBoxes.xaml" />
-                <ResourceDictionary Source="UI/Styles/CheckBoxes.xaml" />
-                <ResourceDictionary Source="UI/Styles/ScrollBars.xaml" />
-                <ResourceDictionary Source="UI/Styles/ComboBoxes.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/Colors.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/TextBlocks.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/Buttons.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/TextBoxes.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/CheckBoxes.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/ScrollBars.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/ComboBoxes.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/ToolTips.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

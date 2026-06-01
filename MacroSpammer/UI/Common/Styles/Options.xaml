@@ -15,7 +15,6 @@
 
     <Style x:Key="OptionsHeaderGrid" TargetType="Grid">
         <Setter Property="Margin" Value="0,0,0,6" />
-        <Setter Property="Height" Value="18" />
     </Style>
 
     <Style x:Key="OptionsPagerPanel" TargetType="StackPanel">
@@ -62,6 +61,47 @@
                 <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <Style x:Key="OptionsPillTextBox" TargetType="TextBox">
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Text}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="5,0,5,1" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="{StaticResource Cyan}" />
+        <Setter Property="SelectionBrush" Value="#334155" />
+        <Setter Property="Cursor" Value="IBeam" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost"
+                                  Margin="{TemplateBinding Padding}"
+                                  VerticalAlignment="Center" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="OptionsPillPlaceholderText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        <Setter Property="Opacity" Value="0.72" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
     <Style x:Key="OptionsRow" TargetType="StackPanel">
