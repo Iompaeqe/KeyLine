@@ -40,6 +40,7 @@ public static class MacroFileStore
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
+            TargetWindowSearchName = workspace.TargetWindowSearchName,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
         };
     }
@@ -53,6 +54,8 @@ public static class MacroFileStore
             StandardDelayMs = Math.Max(0, timeline.StandardDelayMs),
             ShowKeyUpDown = timeline.ShowKeyUpDown,
             UseTextInputMode = timeline.UseTextInputMode,
+            LoopCount = Math.Max(0, timeline.LoopCount),
+            BaseDelayMs = Math.Max(0, timeline.BaseDelayMs),
             Steps = timeline.Steps
                 .Where(step => !step.IsSyntheticDisplayStep)
                 .Select(ToPersistedStep)
@@ -86,12 +89,16 @@ public static class MacroFileStore
             LoopCount = Math.Max(0, persisted.LoopCount),
             TimerMs = Math.Max(0, persisted.TimerMs),
             BaseDelayMs = Math.Max(0, persisted.BaseDelayMs),
-            ShortcutKeys = persisted.ShortcutKeys
+            ShortcutKeys = persisted.ShortcutKeys,
+            TargetWindowSearchName = persisted.TargetWindowSearchName
         };
 
         workspace.Document.Timelines.Clear();
         foreach (var timeline in persisted.Timelines)
-            workspace.Document.Timelines.Add(ToTimeline(timeline));
+            workspace.Document.Timelines.Add(ToTimeline(
+                timeline,
+                Math.Max(0, persisted.LoopCount),
+                Math.Max(0, persisted.BaseDelayMs)));
 
         workspace.Document.EnsureTimeline();
         workspace.Document.SelectTimeline(Math.Clamp(
@@ -102,7 +109,7 @@ public static class MacroFileStore
         return workspace;
     }
 
-    private static MacroTimeline ToTimeline(PersistedTimeline persisted)
+    private static MacroTimeline ToTimeline(PersistedTimeline persisted, int fallbackLoopCount, int fallbackBaseDelayMs)
     {
         var timeline = new MacroTimeline
         {
@@ -110,7 +117,9 @@ public static class MacroFileStore
             UseStandardDelay = persisted.UseStandardDelay,
             StandardDelayMs = Math.Max(0, persisted.StandardDelayMs),
             ShowKeyUpDown = persisted.ShowKeyUpDown,
-            UseTextInputMode = persisted.UseTextInputMode
+            UseTextInputMode = persisted.UseTextInputMode,
+            LoopCount = Math.Max(0, persisted.LoopCount ?? fallbackLoopCount),
+            BaseDelayMs = Math.Max(0, persisted.BaseDelayMs ?? fallbackBaseDelayMs)
         };
 
         foreach (var step in persisted.Steps)
@@ -155,6 +164,7 @@ public static class MacroFileStore
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
+        public string TargetWindowSearchName { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
     }
 
@@ -165,6 +175,8 @@ public static class MacroFileStore
         public int StandardDelayMs { get; set; } = 50;
         public bool ShowKeyUpDown { get; set; } = true;
         public bool UseTextInputMode { get; set; }
+        public int? LoopCount { get; set; }
+        public int? BaseDelayMs { get; set; }
         public List<PersistedStep> Steps { get; set; } = new();
     }
 

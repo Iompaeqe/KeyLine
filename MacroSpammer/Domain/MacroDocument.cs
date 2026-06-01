@@ -32,8 +32,6 @@ public sealed class MacroDocument
 
         if (ActiveTimelineIndex >= Timelines.Count)
             ActiveTimelineIndex = Timelines.Count - 1;
-
-        RenameTimelines();
     }
 
     public MacroTimeline AddTimeline()
@@ -41,7 +39,6 @@ public sealed class MacroDocument
         var timeline = CreateTimeline();
         Timelines.Add(timeline);
         ActiveTimelineIndex = Timelines.Count - 1;
-        RenameTimelines();
         return timeline;
     }
 
@@ -93,8 +90,6 @@ public sealed class MacroDocument
 
         if (ActiveTimelineIndex >= Timelines.Count)
             ActiveTimelineIndex = Timelines.Count - 1;
-
-        RenameTimelines();
     }
 
     public void MoveTimeline(MacroTimeline timeline, int newIndex)
@@ -110,20 +105,26 @@ public sealed class MacroDocument
 
         Timelines.Move(oldIndex, newIndex);
         ActiveTimelineIndex = newIndex;
-        RenameTimelines();
     }
 
     private MacroTimeline CreateTimeline()
     {
         return new MacroTimeline
         {
-            Name = $"T{Timelines.Count + 1}"
+            Name = GetNextTimelineName()
         };
     }
 
-    private void RenameTimelines()
+    private string GetNextTimelineName()
     {
-        for (var i = 0; i < Timelines.Count; i++)
-            Timelines[i].Name = $"T{i + 1}";
+        var index = Timelines.Count + 1;
+        var usedNames = Timelines
+            .Select(timeline => timeline.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        while (usedNames.Contains($"T{index}"))
+            index++;
+
+        return $"T{index}";
     }
 }

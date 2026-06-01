@@ -16,6 +16,10 @@ public sealed class MacroTimeline
 
     public bool UseTextInputMode { get; set; }
 
+    public int LoopCount { get; set; }
+
+    public int BaseDelayMs { get; set; } = 50;
+
     public bool HasSteps => Steps.Count > 0;
 
     public List<MacroStep> ToPlaybackList()

@@ -22,6 +22,8 @@ public sealed class MacroWorkspace
 
     public string ShortcutKeys { get; set; } = "";
 
+    public string TargetWindowSearchName { get; set; } = "";
+
     public long TargetWindowHandle { get; set; }
 
     public string TargetWindowTitle { get; set; } = "";
@@ -29,4 +31,6 @@ public sealed class MacroWorkspace
     public long TargetChildWindowHandle { get; set; }
 
     public string TargetChildWindowTitle { get; set; } = "";
+
+    public string ErrorMessage { get; set; } = "";
 }

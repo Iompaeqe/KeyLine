@@ -14,6 +14,7 @@ public static class MacroCloneService
             TimerMs = source.TimerMs,
             BaseDelayMs = source.BaseDelayMs,
             ShortcutKeys = source.ShortcutKeys,
+            TargetWindowSearchName = source.TargetWindowSearchName,
             TargetWindowHandle = 0,
             TargetWindowTitle = "",
             TargetChildWindowHandle = 0,
@@ -42,7 +43,9 @@ public static class MacroCloneService
             UseStandardDelay = source.UseStandardDelay,
             StandardDelayMs = source.StandardDelayMs,
             ShowKeyUpDown = source.ShowKeyUpDown,
-            UseTextInputMode = source.UseTextInputMode
+            UseTextInputMode = source.UseTextInputMode,
+            LoopCount = source.LoopCount,
+            BaseDelayMs = source.BaseDelayMs
         };
 
         foreach (var step in source.Steps.Where(step => !step.IsSyntheticDisplayStep))
