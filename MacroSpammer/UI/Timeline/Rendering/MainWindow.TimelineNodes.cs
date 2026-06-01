@@ -1,59 +1,59 @@
 using System.Windows;
 using MacroSpammer.Domain;
-using MacroSpammer.UI.Steps;
+using MacroSpammer.UI.Nodes;
 
 namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private UIElement CreateStepBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateNode(MacroTimeline timeline, MacroNode node)
     {
-        return step.Type switch
+        return node.Type switch
         {
-            MacroStepType.Delay or MacroStepType.RandomDelay => CreateDelayBlock(timeline, step),
-            MacroStepType.Text => CreateTextStepBlock(timeline, step),
-            MacroStepType.ForegroundMouseDown or MacroStepType.ForegroundMouseUp => CreateKeyStepBlock(timeline, step),
-            MacroStepType.ForegroundMouseClick => CreateForegroundMouseStepBlock(timeline, step),
-            MacroStepType.CursorMove or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick => CreateMouseStepBlock(timeline, step),
-            MacroStepType.KeyDown or MacroStepType.KeyUp => CreateKeyStepBlock(timeline, step),
-            _ => CreateTextStepBlock(timeline, step)
+            MacroNodeType.Delay or MacroNodeType.RandomDelay => CreateDelayNode(timeline, node),
+            MacroNodeType.Text => CreateTextNode(timeline, node),
+            MacroNodeType.MouseDown or MacroNodeType.MouseUp => CreateKeyNode(timeline, node),
+            MacroNodeType.MouseClick => CreateForegroundMouseNode(timeline, node),
+            MacroNodeType.CursorMove or MacroNodeType.BackgroundMouseDown or MacroNodeType.BackgroundMouseUp or MacroNodeType.BackgroundMouseClick => CreateMouseNode(timeline, node),
+            MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
+            _ => CreateTextNode(timeline, node)
         };
     }
 
-    private UIElement CreateKeyStepBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateKeyNode(MacroTimeline timeline, MacroNode node)
     {
-        var control = new KeyStepControl
+        var control = new KeyNode
         {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
+            Step = node,
+            IsSelected = IsStepSelected(timeline, node),
             ShowKeyUpDown = timeline.ShowKeyUpDown,
-            Tag = step
+            Tag = node
         };
 
-        AttachStepMouseHandlers(control, timeline, step);
+        AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
-    private UIElement CreateTextStepBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateTextNode(MacroTimeline timeline, MacroNode node)
     {
-        var control = new TextStepControl
+        var control = new TextNode
         {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
+            Step = node,
+            IsSelected = IsStepSelected(timeline, node),
+            Tag = node
         };
 
-        AttachStepMouseHandlers(control, timeline, step);
+        AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
-    private UIElement CreateDelayBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateDelayNode(MacroTimeline timeline, MacroNode node)
     {
-        var control = new DelayStepControl
+        var control = new DelayNode
         {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
+            Step = node,
+            IsSelected = IsStepSelected(timeline, node),
+            Tag = node
         };
 
         control.DelayCommitted += (_, _) =>
@@ -63,17 +63,17 @@ public partial class MainWindow
             ScheduleSaveState();
         };
 
-        AttachStepMouseHandlers(control, timeline, step);
+        AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
-    private UIElement CreateMouseStepBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateMouseNode(MacroTimeline timeline, MacroNode node)
     {
-        var control = new MouseStepControl
+        var control = new BackgroundMouseNode
         {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
+            Step = node,
+            IsSelected = IsStepSelected(timeline, node),
+            Tag = node
         };
 
         control.CoordinateCommitted += (_, _) =>
@@ -86,30 +86,30 @@ public partial class MainWindow
         {
             SaveUndoSnapshot();
             SelectTimeline(timeline);
-            _selection.SelectStep(timeline, step);
-            await PickMouseCoordinatesForStepAsync(step);
+            _selection.SelectStep(timeline, node);
+            await PickMouseCoordinatesForStepAsync(node);
         };
 
-        AttachStepMouseHandlers(control, timeline, step);
+        AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
-    private UIElement CreateForegroundMouseStepBlock(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateForegroundMouseNode(MacroTimeline timeline, MacroNode node)
     {
-        var control = new ForegroundMouseStepControl
+        var control = new MouseNode
         {
-            Step = step,
-            IsSelected = IsStepSelected(timeline, step),
-            Tag = step
+            Step = node,
+            IsSelected = IsStepSelected(timeline, node),
+            Tag = node
         };
 
-        AttachStepMouseHandlers(control, timeline, step);
+        AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
-    private UIElement CreateAddBlock(MacroTimeline timeline)
+    private UIElement CreateAddNode(MacroTimeline timeline)
     {
-        var control = new AddStepControl
+        var control = new AddNode
         {
             Tag = timeline
         };
@@ -118,7 +118,7 @@ public partial class MainWindow
         return control;
     }
 
-    private bool IsStepSelected(MacroTimeline timeline, MacroStep step)
+    private bool IsStepSelected(MacroTimeline timeline, MacroNode node)
     {
         if (!_selection.HasStepSelection || _selection.SelectedTimeline == null || _selection.SelectedSteps.Count == 0)
             return false;
@@ -126,19 +126,19 @@ public partial class MainWindow
         if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
             return false;
 
-        return _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(step, selectedStep));
+        return _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(node, selectedStep));
     }
 
-    private static bool IsSameSelectedStep(MacroStep step, MacroStep selectedStep)
+    private static bool IsSameSelectedStep(MacroNode node, MacroNode selectedNode)
     {
-        if (ReferenceEquals(step, selectedStep))
+        if (ReferenceEquals(node, selectedNode))
             return true;
 
-        if (step.IsSyntheticDisplayStep)
-            return step.SourceSteps.Contains(selectedStep) ||
-                   (selectedStep.IsSyntheticDisplayStep && step.SourceSteps.SequenceEqual(selectedStep.SourceSteps));
+        if (node.IsSyntheticDisplayNode)
+            return node.SourceNodes.Contains(selectedNode) ||
+                   (selectedNode.IsSyntheticDisplayNode && node.SourceNodes.SequenceEqual(selectedNode.SourceNodes));
 
-        return selectedStep.IsSyntheticDisplayStep && selectedStep.SourceSteps.Contains(step);
+        return selectedNode.IsSyntheticDisplayNode && selectedNode.SourceNodes.Contains(node);
     }
 
     private static Size MeasureTimelineItem(UIElement element)

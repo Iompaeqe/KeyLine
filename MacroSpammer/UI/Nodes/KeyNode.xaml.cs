@@ -6,34 +6,11 @@ using MacroSpammer.Domain;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Timeline;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class KeyStepControl : UserControl
+public partial class KeyNode : NodeBase
 {
-    private MacroStep? _step;
-    private bool _isSelected;
     private bool _showKeyUpDown;
-
-    public MacroStep? Step
-    {
-        get => _step;
-        set
-        {
-            _step = value;
-            Tag = value;
-            UpdateVisual();
-        }
-    }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set
-        {
-            _isSelected = value;
-            UpdateVisual();
-        }
-    }
 
     public bool ShowKeyUpDown
     {
@@ -45,12 +22,12 @@ public partial class KeyStepControl : UserControl
         }
     }
 
-    public KeyStepControl()
+    public KeyNode()
     {
         InitializeComponent();
     }
 
-    private void UpdateVisual()
+    protected override void UpdateVisual()
     {
         if (!IsLoaded && KeyBorder == null)
             return;
@@ -60,8 +37,8 @@ public partial class KeyStepControl : UserControl
             return;
 
         var ui = GeneratedUiConfig.KeyStep;
-        var keyText = StepDisplayFormatter.GetKeyText(step);
-        var isComboKey = StepDisplayFormatter.IsComboKey(keyText);
+        var keyText = NodeDisplayFormatter.GetKeyText(step);
+        var isComboKey = NodeDisplayFormatter.IsComboKey(keyText);
 
         SetKeyText(keyText, UiBrushes.Get(Color.FromRgb(45, 212, 191)));
         KeyTextBlock.FontSize = isComboKey ? ui.ComboFontSize : ui.NormalFontSize;
@@ -73,8 +50,8 @@ public partial class KeyStepControl : UserControl
         {
             Margin = isComboKey ? ui.ComboArrowMargin : ui.NormalArrowMargin;
 
-            UpArrow.Visibility = step.Type is MacroStepType.KeyUp or MacroStepType.ForegroundMouseUp ? Visibility.Visible : Visibility.Collapsed;
-            DownArrow.Visibility = step.Type is MacroStepType.KeyDown or MacroStepType.ForegroundMouseDown ? Visibility.Visible : Visibility.Collapsed;
+            UpArrow.Visibility = step.Type is MacroNodeType.KeyUp or MacroNodeType.MouseUp ? Visibility.Visible : Visibility.Collapsed;
+            DownArrow.Visibility = step.Type is MacroNodeType.KeyDown or MacroNodeType.MouseDown ? Visibility.Visible : Visibility.Collapsed;
         }
         else
         {
@@ -85,10 +62,10 @@ public partial class KeyStepControl : UserControl
 
         var (bg, border, fg) = step.Type switch
         {
-            MacroStepType.KeyDown => (ui.KeyDownBackground, ui.KeyDownBorder, ui.KeyDownText),
-            MacroStepType.KeyUp => (ui.KeyUpBackground, ui.KeyUpBorder, ui.KeyUpText),
-            MacroStepType.ForegroundMouseDown => (Color.FromRgb(15, 73, 70), Color.FromRgb(45, 212, 191), Color.FromRgb(204, 251, 241)),
-            MacroStepType.ForegroundMouseUp => (Color.FromRgb(45, 55, 72), Color.FromRgb(94, 234, 212), Color.FromRgb(204, 251, 241)),
+            MacroNodeType.KeyDown => (ui.KeyDownBackground, ui.KeyDownBorder, ui.KeyDownText),
+            MacroNodeType.KeyUp => (ui.KeyUpBackground, ui.KeyUpBorder, ui.KeyUpText),
+            MacroNodeType.MouseDown => (Color.FromRgb(15, 73, 70), Color.FromRgb(45, 212, 191), Color.FromRgb(204, 251, 241)),
+            MacroNodeType.MouseUp => (Color.FromRgb(45, 55, 72), Color.FromRgb(94, 234, 212), Color.FromRgb(204, 251, 241)),
             _ => (ui.FallbackBackground, ui.FallbackBorder, ui.FallbackText)
         };
 

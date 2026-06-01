@@ -64,9 +64,9 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroStep
+        timeline.Steps.Add(new MacroNode
         {
-            Type = MacroStepType.Delay,
+            Type = MacroNodeType.Delay,
             DelayMs = 100,
             IsRecordedDelay = false
         });
@@ -84,9 +84,9 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroStep
+        timeline.Steps.Add(new MacroNode
         {
-            Type = MacroStepType.RandomDelay,
+            Type = MacroNodeType.RandomDelay,
             RandomDelayMinMs = 50,
             RandomDelayMaxMs = 150,
             IsRecordedDelay = false
@@ -110,9 +110,9 @@ public partial class MainWindow
             return;
 
         SaveUndoSnapshot();
-        timeline.Steps.Add(new MacroStep
+        timeline.Steps.Add(new MacroNode
         {
-            Type = MacroStepType.Text,
+            Type = MacroNodeType.Text,
             Text = dialog.ResultText
         });
 
@@ -128,9 +128,9 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        var step = new MacroStep
+        var step = new MacroNode
         {
-            Type = MacroStepType.CursorMove,
+            Type = MacroNodeType.CursorMove,
             MouseX = 0,
             MouseY = 0
         };
@@ -143,21 +143,21 @@ public partial class MainWindow
     }
 
     private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroStepType.MouseDown);
+        AddMouseStep(MacroNodeType.BackgroundMouseDown);
 
     private void MouseUpMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroStepType.MouseUp);
+        AddMouseStep(MacroNodeType.BackgroundMouseUp);
 
     private void MouseClickMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroStepType.MouseClick);
+        AddMouseStep(MacroNodeType.BackgroundMouseClick);
 
-    private void AddMouseStep(MacroStepType type)
+    private void AddMouseStep(MacroNodeType type)
     {
         AddPopup.IsOpen = false;
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroStep
+        timeline.Steps.Add(new MacroNode
         {
             Type = type,
             MouseX = 0,

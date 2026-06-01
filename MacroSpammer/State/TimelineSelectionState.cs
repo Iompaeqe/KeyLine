@@ -5,24 +5,24 @@ namespace MacroSpammer.State;
 public sealed class TimelineSelectionState
 {
     public MacroTimeline? SelectedTimeline { get; private set; }
-    public MacroStep? SelectedStep { get; private set; }
-    public MacroStep? AnchorStep { get; private set; }
-    public List<MacroStep> SelectedSteps { get; } = new();
+    public MacroNode? SelectedStep { get; private set; }
+    public MacroNode? AnchorStep { get; private set; }
+    public List<MacroNode> SelectedSteps { get; } = new();
 
     public bool HasStepSelection => SelectedTimeline != null && SelectedStep != null;
     public bool HasMultipleStepSelection => SelectedTimeline != null && SelectedSteps.Count > 1;
     public bool HasTimelineSelection => SelectedTimeline != null && SelectedStep == null;
 
-    public void SelectStep(MacroTimeline timeline, MacroStep step)
+    public void SelectStep(MacroTimeline timeline, MacroNode node)
     {
         SelectedTimeline = timeline;
-        SelectedStep = step;
-        AnchorStep = step;
+        SelectedStep = node;
+        AnchorStep = node;
         SelectedSteps.Clear();
-        SelectedSteps.Add(step);
+        SelectedSteps.Add(node);
     }
 
-    public void SelectSteps(MacroTimeline timeline, IEnumerable<MacroStep> steps, MacroStep? anchorStep = null)
+    public void SelectSteps(MacroTimeline timeline, IEnumerable<MacroNode> steps, MacroNode? anchorStep = null)
     {
         SelectedTimeline = timeline;
         SelectedSteps.Clear();
@@ -58,11 +58,11 @@ public sealed class TimelineSelectionState
         return ReferenceEquals(SelectedTimeline, timeline) && SelectedStep == null;
     }
 
-    public bool IsStepSelected(MacroTimeline timeline, MacroStep step)
+    public bool IsStepSelected(MacroTimeline timeline, MacroNode node)
     {
         if (!ReferenceEquals(SelectedTimeline, timeline) || SelectedSteps.Count == 0)
             return false;
 
-        return SelectedSteps.Any(selected => ReferenceEquals(selected, step));
+        return SelectedSteps.Any(selected => ReferenceEquals(selected, node));
     }
 }

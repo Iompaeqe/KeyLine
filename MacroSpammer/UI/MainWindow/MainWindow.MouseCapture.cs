@@ -13,7 +13,7 @@ public partial class MainWindow
     private IntPtr _mousePickHook;
     private MouseTargetIndicatorWindow? _mouseTargetIndicator;
 
-    private async Task PickMouseCoordinatesForStepAsync(MacroStep step)
+    private async Task PickMouseCoordinatesForStepAsync(MacroNode node)
     {
         var target = GetTargetHandle();
         if (target == null || target.Handle == 0)
@@ -36,10 +36,10 @@ public partial class MainWindow
             return;
         }
 
-        step.MouseX = Math.Max(0, (int)picked.Value.X);
-        step.MouseY = Math.Max(0, (int)picked.Value.Y);
+        node.MouseX = Math.Max(0, (int)picked.Value.X);
+        node.MouseY = Math.Max(0, (int)picked.Value.Y);
 
-        StatusText.Text = $"Captured mouse point ({step.MouseX}, {step.MouseY})";
+        StatusText.Text = $"Captured mouse point ({node.MouseX}, {node.MouseY})";
         RefreshTimeline();
         ScheduleSaveState();
     }

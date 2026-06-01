@@ -119,92 +119,92 @@ public partial class MainWindow
             return CreateReadonlySectionContent(("Selected", _selection.SelectedSteps.Count.ToString()));
 
         if (_selection.HasStepSelection && _selection.SelectedStep != null &&
-            (_selection.SelectedStep.IsSyntheticDisplayStep || HasEditableStepInspector(_selection.SelectedStep)))
+            (_selection.SelectedStep.IsSyntheticDisplayNode || HasEditableStepInspector(_selection.SelectedStep)))
             return CreateStepInspector(timeline, _selection.SelectedStep);
 
         return null;
     }
 
-    private UIElement CreateStepInspector(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateStepInspector(MacroTimeline timeline, MacroNode node)
     {
         var section = CreateSection();
 
-        section.Children.Add(CreateReadonlyRow("Type", GetStepTypeText(step)));
+        section.Children.Add(CreateReadonlyRow("Type", GetStepTypeText(node)));
 
-        if (step.IsSyntheticDisplayStep)
+        if (node.IsSyntheticDisplayNode)
         {
-            section.Children.Add(CreateReadonlyRow("Value", StepDisplayFormatter.GetKeyText(step)));
-            section.Children.Add(CreateReadonlyRow("Parts", step.SourceSteps.Count.ToString()));
+            section.Children.Add(CreateReadonlyRow("Value", NodeDisplayFormatter.GetKeyText(node)));
+            section.Children.Add(CreateReadonlyRow("Parts", node.SourceNodes.Count.ToString()));
             return section;
         }
 
-        switch (step.Type)
+        switch (node.Type)
         {
-            case MacroStepType.Delay:
+            case MacroNodeType.Delay:
                 section.Children.Add(CreateDelayRow(
                     "Delay",
-                    step.DelayMs,
-                    value => CommitStepChange(() => step.DelayMs = value),
+                    node.DelayMs,
+                    value => CommitStepChange(() => node.DelayMs = value),
                     TooltipNotes.DelayStepValue));
                 break;
 
-            case MacroStepType.RandomDelay:
+            case MacroNodeType.RandomDelay:
                 section.Children.Add(CreateDelayRow(
                     "Min",
-                    step.RandomDelayMinMs,
+                    node.RandomDelayMinMs,
                     value => CommitStepChange(() =>
                     {
-                        step.RandomDelayMinMs = value;
-                        NormalizeRandomDelay(step);
+                        node.RandomDelayMinMs = value;
+                        NormalizeRandomDelay(node);
                     }),
                     TooltipNotes.RandomDelayMinimum));
                 section.Children.Add(CreateDelayRow(
                     "Max",
-                    step.RandomDelayMaxMs,
+                    node.RandomDelayMaxMs,
                     value => CommitStepChange(() =>
                     {
-                        step.RandomDelayMaxMs = value;
-                        NormalizeRandomDelay(step);
+                        node.RandomDelayMaxMs = value;
+                        NormalizeRandomDelay(node);
                     }),
                     TooltipNotes.RandomDelayMaximum));
                 break;
 
-            case MacroStepType.Text:
-                section.Children.Add(CreateTextEditRow(timeline, step));
+            case MacroNodeType.Text:
+                section.Children.Add(CreateTextEditRow(timeline, node));
                 break;
 
-            case MacroStepType.CursorMove:
-            case MacroStepType.MouseDown:
-            case MacroStepType.MouseUp:
-            case MacroStepType.MouseClick:
+            case MacroNodeType.CursorMove:
+            case MacroNodeType.BackgroundMouseDown:
+            case MacroNodeType.BackgroundMouseUp:
+            case MacroNodeType.BackgroundMouseClick:
                 section.Children.Add(CreateNumberRow(
                     "X",
-                    step.MouseX,
-                    value => CommitStepChange(() => step.MouseX = value)));
+                    node.MouseX,
+                    value => CommitStepChange(() => node.MouseX = value)));
                 section.Children.Add(CreateNumberRow(
                     "Y",
-                    step.MouseY,
-                    value => CommitStepChange(() => step.MouseY = value)));
-                section.Children.Add(CreatePickPointButton(step));
+                    node.MouseY,
+                    value => CommitStepChange(() => node.MouseY = value)));
+                section.Children.Add(CreatePickPointButton(node));
                 break;
 
-            case MacroStepType.ForegroundMouseDown:
-            case MacroStepType.ForegroundMouseUp:
+            case MacroNodeType.MouseDown:
+            case MacroNodeType.MouseUp:
                 section.Children.Add(CreateNumberRow(
                     "Button",
-                    Math.Clamp(step.MouseButton <= 0 ? 1 : step.MouseButton, 1, 5),
-                    value => CommitStepChange(() => step.MouseButton = Math.Clamp(value, 1, 5)),
+                    Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
+                    value => CommitStepChange(() => node.MouseButton = Math.Clamp(value, 1, 5)),
                     "",
                     1,
                     5));
                 break;
 
-            case MacroStepType.KeyDown:
-            case MacroStepType.KeyUp:
-                section.Children.Add(CreateReadonlyRow("Key", step.KeyName));
+            case MacroNodeType.KeyDown:
+            case MacroNodeType.KeyUp:
+                section.Children.Add(CreateReadonlyRow("Key", node.KeyName));
                 break;
 
-            case MacroStepType.ForegroundMouseClick:
+            case MacroNodeType.MouseClick:
                 section.Children.Add(CreateReadonlyRow("Button", "Left"));
                 break;
         }
@@ -643,7 +643,7 @@ public partial class MainWindow
         RefreshInspector();
     }
 
-    private UIElement CreateTextEditRow(MacroTimeline timeline, MacroStep step)
+    private UIElement CreateTextEditRow(MacroTimeline timeline, MacroNode node)
     {
         var panel = new StackPanel
         {
@@ -662,7 +662,7 @@ public partial class MainWindow
 
         var textBox = new TextBox
         {
-            Text = step.Text,
+            Text = node.Text,
             Height = 58,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
@@ -673,16 +673,16 @@ public partial class MainWindow
 
         textBox.LostFocus += (_, _) =>
         {
-            if (!_isRefreshingInspector && textBox.Text != step.Text)
-                CommitStepChange(() => step.Text = textBox.Text);
+            if (!_isRefreshingInspector && textBox.Text != node.Text)
+                CommitStepChange(() => node.Text = textBox.Text);
         };
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter || !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                 return;
 
-            if (textBox.Text != step.Text)
-                CommitStepChange(() => step.Text = textBox.Text);
+            if (textBox.Text != node.Text)
+                CommitStepChange(() => node.Text = textBox.Text);
 
             Keyboard.ClearFocus();
             e.Handled = true;
@@ -692,7 +692,7 @@ public partial class MainWindow
         return panel;
     }
 
-    private UIElement CreatePickPointButton(MacroStep step)
+    private UIElement CreatePickPointButton(MacroNode node)
     {
         var button = new Button
         {
@@ -706,7 +706,7 @@ public partial class MainWindow
         button.Click += async (_, _) =>
         {
             SaveUndoSnapshot();
-            await PickMouseCoordinatesForStepAsync(step);
+            await PickMouseCoordinatesForStepAsync(node);
             RefreshInspector();
         };
 
@@ -807,39 +807,39 @@ public partial class MainWindow
         }
     }
 
-    private static bool HasEditableStepInspector(MacroStep step) =>
-        !step.IsSyntheticDisplayStep &&
-        step.Type is MacroStepType.Delay
-            or MacroStepType.RandomDelay
-            or MacroStepType.Text
-            or MacroStepType.CursorMove
-            or MacroStepType.MouseDown
-            or MacroStepType.MouseUp
-            or MacroStepType.MouseClick;
+    private static bool HasEditableStepInspector(MacroNode node) =>
+        !node.IsSyntheticDisplayNode &&
+        node.Type is MacroNodeType.Delay
+            or MacroNodeType.RandomDelay
+            or MacroNodeType.Text
+            or MacroNodeType.CursorMove
+            or MacroNodeType.BackgroundMouseDown
+            or MacroNodeType.BackgroundMouseUp
+            or MacroNodeType.BackgroundMouseClick;
 
-    private static void NormalizeRandomDelay(MacroStep step)
+    private static void NormalizeRandomDelay(MacroNode node)
     {
-        if (step.RandomDelayMaxMs < step.RandomDelayMinMs)
-            (step.RandomDelayMinMs, step.RandomDelayMaxMs) = (step.RandomDelayMaxMs, step.RandomDelayMinMs);
+        if (node.RandomDelayMaxMs < node.RandomDelayMinMs)
+            (node.RandomDelayMinMs, node.RandomDelayMaxMs) = (node.RandomDelayMaxMs, node.RandomDelayMinMs);
     }
 
-    private static string GetStepTypeText(MacroStep step)
+    private static string GetStepTypeText(MacroNode node)
     {
-        return step.Type switch
+        return node.Type switch
         {
-            MacroStepType.KeyDown => "Key down",
-            MacroStepType.KeyUp => "Key up",
-            MacroStepType.Delay => "Delay",
-            MacroStepType.RandomDelay => "Random delay",
-            MacroStepType.Text => "Text",
-            MacroStepType.ForegroundMouseClick => "Foreground click",
-            MacroStepType.ForegroundMouseDown => "Mouse down",
-            MacroStepType.ForegroundMouseUp => "Mouse up",
-            MacroStepType.CursorMove => "Move cursor",
-            MacroStepType.MouseDown => "BG mouse down",
-            MacroStepType.MouseUp => "BG mouse up",
-            MacroStepType.MouseClick => "BG mouse click",
-            _ => step.Type.ToString()
+            MacroNodeType.KeyDown => "Key down",
+            MacroNodeType.KeyUp => "Key up",
+            MacroNodeType.Delay => "Delay",
+            MacroNodeType.RandomDelay => "Random delay",
+            MacroNodeType.Text => "Text",
+            MacroNodeType.MouseClick => "Foreground click",
+            MacroNodeType.MouseDown => "Mouse down",
+            MacroNodeType.MouseUp => "Mouse up",
+            MacroNodeType.CursorMove => "Move cursor",
+            MacroNodeType.BackgroundMouseDown => "BG mouse down",
+            MacroNodeType.BackgroundMouseUp => "BG mouse up",
+            MacroNodeType.BackgroundMouseClick => "BG mouse click",
+            _ => node.Type.ToString()
         };
     }
 }

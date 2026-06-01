@@ -5,47 +5,23 @@ using MacroSpammer.Domain;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Timeline;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class TextStepControl : UserControl
+public partial class TextNode : NodeBase
 {
-    private MacroStep? _step;
-    private bool _isSelected;
-
-    public MacroStep? Step
-    {
-        get => _step;
-        set
-        {
-            _step = value;
-            Tag = value;
-            UpdateVisual();
-        }
-    }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set
-        {
-            _isSelected = value;
-            UpdateVisual();
-        }
-    }
-
-    public TextStepControl()
+    public TextNode()
     {
         InitializeComponent();
     }
 
-    private void UpdateVisual()
+    protected override void UpdateVisual()
     {
         var step = Step;
         if (step == null)
             return;
 
         var ui = GeneratedUiConfig.TextStep;
-        var preview = StepDisplayFormatter.GetTextPreview(step);
+        var preview = NodeDisplayFormatter.GetTextPreview(step);
 
         RootBorder.Width = Math.Max(
             ui.MinWidth,
@@ -65,5 +41,4 @@ public partial class TextStepControl : UserControl
             : ui.NormalBorderThickness;
         PreviewTextBlock.Foreground = UiBrushes.Get(fg);
     }
-
 }

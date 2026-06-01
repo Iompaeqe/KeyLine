@@ -6,7 +6,7 @@ namespace MacroSpammer.State;
 public sealed class TimelineDragState
 {
     public MacroTimeline? DraggedStepTimeline { get; private set; }
-    public MacroStep? DraggedStep { get; private set; }
+    public MacroNode? DraggedStep { get; private set; }
     public Point StepDragStartPoint { get; private set; }
     public bool IsDraggingStep { get; private set; }
 
@@ -20,19 +20,19 @@ public sealed class TimelineDragState
     public double TimelinePanStartOffset { get; private set; }
     
     public Point StepDragCurrentPoint { get; private set; }
-    public MacroStep? StepDropRawInsertAnchor { get; private set; }
+    public MacroNode? StepDropRawInsertAnchor { get; private set; }
 
-    public void BeginStepDrag(MacroTimeline timeline, MacroStep step, Point startPoint)
+    public void BeginStepDrag(MacroTimeline timeline, MacroNode node, Point startPoint)
     {
         DraggedStepTimeline = timeline;
-        DraggedStep = step;
+        DraggedStep = node;
         StepDragStartPoint = startPoint;
         StepDragCurrentPoint = startPoint;
         StepDropRawInsertAnchor = null;
         IsDraggingStep = false;
     }
     
-    public bool UpdateStepDragPreview(Point currentPoint, MacroStep? rawInsertAnchor)
+    public bool UpdateStepDragPreview(Point currentPoint, MacroNode? rawInsertAnchor)
     {
         StepDragCurrentPoint = currentPoint;
 

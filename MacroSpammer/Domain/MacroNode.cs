@@ -1,24 +1,24 @@
 namespace MacroSpammer.Domain;
 
-public enum MacroStepType
+public enum MacroNodeType
 {
     KeyDown,
     KeyUp,
     Delay,
     RandomDelay,
     Text,
-    ForegroundMouseClick,
-    ForegroundMouseDown,
-    ForegroundMouseUp,
-    CursorMove,
+    MouseClick,
     MouseDown,
     MouseUp,
-    MouseClick
+    CursorMove,
+    BackgroundMouseDown,
+    BackgroundMouseUp,
+    BackgroundMouseClick
 }
 
-public sealed class MacroStep
+public sealed class MacroNode
 {
-    public MacroStepType Type { get; set; }
+    public MacroNodeType Type { get; set; }
 
     public string KeyName { get; set; } = "";
     public int VirtualKey { get; set; }
@@ -39,7 +39,7 @@ public sealed class MacroStep
 
     public bool IsRecordedDelay { get; set; }
 
-    public bool IsSyntheticDisplayStep { get; set; }
+    public bool IsSyntheticDisplayNode { get; set; }
 
-    public List<MacroStep> SourceSteps { get; set; } = new();
+    public List<MacroNode> SourceNodes { get; set; } = new();
 }

@@ -62,12 +62,12 @@ public partial class MainWindow
         DeleteSteps(timeline, _selection.SelectedSteps.ToList());
     }
 
-    private void DeleteStep(MacroTimeline timeline, MacroStep step)
+    private void DeleteStep(MacroTimeline timeline, MacroNode node)
     {
         ResetTimelineDeleteConfirmation();
 
         SaveUndoSnapshot();
-        var stepsToRemove = GetStepsToRemoveForDelete(timeline, step);
+        var stepsToRemove = GetStepsToRemoveForDelete(timeline, node);
         if (timeline.UseStandardDelay && stepsToRemove.Any(IsDelayCleanupActionStep))
             AddStandardDelayCleanupSteps(timeline, stepsToRemove);
 
@@ -81,11 +81,11 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void DeleteSteps(MacroTimeline timeline, IReadOnlyList<MacroStep> steps)
+    private void DeleteSteps(MacroTimeline timeline, IReadOnlyList<MacroNode> steps)
     {
         ResetTimelineDeleteConfirmation();
 
-        var stepsToRemove = new List<MacroStep>();
+        var stepsToRemove = new List<MacroNode>();
         foreach (var step in steps)
         {
             var rawSteps = GetStepsToRemoveForDelete(timeline, step);
@@ -113,21 +113,21 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private static List<MacroStep> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroStep step)
+    private static List<MacroNode> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroNode node)
     {
-        if (step.IsSyntheticDisplayStep)
+        if (node.IsSyntheticDisplayNode)
         {
-            return step.SourceSteps
+            return node.SourceNodes
                 .Where(timeline.Steps.Contains)
                 .ToList();
         }
 
-        return timeline.Steps.Contains(step)
-            ? new List<MacroStep> { step }
-            : new List<MacroStep>();
+        return timeline.Steps.Contains(node)
+            ? new List<MacroNode> { node }
+            : new List<MacroNode>();
     }
 
-    private static void AddStandardDelayCleanupSteps(MacroTimeline timeline, List<MacroStep> stepsToRemove)
+    private static void AddStandardDelayCleanupSteps(MacroTimeline timeline, List<MacroNode> stepsToRemove)
     {
         if (stepsToRemove.Count == 0)
             return;
@@ -152,9 +152,9 @@ public partial class MainWindow
         }
     }
 
-    private static List<MacroStep> GetContiguousDelayStepsBefore(MacroTimeline timeline, int stepIndex)
+    private static List<MacroNode> GetContiguousDelayStepsBefore(MacroTimeline timeline, int stepIndex)
     {
-        var result = new List<MacroStep>();
+        var result = new List<MacroNode>();
 
         for (var i = stepIndex - 1; i >= 0 && IsDelayCleanupStep(timeline.Steps[i]); i--)
             result.Add(timeline.Steps[i]);
@@ -162,9 +162,9 @@ public partial class MainWindow
         return result;
     }
 
-    private static List<MacroStep> GetContiguousDelayStepsAfter(MacroTimeline timeline, int stepIndex)
+    private static List<MacroNode> GetContiguousDelayStepsAfter(MacroTimeline timeline, int stepIndex)
     {
-        var result = new List<MacroStep>();
+        var result = new List<MacroNode>();
 
         for (var i = stepIndex + 1; i < timeline.Steps.Count && IsDelayCleanupStep(timeline.Steps[i]); i++)
             result.Add(timeline.Steps[i]);
@@ -172,22 +172,22 @@ public partial class MainWindow
         return result;
     }
 
-    private static bool IsDelayCleanupStep(MacroStep step) =>
-        step.Type is MacroStepType.Delay or MacroStepType.RandomDelay;
+    private static bool IsDelayCleanupStep(MacroNode node) =>
+        node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
 
-    private static bool IsDelayCleanupActionStep(MacroStep step) =>
-        !IsDelayCleanupStep(step);
+    private static bool IsDelayCleanupActionStep(MacroNode node) =>
+        !IsDelayCleanupStep(node);
 
-    private void EditTextStep(MacroTimeline timeline, MacroStep step)
+    private void EditTextStep(MacroTimeline timeline, MacroNode node)
     {
         var dialog = new TextInputWindow { Owner = this };
-        dialog.SetText(step.Text);
+        dialog.SetText(node.Text);
 
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.ResultText))
             return;
 
         SaveUndoSnapshot();
-        step.Text = dialog.ResultText;
+        node.Text = dialog.ResultText;
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();

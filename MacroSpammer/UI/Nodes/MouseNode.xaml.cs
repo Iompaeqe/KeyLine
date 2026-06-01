@@ -3,40 +3,16 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using MacroSpammer.Domain;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class ForegroundMouseStepControl : UserControl
+public partial class MouseNode : NodeBase
 {
-    private MacroStep? _step;
-    private bool _isSelected;
-
-    public MacroStep? Step
-    {
-        get => _step;
-        set
-        {
-            _step = value;
-            Tag = value;
-            UpdateVisual();
-        }
-    }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set
-        {
-            _isSelected = value;
-            UpdateVisual();
-        }
-    }
-
-    public ForegroundMouseStepControl()
+    public MouseNode()
     {
         InitializeComponent();
     }
 
-    private void UpdateVisual()
+    protected override void UpdateVisual()
     {
         var step = Step;
         if (step == null)
@@ -44,9 +20,9 @@ public partial class ForegroundMouseStepControl : UserControl
 
         ActionTextBlock.Text = step.Type switch
         {
-            MacroStepType.ForegroundMouseClick => "CLICK",
-            MacroStepType.ForegroundMouseDown => $"M{NormalizeMouseButton(step.MouseButton)}↓",
-            MacroStepType.ForegroundMouseUp => $"M{NormalizeMouseButton(step.MouseButton)}↑",
+            MacroNodeType.MouseClick => "CLICK",
+            MacroNodeType.MouseDown => $"M{NormalizeMouseButton(step.MouseButton)}↓",
+            MacroNodeType.MouseUp => $"M{NormalizeMouseButton(step.MouseButton)}↑",
             _ => "M"
         };
 

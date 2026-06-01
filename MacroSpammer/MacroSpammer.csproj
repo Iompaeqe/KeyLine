@@ -83,32 +83,32 @@
       <Page Update="UI\Common\Styles\ToolTips.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="UI\Steps\AddStepControl.xaml">
+      <Page Update="UI\Nodes\AddNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-      <Page Update="UI\Steps\DelayStepControl.xaml">
+      <Page Update="UI\Nodes\DelayNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-      <Page Update="UI\Steps\KeyStepControl.xaml">
+      <Page Update="UI\Nodes\KeyNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-      <Page Update="UI\Steps\MouseStepControl.xaml">
+      <Page Update="UI\Nodes\BackgroundMouseNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-      <Page Update="UI\Steps\TextStepControl.xaml">
+      <Page Update="UI\Nodes\TextNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </Page>
-      <Page Update="UI\Steps\ForegroundMouseStepControl.xaml">
+      <Page Update="UI\Nodes\MouseNode.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>

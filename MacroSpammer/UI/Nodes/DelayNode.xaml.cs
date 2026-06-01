@@ -6,48 +6,27 @@ using MacroSpammer.Domain;
 using MacroSpammer.Services.Timeline;
 using MacroSpammer.UI.Config;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class DelayStepControl : UserControl
+public partial class DelayNode : NodeBase
 {
-    private MacroStep? _step;
-    private bool _isSelected;
     private bool _isEditing;
 
     public event EventHandler? DelayCommitted;
 
-    public MacroStep? Step
-    {
-        get => _step;
-        set
-        {
-            _step = value;
-            Tag = value;
-            UpdateVisual();
-        }
-    }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set
-        {
-            _isSelected = value;
-            UpdateVisual();
-        }
-    }
-
-    public DelayStepControl()
+    public DelayNode()
     {
         InitializeComponent();
     }
 
-    public bool IsValueEditorSource(DependencyObject? source)
+    public override InlineEditorActivationMode GetInlineEditorActivationMode(DependencyObject? source)
     {
-        return FindEditorTextBox(source) != null;
+        return FindEditorTextBox(source) != null
+            ? InlineEditorActivationMode.SuppressMouseUp
+            : InlineEditorActivationMode.None;
     }
 
-    public void FocusValueEditor(DependencyObject? source = null)
+    public override void FocusInlineEditor(DependencyObject? source = null)
     {
         var textBox = FindEditorTextBox(source);
         if (textBox == null)
@@ -76,7 +55,7 @@ public partial class DelayStepControl : UserControl
         return null;
     }
 
-    private void UpdateVisual()
+    protected override void UpdateVisual()
     {
         var step = Step;
         if (step == null)
@@ -84,7 +63,7 @@ public partial class DelayStepControl : UserControl
 
         var ui = GeneratedUiConfig.DelayStep;
 
-        if (step.Type == MacroStepType.RandomDelay)
+        if (step.Type == MacroNodeType.RandomDelay)
         {
             RootBorder.Width = 84;
             FixedDelayPanel.Visibility = Visibility.Collapsed;
@@ -144,7 +123,7 @@ public partial class DelayStepControl : UserControl
 
         _isEditing = true;
 
-        if (Step.Type == MacroStepType.RandomDelay)
+        if (Step.Type == MacroNodeType.RandomDelay)
         {
             MinValueTextBox.Text = Step.RandomDelayMinMs.ToString();
             MaxValueTextBox.Text = Step.RandomDelayMaxMs.ToString();
@@ -185,7 +164,7 @@ public partial class DelayStepControl : UserControl
 
         _isEditing = false;
 
-        if (Step.Type == MacroStepType.RandomDelay)
+        if (Step.Type == MacroNodeType.RandomDelay)
         {
             if (int.TryParse(MinValueTextBox.Text, out var min))
                 Step.RandomDelayMinMs = Math.Max(0, min);

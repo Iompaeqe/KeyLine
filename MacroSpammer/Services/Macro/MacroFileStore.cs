@@ -57,27 +57,27 @@ public static class MacroFileStore
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = Math.Max(0, timeline.BaseDelayMs),
             Steps = timeline.Steps
-                .Where(step => !step.IsSyntheticDisplayStep)
+                .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
                 .ToList()
         };
     }
 
-    private static PersistedStep ToPersistedStep(MacroStep step)
+    private static PersistedStep ToPersistedStep(MacroNode node)
     {
         return new PersistedStep
         {
-            Type = step.Type.ToString(),
-            KeyName = step.KeyName,
-            VirtualKey = step.VirtualKey,
-            DelayMs = Math.Max(0, step.DelayMs),
-            RandomDelayMinMs = Math.Max(0, step.RandomDelayMinMs),
-            RandomDelayMaxMs = Math.Max(0, step.RandomDelayMaxMs),
-            Text = step.Text,
-            MouseX = step.MouseX,
-            MouseY = step.MouseY,
-            MouseButton = Math.Clamp(step.MouseButton <= 0 ? 1 : step.MouseButton, 1, 5),
-            IsRecordedDelay = step.IsRecordedDelay
+            Type = node.Type.ToString(),
+            KeyName = node.KeyName,
+            VirtualKey = node.VirtualKey,
+            DelayMs = Math.Max(0, node.DelayMs),
+            RandomDelayMinMs = Math.Max(0, node.RandomDelayMinMs),
+            RandomDelayMaxMs = Math.Max(0, node.RandomDelayMaxMs),
+            Text = node.Text,
+            MouseX = node.MouseX,
+            MouseY = node.MouseY,
+            MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
+            IsRecordedDelay = node.IsRecordedDelay
         };
     }
 
@@ -128,13 +128,13 @@ public static class MacroFileStore
         return timeline;
     }
 
-    private static MacroStep ToStep(PersistedStep persisted)
+    private static MacroNode ToStep(PersistedStep persisted)
     {
-        var type = Enum.TryParse<MacroStepType>(persisted.Type, out var parsed)
+        var type = Enum.TryParse<MacroNodeType>(persisted.Type, out var parsed)
             ? parsed
-            : MacroStepType.Delay;
+            : MacroNodeType.Delay;
 
-        return new MacroStep
+        return new MacroNode
         {
             Type = type,
             KeyName = persisted.KeyName,
@@ -182,7 +182,7 @@ public static class MacroFileStore
 
     private sealed class PersistedStep
     {
-        public string Type { get; set; } = nameof(MacroStepType.Delay);
+        public string Type { get; set; } = nameof(MacroNodeType.Delay);
         public string KeyName { get; set; } = "";
         public int VirtualKey { get; set; }
         public int DelayMs { get; set; }

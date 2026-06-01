@@ -264,7 +264,7 @@ public partial class MainWindow
             }
 
             if (source is FrameworkElement fe &&
-                (fe.Tag is MacroStep || fe.Tag is MacroTimeline))
+                (fe.Tag is MacroNode || fe.Tag is MacroTimeline))
             {
                 return true;
             }

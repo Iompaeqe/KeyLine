@@ -16,7 +16,7 @@ public sealed class MacroRunner
 
     public async Task StartAsync(
         nint targetHwnd,
-        IReadOnlyList<MacroStep> sourceSteps,
+        IReadOnlyList<MacroNode> sourceSteps,
         int loopCount,
         int baseDelayMs,
         bool useStandardDelay,
@@ -51,7 +51,7 @@ public sealed class MacroRunner
                     await WaitIfPaused(token);
                     await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
 
-                    didDelayThisLoop |= step.Type is MacroStepType.Delay or MacroStepType.RandomDelay;
+                    didDelayThisLoop |= step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
 
                     if (ShouldApplyBaseDelay(executionSteps, i) && safeBaseDelayMs > 0)
                     {
@@ -104,26 +104,26 @@ public sealed class MacroRunner
         gate.TrySetResult();
     }
 
-    private static List<MacroStep> BuildExecutionSteps(
-        IReadOnlyList<MacroStep> sourceSteps,
+    private static List<MacroNode> BuildExecutionSteps(
+        IReadOnlyList<MacroNode> sourceSteps,
         bool useStandardDelay,
         int standardDelayMs)
     {
         if (!useStandardDelay)
             return sourceSteps.ToList();
 
-        var result = new List<MacroStep>();
+        var result = new List<MacroNode>();
 
         foreach (var step in sourceSteps)
         {
-            if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay)
+            if (step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
                 continue;
 
             result.Add(step);
 
-            result.Add(new MacroStep
+            result.Add(new MacroNode
             {
-                Type = MacroStepType.Delay,
+                Type = MacroNodeType.Delay,
                 DelayMs = standardDelayMs
             });
         }
@@ -131,87 +131,87 @@ public sealed class MacroRunner
         return result;
     }
 
-    private static bool ShouldApplyBaseDelay(IReadOnlyList<MacroStep> executionSteps, int index)
+    private static bool ShouldApplyBaseDelay(IReadOnlyList<MacroNode> executionSteps, int index)
     {
         var step = executionSteps[index];
-        if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay)
+        if (step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
             return false;
 
         var nextIndex = index + 1;
         return nextIndex >= executionSteps.Count ||
-               executionSteps[nextIndex].Type is not (MacroStepType.Delay or MacroStepType.RandomDelay);
+               executionSteps[nextIndex].Type is not (MacroNodeType.Delay or MacroNodeType.RandomDelay);
     }
 
     private async Task ExecuteStep(
         nint hwnd,
-        MacroStep step,
+        MacroNode node,
         int minimumDelayMs,
         ISet<int> heldModifierKeys,
         bool useTextInputMode,
         CancellationToken token)
     {
-        switch (step.Type)
+        switch (node.Type)
         {
-            case MacroStepType.KeyDown:
-                var isModifierKey = InputMessageSender.IsModifierKey(step.VirtualKey);
+            case MacroNodeType.KeyDown:
+                var isModifierKey = InputMessageSender.IsModifierKey(node.VirtualKey);
                 if (useTextInputMode && !isModifierKey && heldModifierKeys.Count == 0 &&
-                    InputMessageSender.TrySendCharacter(hwnd, step.VirtualKey))
+                    InputMessageSender.TrySendCharacter(hwnd, node.VirtualKey))
                     break;
 
-                InputMessageSender.SendKeyDown(hwnd, step.VirtualKey, !isModifierKey && heldModifierKeys.Count == 0);
+                InputMessageSender.SendKeyDown(hwnd, node.VirtualKey, !isModifierKey && heldModifierKeys.Count == 0);
                 if (isModifierKey)
-                    heldModifierKeys.Add(step.VirtualKey);
+                    heldModifierKeys.Add(node.VirtualKey);
                 break;
 
-            case MacroStepType.KeyUp:
-                if (useTextInputMode && !InputMessageSender.IsModifierKey(step.VirtualKey) && heldModifierKeys.Count == 0)
+            case MacroNodeType.KeyUp:
+                if (useTextInputMode && !InputMessageSender.IsModifierKey(node.VirtualKey) && heldModifierKeys.Count == 0)
                     break;
 
-                InputMessageSender.SendKeyUp(hwnd, step.VirtualKey);
-                if (InputMessageSender.IsModifierKey(step.VirtualKey))
-                    heldModifierKeys.Remove(step.VirtualKey);
+                InputMessageSender.SendKeyUp(hwnd, node.VirtualKey);
+                if (InputMessageSender.IsModifierKey(node.VirtualKey))
+                    heldModifierKeys.Remove(node.VirtualKey);
                 break;
 
-            case MacroStepType.Delay:
-                await DelayWithPause(Math.Max(step.DelayMs, minimumDelayMs), token);
+            case MacroNodeType.Delay:
+                await DelayWithPause(Math.Max(node.DelayMs, minimumDelayMs), token);
                 break;
 
-            case MacroStepType.RandomDelay:
-                var min = Math.Min(step.RandomDelayMinMs, step.RandomDelayMaxMs);
-                var max = Math.Max(step.RandomDelayMinMs, step.RandomDelayMaxMs);
+            case MacroNodeType.RandomDelay:
+                var min = Math.Min(node.RandomDelayMinMs, node.RandomDelayMaxMs);
+                var max = Math.Max(node.RandomDelayMinMs, node.RandomDelayMaxMs);
                 await DelayWithPause(Math.Max(Random.Shared.Next(min, max + 1), minimumDelayMs), token);
                 break;
 
-            case MacroStepType.Text:
-                InputMessageSender.SendText(hwnd, step.Text);
+            case MacroNodeType.Text:
+                InputMessageSender.SendText(hwnd, node.Text);
                 break;
 
-            case MacroStepType.ForegroundMouseClick:
+            case MacroNodeType.MouseClick:
                 InputMessageSender.SendForegroundMouseClick();
                 break;
 
-            case MacroStepType.ForegroundMouseDown:
-                InputMessageSender.SendForegroundMouseDown(step.MouseButton);
+            case MacroNodeType.MouseDown:
+                InputMessageSender.SendForegroundMouseDown(node.MouseButton);
                 break;
 
-            case MacroStepType.ForegroundMouseUp:
-                InputMessageSender.SendForegroundMouseUp(step.MouseButton);
+            case MacroNodeType.MouseUp:
+                InputMessageSender.SendForegroundMouseUp(node.MouseButton);
                 break;
 
-            case MacroStepType.CursorMove:
-                InputMessageSender.MoveCursorToClientPoint(hwnd, step.MouseX, step.MouseY);
+            case MacroNodeType.CursorMove:
+                InputMessageSender.MoveCursorToClientPoint(hwnd, node.MouseX, node.MouseY);
                 break;
 
-            case MacroStepType.MouseDown:
-                InputMessageSender.SendMouseDown(hwnd, step.MouseX, step.MouseY);
+            case MacroNodeType.BackgroundMouseDown:
+                InputMessageSender.SendMouseDown(hwnd, node.MouseX, node.MouseY);
                 break;
 
-            case MacroStepType.MouseUp:
-                InputMessageSender.SendMouseUp(hwnd, step.MouseX, step.MouseY);
+            case MacroNodeType.BackgroundMouseUp:
+                InputMessageSender.SendMouseUp(hwnd, node.MouseX, node.MouseY);
                 break;
 
-            case MacroStepType.MouseClick:
-                InputMessageSender.SendMouseClick(hwnd, step.MouseX, step.MouseY);
+            case MacroNodeType.BackgroundMouseClick:
+                InputMessageSender.SendMouseClick(hwnd, node.MouseX, node.MouseY);
                 break;
         }
     }

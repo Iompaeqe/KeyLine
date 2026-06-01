@@ -2,8 +2,8 @@ using MacroSpammer.Domain;
 
 namespace MacroSpammer.UI.Timeline;
 
-public sealed class StepDragTarget
+public sealed class NodeDragTarget
 {
-    public required MacroStep RawInsertAnchor { get; init; }
+    public required MacroNode RawInsertAnchor { get; init; }
     public required double CenterX { get; init; }
 }

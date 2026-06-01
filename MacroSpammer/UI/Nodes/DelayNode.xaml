@@ -1,6 +1,7 @@
-<UserControl x:Class="MacroSpammer.UI.Steps.DelayStepControl"
+<local:NodeBase x:Class="MacroSpammer.UI.Nodes.DelayNode"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MacroSpammer.UI.Nodes"
              Focusable="False">
     <Border x:Name="RootBorder"
             Height="46"
@@ -139,4 +140,4 @@
             </Grid>
         </Grid>
     </Border>
-</UserControl>
+</local:NodeBase>

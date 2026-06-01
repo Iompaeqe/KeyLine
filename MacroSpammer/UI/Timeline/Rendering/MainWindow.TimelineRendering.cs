@@ -238,26 +238,18 @@ public partial class MainWindow
                 return;
             }
 
-            var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-                GetTimelineRenderRawSteps(timeline).ToList(),
-                timeline.UseStandardDelay,
-                timeline.ShowKeyUpDown);
+            var previewSlots = GetTimelineRenderPreviewSlots(timeline);
 
             // Re-calculate positions for all items including the placeholder.
             var currentLeft = TimelineFirstItemLeft;
-            var rawStepsForRender = GetTimelineRenderRawSteps(timeline);
-            var draggedItems = GetRawStepsForDisplayStep(timeline, _drag.DraggedStep!);
             var placeholderAdded = false;
 
             var visualIndex = 0;
             var orderedVisualItems = new List<TimelineVisualItem>(state.VisualItems.Count);
 
-            foreach (var step in visibleSteps)
+            foreach (var slot in previewSlots)
             {
-                var rawItems = GetRawStepsForDisplayStep(rawStepsForRender, step);
-                var isDraggedDisplayStep = rawItems.Any(draggedItems.Contains);
-
-                if (isDraggedDisplayStep)
+                if (slot.IsDraggedSlot)
                 {
                     if (!UpdateOrMoveVisualItem(
                             state,
@@ -275,7 +267,7 @@ public partial class MainWindow
                         orderedVisualItems,
                         ref visualIndex,
                         ref currentLeft,
-                        GetTimelineAnimationKey(timeline, step)))
+                        GetTimelineAnimationKey(timeline, slot.DisplayNode)))
                     return;
             }
 
@@ -418,7 +410,7 @@ public partial class MainWindow
         return Math.Max(GetMinimumTimelineCanvasWidth(), maxContentWidth);
     }
 
-    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps, double canvasWidth, bool isFirstRow, bool isLastRow)
+    private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroNode> visibleSteps, double canvasWidth, bool isFirstRow, bool isLastRow)
     {
         return CreateTimelineRow(
             timeline,
@@ -465,61 +457,77 @@ public partial class MainWindow
         return row;
     }
     
-    private List<TimelineVisualItem> BuildTimelineVisualItems(MacroTimeline timeline, IReadOnlyList<MacroStep> visibleSteps)
+    private List<TimelineVisualItem> BuildTimelineVisualItems(MacroTimeline timeline, IReadOnlyList<MacroNode> visibleSteps)
     {
         var visualItems = new List<TimelineVisualItem>();
         var currentLeft = TimelineFirstItemLeft;
-
-        var rawStepsForRender = GetTimelineRenderRawSteps(timeline);
 
         var isDraggingThisTimeline =
             _drag.IsDraggingStep &&
             ReferenceEquals(_drag.DraggedStepTimeline, timeline) &&
             _drag.DraggedStep != null;
 
-        var draggedItems = isDraggingThisTimeline
-            ? GetRawStepsForDrag(timeline, _drag.DraggedStep!)
-            : new List<MacroStep>();
-
         var placeholderCount = 0;
+        var previewSlots = isDraggingThisTimeline
+            ? GetTimelineRenderPreviewSlots(timeline)
+            : Array.Empty<NodePreviewSlot>();
 
-        foreach (var step in visibleSteps)
+        if (isDraggingThisTimeline && previewSlots.Count > 0)
         {
-            var rawItems = GetRawStepsForDisplayStep(rawStepsForRender, step);
-
-            var isDraggedDisplayStep =
-                isDraggingThisTimeline &&
-                rawItems.Any(draggedItems.Contains);
-
-            if (isDraggedDisplayStep)
+            foreach (var slot in previewSlots)
             {
-                AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, step);
-                placeholderCount++;
-                continue;
+                if (slot.IsDraggedSlot)
+                {
+                    AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, slot.DisplayNode, slot.Width);
+                    placeholderCount++;
+                    continue;
+                }
+
+                var block = CreateNode(timeline, slot.DisplayNode);
+
+                if (block is FrameworkElement element)
+                    element.Tag = slot.DisplayNode;
+
+                var size = MeasureTimelineItem(block);
+
+                visualItems.Add(new TimelineVisualItem
+                {
+                    Element = block,
+                    Left = currentLeft,
+                    Size = size,
+                    AnimationKey = GetTimelineAnimationKey(timeline, slot.DisplayNode)
+                });
+
+                currentLeft += size.Width + TimelineItemGap;
             }
-
-            var block = CreateStepBlock(timeline, step);
-
-            if (block is FrameworkElement element)
-                element.Tag = step;
-
-            var size = MeasureTimelineItem(block);
-
-            visualItems.Add(new TimelineVisualItem
+        }
+        else
+        {
+            foreach (var step in visibleSteps)
             {
-                Element = block,
-                Left = currentLeft,
-                Size = size,
-                AnimationKey = GetTimelineAnimationKey(timeline, step)
-            });
+                var block = CreateNode(timeline, step);
 
-            currentLeft += size.Width + TimelineItemGap;
+                if (block is FrameworkElement element)
+                    element.Tag = step;
+
+                var size = MeasureTimelineItem(block);
+
+                visualItems.Add(new TimelineVisualItem
+                {
+                    Element = block,
+                    Left = currentLeft,
+                    Size = size,
+                    AnimationKey = GetTimelineAnimationKey(timeline, step)
+                });
+
+                currentLeft += size.Width + TimelineItemGap;
+            }
         }
 
         if (isDraggingThisTimeline && placeholderCount == 0)
             AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedStep!);
 
-        var addBlock = CreateAddBlock(timeline);
+                    var addBlock = CreateAddNode(timeline);
         var addSize = MeasureTimelineItem(addBlock);
 
         visualItems.Add(new TimelineVisualItem
@@ -538,19 +546,22 @@ public partial class MainWindow
         return (timeline, "drop-placeholder");
     }
 
-    private object GetDropPlaceholderAnimationKey(MacroTimeline timeline, MacroStep step)
+    private object GetDropPlaceholderAnimationKey(MacroTimeline timeline, MacroNode node)
     {
-        return (timeline, "drop-placeholder", GetTimelineAnimationKey(timeline, step));
+        return (timeline, "drop-placeholder", GetTimelineAnimationKey(timeline, node));
     }
 
     private void AddPlaceholderVisualItem(
         List<TimelineVisualItem> visualItems,
         ref double currentLeft,
         MacroTimeline timeline,
-        MacroStep draggedStep)
+        MacroNode draggedNode,
+        double? widthOverride = null)
     {
-        var draggedBlock = CreateStepBlock(timeline, draggedStep);
+        var draggedBlock = CreateNode(timeline, draggedNode);
         var draggedSize = MeasureTimelineItem(draggedBlock);
+        if (widthOverride.HasValue)
+            draggedSize = new Size(widthOverride.Value, draggedSize.Height);
 
         var placeholder = new Border
         {
@@ -581,18 +592,18 @@ public partial class MainWindow
             Element = placeholder,
             Left = currentLeft,
             Size = draggedSize,
-            AnimationKey = GetDropPlaceholderAnimationKey(timeline, draggedStep)
+            AnimationKey = GetDropPlaceholderAnimationKey(timeline, draggedNode)
         });
 
         currentLeft += draggedSize.Width + TimelineItemGap;
     }
 
-    private object GetTimelineAnimationKey(MacroTimeline timeline, MacroStep step)
+    private object GetTimelineAnimationKey(MacroTimeline timeline, MacroNode node)
     {
-        var rawItems = GetRawStepsForDisplayStep(timeline, step);
+        var rawItems = GetRawStepsForDisplayStep(timeline, node);
 
         if (rawItems.Count == 0)
-            return step;
+            return node;
 
         return rawItems[0];
     }
@@ -679,7 +690,7 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
     }
 
-    private void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroStep> addedRawSteps)
+    private void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroNode> addedRawSteps)
     {
         if (addedRawSteps.Count == 0)
             return;
@@ -716,7 +727,7 @@ public partial class MainWindow
 
         foreach (var step in visibleSteps)
         {
-            var block = CreateStepBlock(timeline, step);
+                    var block = CreateNode(timeline, step);
 
             if (block is FrameworkElement element)
                 element.Tag = step;
@@ -737,7 +748,7 @@ public partial class MainWindow
             currentLeft += size.Width + TimelineItemGap;
         }
 
-        var addBlock = CreateAddBlock(timeline);
+                    var addBlock = CreateAddNode(timeline);
         var addSize = MeasureTimelineItem(addBlock);
 
         var addItem = new TimelineVisualItem

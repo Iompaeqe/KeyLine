@@ -3,22 +3,17 @@ using System.Windows.Input;
 using MacroSpammer.Domain;
 using System.Windows.Media;
 using MacroSpammer.UI.Config;
-using MacroSpammer.UI.Steps;
+using MacroSpammer.UI.Nodes;
+using MacroSpammer.UI.Timeline;
 
 namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private readonly List<MacroStep> _stepDragPreviewRawSteps = new();
-    private readonly List<MacroStep> _stepDragRawItems = new();
-    private readonly List<MacroStep> _stepDragOriginalRawSteps = new();
-
-    // Drag-preview layout cache.
-    // Without this, every mouse move creates/measures WPF controls just to decide
-    // whether the placeholder should move. That is the main performance killer.
-    private readonly Dictionary<MacroStep, double> _stepDragPreviewWidthByFirstRawItem = new();
+    private readonly List<NodePreviewSlot> _stepDragPreviewSlots = new();
+    private readonly List<MacroNode> _stepDragPreviewRawSteps = new();
+    private readonly List<MacroNode> _stepDragRawItems = new();
     private double _stepDragPreviewContentLeftX;
-    private double _stepDragSlotWidth;
     private Point? _lastStepDragPreviewMousePoint;
 
     private FrameworkElement? _draggedStepGhost;
@@ -37,7 +32,7 @@ public partial class MainWindow
     private bool _isDelayValueMouseEditPending;
     private bool _isMouseNodeEditPending;
     private MacroTimeline? _pendingClickSelectionTimeline;
-    private MacroStep? _pendingClickSelectionStep;
+    private MacroNode? _pendingClickSelectionStep;
     private ModifierKeys _pendingClickSelectionModifiers;
     private bool _pendingClickWasSelected;
 
@@ -46,17 +41,16 @@ public partial class MainWindow
     private static double StepDragThreshold => DragUi.StepDragThreshold;
     private static double TimelineHeaderDragThreshold => DragUi.TimelineHeaderDragThreshold;
 
-    private void AttachStepMouseHandlers(FrameworkElement element, MacroTimeline timeline, MacroStep step)
+    private void AttachNodeMouseHandlers(NodeBase nodeControl, MacroTimeline timeline, MacroNode node)
     {
-        element.PreviewMouseLeftButtonDown += (_, e) =>
+        nodeControl.PreviewMouseLeftButtonDown += (_, e) =>
         {
             EnsureTimelineDragGlobalHandlers();
+            var inlineEditorActivation = nodeControl.GetInlineEditorActivationMode(e.OriginalSource as DependencyObject);
 
-            if (step.Type is MacroStepType.Delay or MacroStepType.RandomDelay &&
-                element is DelayStepControl delayControl &&
-                delayControl.IsValueEditorSource(e.OriginalSource as DependencyObject))
+            if (inlineEditorActivation != InlineEditorActivationMode.None)
             {
-                SelectStepFromPointer(timeline, step);
+                SelectStepFromPointer(timeline, node);
 
                 if (!_isTimelineEditingEnabled)
                 {
@@ -66,27 +60,16 @@ public partial class MainWindow
 
                 CancelTimelineDragState();
                 SaveUndoSnapshot();
-                _isDelayValueMouseEditPending = true;
-                delayControl.FocusValueEditor(e.OriginalSource as DependencyObject);
+                _isDelayValueMouseEditPending = inlineEditorActivation == InlineEditorActivationMode.SuppressMouseUp;
+                _isMouseNodeEditPending = inlineEditorActivation == InlineEditorActivationMode.AllowMouseUp;
+                nodeControl.FocusInlineEditor(e.OriginalSource as DependencyObject);
                 e.Handled = true;
-                return;
-            }
-
-            if (step.Type is MacroStepType.CursorMove or MacroStepType.MouseDown or MacroStepType.MouseUp or MacroStepType.MouseClick &&
-                element is MouseStepControl mouseControl &&
-                mouseControl.IsEditorSource(e.OriginalSource as DependencyObject))
-            {
-                CancelTimelineDragState();
-                SaveUndoSnapshot();
-                _isMouseNodeEditPending = true;
-                SelectStepFromPointer(timeline, step);
-                e.Handled = false;
                 return;
             }
 
             if (e.ClickCount >= 2)
             {
-                SelectStepFromPointer(timeline, step);
+                SelectStepFromPointer(timeline, node);
                 OpenInspectorFromSelection();
                 e.Handled = true;
                 return;
@@ -94,9 +77,9 @@ public partial class MainWindow
 
             SetPendingClickSelection(
                 timeline,
-                step,
+                node,
                 Keyboard.Modifiers,
-                _selection.IsStepSelected(timeline, step));
+                _selection.IsStepSelected(timeline, node));
 
             if (!_isTimelineEditingEnabled)
             {
@@ -104,14 +87,14 @@ public partial class MainWindow
                 return;
             }
 
-            _drag.BeginStepDrag(timeline, step, e.GetPosition(TimelineRowsPanel));
+            _drag.BeginStepDrag(timeline, node, e.GetPosition(TimelineRowsPanel));
 
-            element.CaptureMouse();
+            nodeControl.CaptureMouse();
 
             e.Handled = true;
         };
 
-        element.PreviewMouseMove += (_, e) =>
+        nodeControl.PreviewMouseMove += (_, e) =>
         {
             if (!_isTimelineEditingEnabled)
                 return;
@@ -136,7 +119,7 @@ public partial class MainWindow
                 BeginStepDragPreviewModel(_drag.DraggedStepTimeline, _drag.DraggedStep);
                 UpdateStepDragPreviewFromMouse(currentPoint);
 
-                BeginWindowLevelStepDragCapture(element);
+                BeginWindowLevelStepDragCapture(nodeControl);
                 BeginDraggedStepGhost();
 
                 RefreshTimelineDragPreview();
@@ -152,7 +135,7 @@ public partial class MainWindow
             e.Handled = true;
         };
 
-        element.PreviewMouseLeftButtonUp += (_, e) =>
+        nodeControl.PreviewMouseLeftButtonUp += (_, e) =>
         {
             if (_isDelayValueMouseEditPending)
             {
@@ -174,16 +157,16 @@ public partial class MainWindow
             e.Handled = true;
         };
 
-        element.LostMouseCapture += (_, _) =>
+        nodeControl.LostMouseCapture += (_, _) =>
         {
             if (Mouse.LeftButton != MouseButtonState.Pressed && _drag.DraggedStep != null)
                 CancelTimelineDragState();
         };
 
-        element.PreviewMouseRightButtonDown += (_, e) =>
+        nodeControl.PreviewMouseRightButtonDown += (_, e) =>
         {
             CancelTimelineDragState();
-            SelectStepFromPointer(timeline, step);
+            SelectStepFromPointer(timeline, node);
 
             if (!_isTimelineEditingEnabled)
             {
@@ -191,16 +174,16 @@ public partial class MainWindow
                 return;
             }
 
-            DeleteStep(timeline, step);
+            DeleteStep(timeline, node);
 
             e.Handled = true;
         };
     }
 
-    private void SetPendingClickSelection(MacroTimeline timeline, MacroStep step, ModifierKeys modifiers, bool wasSelected)
+    private void SetPendingClickSelection(MacroTimeline timeline, MacroNode node, ModifierKeys modifiers, bool wasSelected)
     {
         _pendingClickSelectionTimeline = timeline;
-        _pendingClickSelectionStep = step;
+        _pendingClickSelectionStep = node;
         _pendingClickSelectionModifiers = modifiers;
         _pendingClickWasSelected = wasSelected;
     }
@@ -230,12 +213,12 @@ public partial class MainWindow
         ClearPendingClickSelection();
     }
 
-    private void SelectStepFromStoredClick(MacroTimeline timeline, MacroStep step, ModifierKeys modifiers)
+    private void SelectStepFromStoredClick(MacroTimeline timeline, MacroNode node, ModifierKeys modifiers)
     {
         if (modifiers.HasFlag(ModifierKeys.Control))
         {
             SelectTimeline(timeline);
-            ToggleStepSelection(timeline, step);
+            ToggleStepSelection(timeline, node);
             RefreshInspector();
             return;
         }
@@ -244,13 +227,13 @@ public partial class MainWindow
             ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
             SelectTimeline(timeline);
-            SelectStepRange(timeline, step);
+            SelectStepRange(timeline, node);
             RefreshInspector();
             return;
         }
 
         SelectTimeline(timeline);
-        _selection.SelectStep(timeline, step);
+        _selection.SelectStep(timeline, node);
         RefreshInspector();
     }
 

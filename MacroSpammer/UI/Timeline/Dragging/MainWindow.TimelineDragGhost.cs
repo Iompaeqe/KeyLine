@@ -50,11 +50,11 @@ public partial class MainWindow
         StartDragGhostAnimation();
     }
 
-    private UIElement CreateDraggedStepGhostElement(MacroTimeline timeline, MacroStep draggedStep)
+    private UIElement CreateDraggedStepGhostElement(MacroTimeline timeline, MacroNode draggedNode)
     {
-        var ghostSteps = GetDraggedDisplaySteps(timeline, draggedStep);
+        var ghostSteps = GetDraggedDisplaySteps(timeline, draggedNode);
         if (ghostSteps.Count <= 1)
-            return CreateStepBlock(timeline, draggedStep);
+        return CreateNode(timeline, draggedNode);
 
         var canvas = new Canvas
         {
@@ -66,7 +66,7 @@ public partial class MainWindow
         var maxHeight = 0.0;
         foreach (var step in ghostSteps)
         {
-            var block = CreateStepBlock(timeline, step);
+        var block = CreateNode(timeline, step);
             if (block is not FrameworkElement element)
                 continue;
 
@@ -85,10 +85,10 @@ public partial class MainWindow
         return canvas;
     }
 
-    private List<MacroStep> GetDraggedDisplaySteps(MacroTimeline timeline, MacroStep draggedStep)
+    private List<MacroNode> GetDraggedDisplaySteps(MacroTimeline timeline, MacroNode draggedNode)
     {
-        if (!_selection.HasMultipleStepSelection || !_selection.IsStepSelected(timeline, draggedStep))
-            return new List<MacroStep> { draggedStep };
+        if (!_selection.HasMultipleStepSelection || !_selection.IsStepSelected(timeline, draggedNode))
+            return new List<MacroNode> { draggedNode };
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
             timeline.Steps.ToList(),

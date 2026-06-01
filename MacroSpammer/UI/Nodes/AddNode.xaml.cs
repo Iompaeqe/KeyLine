@@ -3,13 +3,13 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using MacroSpammer.UI.Config;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class AddStepControl : UserControl
+public partial class AddNode : UserControl
 {
     public event RoutedEventHandler? AddClicked;
 
-    public AddStepControl()
+    public AddNode()
     {
         InitializeComponent();
         ApplyConfig();

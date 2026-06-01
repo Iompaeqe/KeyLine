@@ -21,32 +21,32 @@ public sealed class MacroRecorder
         IsRecording = false;
     }
 
-    public IEnumerable<MacroStep> RecordKeyDown(KeyEventArgs e, bool includeDelay)
+    public IEnumerable<MacroNode> RecordKeyDown(KeyEventArgs e, bool includeDelay)
     {
-        return RecordKey(e, MacroStepType.KeyDown, includeDelay);
+        return RecordKey(e, MacroNodeType.KeyDown, includeDelay);
     }
 
-    public IEnumerable<MacroStep> RecordKeyUp(KeyEventArgs e, bool includeDelay)
+    public IEnumerable<MacroNode> RecordKeyUp(KeyEventArgs e, bool includeDelay)
     {
-        return RecordKey(e, MacroStepType.KeyUp, includeDelay);
+        return RecordKey(e, MacroNodeType.KeyUp, includeDelay);
     }
 
-    public IEnumerable<MacroStep> RecordMouseClick(bool includeDelay)
+    public IEnumerable<MacroNode> RecordMouseClick(bool includeDelay)
     {
-        return RecordMouse(MacroStepType.ForegroundMouseClick, includeDelay);
+        return RecordMouse(MacroNodeType.MouseClick, includeDelay);
     }
 
-    public IEnumerable<MacroStep> RecordMouseDown(int mouseButton, bool includeDelay)
+    public IEnumerable<MacroNode> RecordMouseDown(int mouseButton, bool includeDelay)
     {
-        return RecordMouse(MacroStepType.ForegroundMouseDown, includeDelay, mouseButton);
+        return RecordMouse(MacroNodeType.MouseDown, includeDelay, mouseButton);
     }
 
-    public IEnumerable<MacroStep> RecordMouseUp(int mouseButton, bool includeDelay)
+    public IEnumerable<MacroNode> RecordMouseUp(int mouseButton, bool includeDelay)
     {
-        return RecordMouse(MacroStepType.ForegroundMouseUp, includeDelay, mouseButton);
+        return RecordMouse(MacroNodeType.MouseUp, includeDelay, mouseButton);
     }
 
-    private IEnumerable<MacroStep> RecordKey(KeyEventArgs e, MacroStepType type, bool includeDelay)
+    private IEnumerable<MacroNode> RecordKey(KeyEventArgs e, MacroNodeType type, bool includeDelay)
     {
         if (!VirtualKeyParser.TryFromRecordedKey(e, out var virtualKey, out var keyName))
             yield break;
@@ -57,16 +57,16 @@ public sealed class MacroRecorder
 
             if (delayMs > 0)
             {
-                yield return new MacroStep
+                yield return new MacroNode
                 {
-                    Type = MacroStepType.Delay,
+                    Type = MacroNodeType.Delay,
                     DelayMs = delayMs,
                     IsRecordedDelay = true
                 };
             }
         }
 
-        yield return new MacroStep
+        yield return new MacroNode
         {
             Type = type,
             KeyName = keyName,
@@ -76,7 +76,7 @@ public sealed class MacroRecorder
         _lastInputTimeUtc = DateTime.UtcNow;
     }
 
-    private IEnumerable<MacroStep> RecordMouse(MacroStepType type, bool includeDelay, int mouseButton = 1)
+    private IEnumerable<MacroNode> RecordMouse(MacroNodeType type, bool includeDelay, int mouseButton = 1)
     {
         if (includeDelay)
         {
@@ -84,16 +84,16 @@ public sealed class MacroRecorder
 
             if (delayMs > 0)
             {
-                yield return new MacroStep
+                yield return new MacroNode
                 {
-                    Type = MacroStepType.Delay,
+                    Type = MacroNodeType.Delay,
                     DelayMs = delayMs,
                     IsRecordedDelay = true
                 };
             }
         }
 
-        yield return new MacroStep
+        yield return new MacroNode
         {
             Type = type,
             MouseButton = Math.Clamp(mouseButton, 1, 5),

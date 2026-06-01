@@ -66,7 +66,7 @@ public partial class MainWindow
         AppendRecordedInputSteps(timeline, addedSteps);
     }
 
-    private void AppendRecordedInputSteps(MacroTimeline timeline, List<MacroStep> addedSteps)
+    private void AppendRecordedInputSteps(MacroTimeline timeline, List<MacroNode> addedSteps)
     {
         if (addedSteps.Count == 0)
             return;

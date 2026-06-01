@@ -25,7 +25,7 @@ public partial class MainWindow
             var previous = timeline.Steps[i - 1];
             var current = timeline.Steps[i];
 
-            if (previous.Type != MacroStepType.Delay || current.Type != MacroStepType.Delay)
+            if (previous.Type != MacroNodeType.Delay || current.Type != MacroNodeType.Delay)
                 continue;
 
             previous.DelayMs += current.DelayMs;

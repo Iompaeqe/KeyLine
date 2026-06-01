@@ -3,22 +3,22 @@ using MacroSpammer.UI.Config;
 
 namespace MacroSpammer.UI.Timeline;
 
-public static class StepDisplayFormatter
+public static class NodeDisplayFormatter
 {
-    public static string GetKeyText(MacroStep step)
+    public static string GetKeyText(MacroNode node)
     {
-        if (step.IsSyntheticDisplayStep && !string.IsNullOrWhiteSpace(step.KeyName))
-            return step.KeyName;
+        if (node.IsSyntheticDisplayNode && !string.IsNullOrWhiteSpace(node.KeyName))
+            return node.KeyName;
 
-        if (step.Type is MacroStepType.ForegroundMouseDown or MacroStepType.ForegroundMouseUp)
-            return $"M{NormalizeMouseButton(step.MouseButton)}";
+        if (node.Type is MacroNodeType.MouseDown or MacroNodeType.MouseUp)
+            return $"M{NormalizeMouseButton(node.MouseButton)}";
 
-        return step.KeyName;
+        return node.KeyName;
     }
 
-    public static bool IsComboKey(MacroStep step)
+    public static bool IsComboKey(MacroNode node)
     {
-        return IsComboKey(GetKeyText(step));
+        return IsComboKey(GetKeyText(node));
     }
 
     public static bool IsComboKey(string keyText)
@@ -26,9 +26,9 @@ public static class StepDisplayFormatter
         return keyText.Contains('+');
     }
 
-    public static string GetTextPreview(MacroStep step)
+    public static string GetTextPreview(MacroNode node)
     {
-        return GetTextPreview(step.Text);
+        return GetTextPreview(node.Text);
     }
 
     private static int NormalizeMouseButton(int mouseButton) =>

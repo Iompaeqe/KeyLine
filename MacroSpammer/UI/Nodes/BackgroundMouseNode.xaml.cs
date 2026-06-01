@@ -3,45 +3,19 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using MacroSpammer.Domain;
 
-namespace MacroSpammer.UI.Steps;
+namespace MacroSpammer.UI.Nodes;
 
-public partial class MouseStepControl : UserControl
+public partial class BackgroundMouseNode : NodeBase
 {
-    private MacroStep? _step;
-    private bool _isSelected;
-
     public event EventHandler? CoordinateCommitted;
     public event EventHandler? TargetPickRequested;
 
-    public MacroStep? Step
-    {
-        get => _step;
-        set
-        {
-            _step = value;
-            Tag = value;
-            UpdateVisual();
-        }
-    }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set
-        {
-            _isSelected = value;
-            UpdateVisual();
-        }
-    }
-
-    public MouseStepControl()
+    public BackgroundMouseNode()
     {
         InitializeComponent();
     }
 
-    public bool IsEditorSource(DependencyObject? source) => false;
-
-    private void UpdateVisual()
+    protected override void UpdateVisual()
     {
         var step = Step;
         if (step == null)
@@ -49,10 +23,10 @@ public partial class MouseStepControl : UserControl
 
         ActionTextBlock.Text = step.Type switch
         {
-            MacroStepType.CursorMove => "MOVE",
-            MacroStepType.MouseDown => "BG DOWN",
-            MacroStepType.MouseUp => "BG UP",
-            MacroStepType.MouseClick => "BG CLICK",
+            MacroNodeType.CursorMove => "MOVE",
+            MacroNodeType.BackgroundMouseDown => "BG DOWN",
+            MacroNodeType.BackgroundMouseUp => "BG UP",
+            MacroNodeType.BackgroundMouseClick => "BG CLICK",
             _ => "MOUSE"
         };
 

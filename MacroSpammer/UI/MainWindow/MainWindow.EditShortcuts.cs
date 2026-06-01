@@ -218,13 +218,13 @@ public partial class MainWindow
         _editClipboard = EditClipboard.ForWorkspaces(new[] { MacroCloneService.CloneWorkspace(_activeWorkspace) });
     }
 
-    private void SelectStepFromPointer(MacroTimeline timeline, MacroStep step)
+    private void SelectStepFromPointer(MacroTimeline timeline, MacroNode node)
     {
         SelectTimeline(timeline);
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
-            ToggleStepSelection(timeline, step);
+            ToggleStepSelection(timeline, node);
             RefreshInspector();
             return;
         }
@@ -232,14 +232,14 @@ public partial class MainWindow
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _selection.AnchorStep != null &&
             ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
-            if (SelectStepRange(timeline, step))
+            if (SelectStepRange(timeline, node))
             {
                 RefreshInspector();
                 return;
             }
         }
 
-        _selection.SelectStep(timeline, step);
+        _selection.SelectStep(timeline, node);
         RefreshInspector();
     }
 
@@ -264,7 +264,7 @@ public partial class MainWindow
         RefreshTimeline();
     }
 
-    private bool SelectStepRange(MacroTimeline timeline, MacroStep step)
+    private bool SelectStepRange(MacroTimeline timeline, MacroNode node)
     {
         if (_selection.AnchorStep == null)
             return false;
@@ -275,7 +275,7 @@ public partial class MainWindow
             timeline.ShowKeyUpDown);
 
         var start = visibleSteps.IndexOf(_selection.AnchorStep);
-        var end = visibleSteps.IndexOf(step);
+        var end = visibleSteps.IndexOf(node);
         if (start < 0 || end < 0)
             return false;
 
@@ -287,29 +287,29 @@ public partial class MainWindow
             .Distinct()
             .ToList();
 
-        _selection.SelectSteps(timeline, mergedSelection, step);
+        _selection.SelectSteps(timeline, mergedSelection, node);
         return true;
     }
 
-    private void ToggleStepSelection(MacroTimeline timeline, MacroStep step)
+    private void ToggleStepSelection(MacroTimeline timeline, MacroNode node)
     {
         if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
-            _selection.SelectStep(timeline, step);
+            _selection.SelectStep(timeline, node);
             return;
         }
 
         var selectedSteps = _selection.SelectedSteps.ToList();
-        var existing = selectedSteps.FirstOrDefault(selectedStep => IsSameSelectedStep(step, selectedStep));
+        var existing = selectedSteps.FirstOrDefault(selectedStep => IsSameSelectedStep(node, selectedStep));
         if (existing != null)
             selectedSteps.Remove(existing);
         else
-            selectedSteps.Add(step);
+            selectedSteps.Add(node);
 
         if (selectedSteps.Count == 0)
             _selection.Clear();
         else
-            _selection.SelectSteps(timeline, selectedSteps, step);
+            _selection.SelectSteps(timeline, selectedSteps, node);
     }
 
     private void PasteSelection()
@@ -355,7 +355,7 @@ public partial class MainWindow
         PasteSelection();
     }
 
-    private void PasteSteps(IReadOnlyList<MacroStep> steps)
+    private void PasteSteps(IReadOnlyList<MacroNode> steps)
     {
         if (steps.Count == 0)
             return;
@@ -466,13 +466,13 @@ public partial class MainWindow
         }
     }
 
-    private List<MacroStep> GetSelectedRawSteps(MacroTimeline timeline)
+    private List<MacroNode> GetSelectedRawSteps(MacroTimeline timeline)
     {
         var selectedSteps = _selection.SelectedSteps.Count > 0
             ? _selection.SelectedSteps
             : _selection.SelectedStep != null
-                ? new List<MacroStep> { _selection.SelectedStep }
-                : new List<MacroStep>();
+                ? new List<MacroNode> { _selection.SelectedStep }
+                : new List<MacroNode>();
 
         return selectedSteps
             .SelectMany(step => GetRawStepsForDisplayStep(timeline, step))
@@ -484,11 +484,11 @@ public partial class MainWindow
     private sealed class EditClipboard
     {
         public EditClipboardKind Kind { get; private init; }
-        public List<MacroStep> Steps { get; private init; } = new();
+        public List<MacroNode> Steps { get; private init; } = new();
         public List<MacroTimeline> Timelines { get; private init; } = new();
         public List<MacroWorkspace> Workspaces { get; private init; } = new();
 
-        public static EditClipboard ForSteps(List<MacroStep> steps) =>
+        public static EditClipboard ForSteps(List<MacroNode> steps) =>
             new() { Kind = EditClipboardKind.Steps, Steps = steps };
 
         public static EditClipboard ForTimelines(IEnumerable<MacroTimeline> timelines) =>
