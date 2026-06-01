@@ -118,7 +118,8 @@ public partial class MainWindow
         if (_selection.HasMultipleStepSelection)
             return CreateReadonlySectionContent(("Selected", _selection.SelectedSteps.Count.ToString()));
 
-        if (_selection.HasStepSelection && _selection.SelectedStep != null && HasEditableStepInspector(_selection.SelectedStep))
+        if (_selection.HasStepSelection && _selection.SelectedStep != null &&
+            (_selection.SelectedStep.IsSyntheticDisplayStep || HasEditableStepInspector(_selection.SelectedStep)))
             return CreateStepInspector(timeline, _selection.SelectedStep);
 
         return null;

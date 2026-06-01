@@ -84,7 +84,7 @@ public partial class MainWindow
                 return;
             }
 
-            if (e.ClickCount >= 2 && !step.IsSyntheticDisplayStep)
+            if (e.ClickCount >= 2)
             {
                 SelectStepFromPointer(timeline, step);
                 OpenInspectorFromSelection();
