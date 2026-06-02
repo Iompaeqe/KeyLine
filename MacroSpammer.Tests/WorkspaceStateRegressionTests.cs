@@ -5,8 +5,14 @@ namespace MacroSpammer.Tests;
 
 public sealed class WorkspaceStateRegressionTests : IDisposable
 {
-    private readonly string? _originalAppData = Environment.GetEnvironmentVariable("APPDATA");
+    private readonly string? _originalStateDirectoryOverride =
+        Environment.GetEnvironmentVariable(MacroStateStore.StateDirectoryOverrideEnvironmentVariable);
     private readonly string _appDataRoot = Path.Combine(Path.GetTempPath(), "MacroSpammer.Tests", Guid.NewGuid().ToString("N"));
+
+    public WorkspaceStateRegressionTests()
+    {
+        Environment.SetEnvironmentVariable(MacroStateStore.StateDirectoryOverrideEnvironmentVariable, _appDataRoot);
+    }
 
     [Fact]
     public void CloneWorkspace_PreservesLoopMode()
@@ -21,9 +27,7 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     [Fact]
     public void SaveAndLoad_PreservesLoopMode()
     {
-        Environment.SetEnvironmentVariable("APPDATA", _appDataRoot);
-
-        var workspace = CreateWorkspace("Saved", MacroLoopMode.Sync);
+        var workspace = CreateWorkspace("State Test Macro", MacroLoopMode.Sync);
         MacroStateStore.Save(new[] { workspace }, 0, shortcutsEnabled: true, new AppSettings());
 
         var snapshot = MacroStateStore.Load();
@@ -51,7 +55,6 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     [Fact]
     public void Load_AcceptsLegacyLoopTypeFields()
     {
-        Environment.SetEnvironmentVariable("APPDATA", _appDataRoot);
         Directory.CreateDirectory(MacroStateStore.StateDirectory);
         File.WriteAllText(
             Path.Combine(MacroStateStore.StateDirectory, "state.json"),
@@ -108,7 +111,9 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("APPDATA", _originalAppData);
+        Environment.SetEnvironmentVariable(
+            MacroStateStore.StateDirectoryOverrideEnvironmentVariable,
+            _originalStateDirectoryOverride);
 
         if (Directory.Exists(_appDataRoot))
             Directory.Delete(_appDataRoot, recursive: true);

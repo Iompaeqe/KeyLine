@@ -16,21 +16,32 @@ public sealed class MacroStateSnapshot
 public static class MacroStateStore
 {
     private const int CurrentVersion = 2;
+    public const string StateDirectoryOverrideEnvironmentVariable = "KEYLINE_STATE_DIRECTORY";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
     };
 
-    public static string StateDirectory =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "KeyLine");
+    public static string StateDirectory => StateDirectoryOverride ??
+                                           Path.Combine(
+                                               Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                               "KeyLine");
 
-    private static string LegacyStateDirectory =>
-        Path.Combine(
+    private static string LegacyStateDirectory => StateDirectoryOverride == null
+        ? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "MacroSpammer");
+            "MacroSpammer")
+        : Path.Combine(StateDirectoryOverride, "LegacyMacroSpammer");
+
+    private static string? StateDirectoryOverride
+    {
+        get
+        {
+            var directory = Environment.GetEnvironmentVariable(StateDirectoryOverrideEnvironmentVariable);
+            return string.IsNullOrWhiteSpace(directory) ? null : directory;
+        }
+    }
 
     private static string StatePath => Path.Combine(StateDirectory, "state.json");
 
