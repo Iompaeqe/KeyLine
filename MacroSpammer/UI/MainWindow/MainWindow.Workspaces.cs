@@ -19,6 +19,7 @@ public partial class MainWindow
             _workspaceTabs = new WorkspaceTabController(
                 tabsPanel: MacroTabsPanel,
                 scrollViewer: MacroTabsScrollViewer,
+                dragOverlay: MacroTabsDragOverlay,
                 leftEdgeFade: MacroTabsLeftEdgeFade,
                 rightEdgeFade: MacroTabsRightEdgeFade,
                 leftEdgeLine: MacroTabsLeftEdgeLine,
@@ -29,6 +30,7 @@ public partial class MainWindow
                 isWorkspaceRunning: IsWorkspaceRunning,
                 activateWorkspace: index => ActivateWorkspace(index),
                 deleteWorkspace: DeleteWorkspace,
+                reorderWorkspace: ReorderWorkspace,
                 showWarning: SetWorkspaceTabWarningStatus,
                 scheduleSaveState: ScheduleSaveState);
         }
@@ -189,6 +191,32 @@ public partial class MainWindow
                 _activeWorkspaceIndex = _workspaces.Count - 1;
 
             ActivateWorkspace(_activeWorkspaceIndex, false);
+            ScheduleSaveState();
+        }
+
+        private void ReorderWorkspace(int sourceIndex, int targetIndex)
+        {
+            if (sourceIndex < 0 || sourceIndex >= _workspaces.Count)
+                return;
+
+            if (targetIndex < 0 || targetIndex >= _workspaces.Count || sourceIndex == targetIndex)
+                return;
+
+            CaptureActiveWorkspaceState();
+
+            var activeWorkspace = _activeWorkspace;
+            var workspace = _workspaces[sourceIndex];
+            _workspaces.RemoveAt(sourceIndex);
+            _workspaces.Insert(targetIndex, workspace);
+
+            _activeWorkspaceIndex = _workspaces.IndexOf(activeWorkspace);
+            if (_activeWorkspaceIndex < 0)
+                _activeWorkspaceIndex = Math.Clamp(targetIndex, 0, _workspaces.Count - 1);
+
+            _activeWorkspace = _workspaces[_activeWorkspaceIndex];
+            _document = _activeWorkspace.Document;
+
+            RefreshMacroTabs();
             ScheduleSaveState();
         }
 

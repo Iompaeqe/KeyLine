@@ -11,6 +11,7 @@ public partial class MacroTabsBlock : UserControl
 
     public ScrollViewer TabsScrollViewer => MacroTabsScrollViewer;
     public StackPanel TabsPanel => MacroTabsPanel;
+    public Canvas DragOverlay => MacroTabsDragOverlay;
 
     public Border LeftEdgeFade => MacroTabsLeftEdgeFade;
     public Border RightEdgeFade => MacroTabsRightEdgeFade;

@@ -14,6 +14,7 @@ public partial class MainWindow
     // From MainWindow.Controls.cs
         private ScrollViewer MacroTabsScrollViewer => MacroTabsBlock.TabsScrollViewer;
         private StackPanel MacroTabsPanel => MacroTabsBlock.TabsPanel;
+        private Canvas MacroTabsDragOverlay => MacroTabsBlock.DragOverlay;
 
         private Border MacroTabsLeftEdgeFade => MacroTabsBlock.LeftEdgeFade;
         private Border MacroTabsRightEdgeFade => MacroTabsBlock.RightEdgeFade;

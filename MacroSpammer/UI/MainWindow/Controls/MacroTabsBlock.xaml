@@ -81,6 +81,10 @@
                         Opacity="0.42"
                         Visibility="Collapsed"
                         IsHitTestVisible="False" />
+
+                <Canvas x:Name="MacroTabsDragOverlay"
+                        IsHitTestVisible="False"
+                        ClipToBounds="True" />
             </Grid>
 
             <Button x:Name="AddMacroTabButton"

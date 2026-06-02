@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using MacroSpammer.Domain;
 using MacroSpammer.UI;
@@ -14,9 +16,14 @@ public sealed class WorkspaceTabController
 {
     private const double DragThreshold = 4;
     private const double WheelScrollAmount = 48;
+    private const string RenameIconTag = "rename";
+    private const double GhostOpacity = 0.86;
+    private const double GhostScale = 1.04;
+    private const double GhostFollowStrength = 0.65;
 
     private readonly Panel _tabsPanel;
     private readonly ScrollViewer _scrollViewer;
+    private readonly Canvas _dragOverlay;
     private readonly UIElement _leftEdgeFade;
     private readonly UIElement _rightEdgeFade;
     private readonly UIElement _leftEdgeLine;
@@ -28,6 +35,7 @@ public sealed class WorkspaceTabController
     private readonly Func<MacroWorkspace, bool> _isWorkspaceRunning;
     private readonly Action<int> _activateWorkspace;
     private readonly Action<MacroWorkspace> _deleteWorkspace;
+    private readonly Action<int, int> _reorderWorkspace;
     private readonly Action<string> _showWarning;
     private readonly Action _scheduleSaveState;
 
@@ -36,12 +44,22 @@ public sealed class WorkspaceTabController
 
     private bool _isDraggingTabs;
     private bool _didDragTabs;
+    private bool _isReorderingTab;
     private Point _dragStartPoint;
     private double _dragStartOffset;
+    private MacroWorkspace? _draggedTabWorkspace;
+    private FrameworkElement? _dragGhost;
+    private TranslateTransform? _dragGhostTransform;
+    private Point _dragGhostCurrentPosition;
+    private Point _dragGhostTargetPosition;
+    private double _dragGhostWidth;
+    private double _dragGhostHeight;
+    private bool _isGhostAnimating;
 
     public WorkspaceTabController(
         Panel tabsPanel,
         ScrollViewer scrollViewer,
+        Canvas dragOverlay,
         UIElement leftEdgeFade,
         UIElement rightEdgeFade,
         UIElement leftEdgeLine,
@@ -52,11 +70,13 @@ public sealed class WorkspaceTabController
         Func<MacroWorkspace, bool> isWorkspaceRunning,
         Action<int> activateWorkspace,
         Action<MacroWorkspace> deleteWorkspace,
+        Action<int, int> reorderWorkspace,
         Action<string> showWarning,
         Action scheduleSaveState)
     {
         _tabsPanel = tabsPanel;
         _scrollViewer = scrollViewer;
+        _dragOverlay = dragOverlay;
         _leftEdgeFade = leftEdgeFade;
         _rightEdgeFade = rightEdgeFade;
         _leftEdgeLine = leftEdgeLine;
@@ -67,6 +87,7 @@ public sealed class WorkspaceTabController
         _isWorkspaceRunning = isWorkspaceRunning;
         _activateWorkspace = activateWorkspace;
         _deleteWorkspace = deleteWorkspace;
+        _reorderWorkspace = reorderWorkspace;
         _showWarning = showWarning;
         _scheduleSaveState = scheduleSaveState;
     }
@@ -79,6 +100,7 @@ public sealed class WorkspaceTabController
 
     public void Refresh()
     {
+        var previousTabLefts = CaptureTabLefts();
         _tabsPanel.Children.Clear();
 
         var workspaces = _getWorkspaces();
@@ -91,6 +113,7 @@ public sealed class WorkspaceTabController
             var isActive = i == activeWorkspaceIndex;
             var isPendingDelete = ReferenceEquals(workspace, _pendingDeleteWorkspace);
             var isRenaming = ReferenceEquals(workspace, _renamingWorkspace);
+            var isDragged = _isReorderingTab && ReferenceEquals(workspace, _draggedTabWorkspace);
             var isRunning = _isWorkspaceRunning(workspace);
             var hasError = !string.IsNullOrWhiteSpace(workspace.ErrorMessage);
 
@@ -105,13 +128,18 @@ public sealed class WorkspaceTabController
                 index,
                 isActive,
                 isPendingDelete,
+                isDragged,
                 isRunning,
                 hasError));
         }
 
         _dispatcher.BeginInvoke(
             DispatcherPriority.Loaded,
-            new Action(UpdateEdgeIndicators));
+            new Action(() =>
+            {
+                AnimateTabsFromPreviousPositions(previousTabLefts);
+                UpdateEdgeIndicators();
+            }));
     }
 
     public void PreviewMouseWheel(MouseWheelEventArgs e)
@@ -138,8 +166,13 @@ public sealed class WorkspaceTabController
         if (IsSourceInsideTextBox(e.OriginalSource as DependencyObject))
             return;
 
+        if (_renamingWorkspace != null || IsSourceInsideRenameIcon(e.OriginalSource as DependencyObject))
+            return;
+
+        _draggedTabWorkspace = TryGetSourceTabWorkspace(e.OriginalSource as DependencyObject);
         _isDraggingTabs = true;
         _didDragTabs = false;
+        _isReorderingTab = false;
         _dragStartPoint = e.GetPosition(_scrollViewer);
         _dragStartOffset = _scrollViewer.HorizontalOffset;
     }
@@ -149,6 +182,12 @@ public sealed class WorkspaceTabController
         if (!_isDraggingTabs || e.LeftButton != MouseButtonState.Pressed)
             return;
 
+        if (_renamingWorkspace != null)
+        {
+            EndDrag();
+            return;
+        }
+
         var currentPoint = e.GetPosition(_scrollViewer);
         var deltaX = currentPoint.X - _dragStartPoint.X;
 
@@ -156,11 +195,22 @@ public sealed class WorkspaceTabController
             return;
 
         _didDragTabs = true;
-        _scrollViewer.ScrollToHorizontalOffset(_dragStartOffset - deltaX);
 
         if (!_scrollViewer.IsMouseCaptured)
             _scrollViewer.CaptureMouse();
 
+        if (_draggedTabWorkspace != null)
+        {
+            _isReorderingTab = true;
+            EnsureDragGhost();
+            UpdateDragGhostTarget(currentPoint);
+            AutoScrollDuringTabDrag(currentPoint);
+            ReorderDraggedTab(e.GetPosition(_tabsPanel));
+            e.Handled = true;
+            return;
+        }
+
+        _scrollViewer.ScrollToHorizontalOffset(_dragStartOffset - deltaX);
         e.Handled = true;
     }
 
@@ -180,12 +230,15 @@ public sealed class WorkspaceTabController
         int index,
         bool isActive,
         bool isPendingDelete,
+        bool isDragged,
         bool isRunning,
         bool hasError)
     {
         var grid = new Grid
         {
-            Margin = new Thickness(index == 0 ? 0 : 4, 0, 0, 0)
+            Margin = new Thickness(index == 0 ? 0 : 4, 0, 0, 0),
+            Opacity = isDragged ? 0.72 : 1.0,
+            Tag = workspace
         };
 
         var button = CreateTabButton(workspace, isActive, isPendingDelete, isRunning, hasError);
@@ -253,6 +306,7 @@ public sealed class WorkspaceTabController
             Padding = new Thickness(10, 0, 10, 1),
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
+            Cursor = Cursors.Hand,
             Background = new SolidColorBrush(isPendingDelete
                 ? Color.FromRgb(127, 29, 29)
                 : hasError
@@ -309,6 +363,7 @@ public sealed class WorkspaceTabController
             Visibility = Visibility.Collapsed,
             Cursor = Cursors.Hand,
             IsHitTestVisible = true,
+            Tag = RenameIconTag,
             ToolTip = TooltipNotes.RenameMacro,
             Opacity = 0.6
         };
@@ -433,10 +488,282 @@ public sealed class WorkspaceTabController
 
     private void EndDrag()
     {
+        var shouldRefresh = _isReorderingTab;
         _isDraggingTabs = false;
+        _isReorderingTab = false;
+        _draggedTabWorkspace = null;
 
         if (_scrollViewer.IsMouseCaptured)
             _scrollViewer.ReleaseMouseCapture();
+
+        EndDragGhost();
+
+        if (shouldRefresh)
+            _dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(Refresh));
+
+        if (_didDragTabs)
+            _dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => _didDragTabs = false));
+    }
+
+    private void ReorderDraggedTab(Point panelPoint)
+    {
+        if (_draggedTabWorkspace == null)
+            return;
+
+        var workspaces = _getWorkspaces();
+        var sourceIndex = IndexOfWorkspace(workspaces, _draggedTabWorkspace);
+        if (sourceIndex < 0)
+            return;
+
+        var insertionIndex = GetInsertionIndex(panelPoint.X);
+        var targetIndex = sourceIndex < insertionIndex
+            ? insertionIndex - 1
+            : insertionIndex;
+
+        targetIndex = Math.Clamp(targetIndex, 0, workspaces.Count - 1);
+        if (targetIndex == sourceIndex)
+            return;
+
+        _reorderWorkspace(sourceIndex, targetIndex);
+    }
+
+    private int GetInsertionIndex(double panelX)
+    {
+        for (var i = 0; i < _tabsPanel.Children.Count; i++)
+        {
+            if (_tabsPanel.Children[i] is not FrameworkElement child)
+                continue;
+
+            var childMidpoint = child.TranslatePoint(
+                new Point(child.ActualWidth / 2, 0),
+                _tabsPanel).X;
+
+            if (panelX < childMidpoint)
+                return i;
+        }
+
+        return _tabsPanel.Children.Count;
+    }
+
+    private void AutoScrollDuringTabDrag(Point point)
+    {
+        const double edgeWidth = 34;
+        const double scrollAmount = 18;
+
+        if (_scrollViewer.ScrollableWidth <= 0)
+            return;
+
+        if (point.X < edgeWidth)
+        {
+            _scrollViewer.ScrollToHorizontalOffset(_scrollViewer.HorizontalOffset - scrollAmount);
+            return;
+        }
+
+        if (point.X > _scrollViewer.ViewportWidth - edgeWidth)
+            _scrollViewer.ScrollToHorizontalOffset(_scrollViewer.HorizontalOffset + scrollAmount);
+    }
+
+    private void EnsureDragGhost()
+    {
+        if (_dragGhost != null || _draggedTabWorkspace == null)
+            return;
+
+        var workspaces = _getWorkspaces();
+        var activeIndex = _getActiveWorkspaceIndex();
+        var index = IndexOfWorkspace(workspaces, _draggedTabWorkspace);
+        if (index < 0)
+            return;
+
+        var workspace = workspaces[index];
+        var ghostButton = CreateTabButton(
+            workspace,
+            index == activeIndex,
+            false,
+            _isWorkspaceRunning(workspace),
+            !string.IsNullOrWhiteSpace(workspace.ErrorMessage));
+
+        ghostButton.IsHitTestVisible = false;
+        ghostButton.Opacity = GhostOpacity;
+        ghostButton.RenderTransformOrigin = new Point(0.5, 0.5);
+
+        var transformGroup = new TransformGroup();
+        transformGroup.Children.Add(new ScaleTransform(GhostScale, GhostScale));
+        _dragGhostTransform = new TranslateTransform();
+        transformGroup.Children.Add(_dragGhostTransform);
+        ghostButton.RenderTransform = transformGroup;
+
+        _dragGhostWidth = GetDraggedTabWidth();
+        _dragGhostHeight = GetDraggedTabHeight();
+        if (_dragGhostWidth > 0)
+            ghostButton.Width = _dragGhostWidth;
+
+        _dragGhost = ghostButton;
+        _dragOverlay.Children.Add(ghostButton);
+        Canvas.SetLeft(ghostButton, 0);
+        Canvas.SetTop(ghostButton, 0);
+        Panel.SetZIndex(ghostButton, 1000);
+
+        UpdateDragGhostTarget(_dragStartPoint, snap: true);
+        StartDragGhostAnimation();
+    }
+
+    private void UpdateDragGhostTarget(Point scrollViewerPoint, bool snap = false)
+    {
+        if (_dragGhost == null)
+            return;
+
+        var overlayPoint = _scrollViewer.TranslatePoint(scrollViewerPoint, _dragOverlay);
+        _dragGhostTargetPosition = new Point(
+            overlayPoint.X - (_dragGhostWidth / 2.0),
+            Math.Max(1, (_dragOverlay.ActualHeight - _dragGhostHeight) / 2.0));
+
+        if (!snap)
+            return;
+
+        _dragGhostCurrentPosition = _dragGhostTargetPosition;
+        ApplyDragGhostPosition();
+    }
+
+    private void StartDragGhostAnimation()
+    {
+        if (_isGhostAnimating)
+            return;
+
+        _isGhostAnimating = true;
+        CompositionTarget.Rendering += DragGhost_Rendering;
+    }
+
+    private void StopDragGhostAnimation()
+    {
+        if (!_isGhostAnimating)
+            return;
+
+        _isGhostAnimating = false;
+        CompositionTarget.Rendering -= DragGhost_Rendering;
+    }
+
+    private void DragGhost_Rendering(object? sender, EventArgs e)
+    {
+        if (_dragGhostTransform == null)
+            return;
+
+        var dx = _dragGhostTargetPosition.X - _dragGhostCurrentPosition.X;
+        var dy = _dragGhostTargetPosition.Y - _dragGhostCurrentPosition.Y;
+
+        if (Math.Abs(dx) < 0.2 && Math.Abs(dy) < 0.2)
+        {
+            _dragGhostCurrentPosition = _dragGhostTargetPosition;
+        }
+        else
+        {
+            _dragGhostCurrentPosition = new Point(
+                _dragGhostCurrentPosition.X + (dx * GhostFollowStrength),
+                _dragGhostCurrentPosition.Y + (dy * GhostFollowStrength));
+        }
+
+        ApplyDragGhostPosition();
+    }
+
+    private void ApplyDragGhostPosition()
+    {
+        if (_dragGhostTransform == null)
+            return;
+
+        _dragGhostTransform.X = _dragGhostCurrentPosition.X;
+        _dragGhostTransform.Y = _dragGhostCurrentPosition.Y;
+    }
+
+    private void EndDragGhost()
+    {
+        StopDragGhostAnimation();
+
+        if (_dragGhost != null)
+            _dragOverlay.Children.Remove(_dragGhost);
+
+        _dragGhost = null;
+        _dragGhostTransform = null;
+        _dragGhostCurrentPosition = default;
+        _dragGhostTargetPosition = default;
+        _dragGhostWidth = 0;
+        _dragGhostHeight = 0;
+    }
+
+    private Dictionary<MacroWorkspace, double> CaptureTabLefts()
+    {
+        var result = new Dictionary<MacroWorkspace, double>();
+
+        foreach (var child in _tabsPanel.Children.OfType<FrameworkElement>())
+        {
+            if (child.Tag is not MacroWorkspace workspace)
+                continue;
+
+            result[workspace] = child.TranslatePoint(new Point(0, 0), _tabsPanel).X;
+        }
+
+        return result;
+    }
+
+    private void AnimateTabsFromPreviousPositions(IReadOnlyDictionary<MacroWorkspace, double> previousTabLefts)
+    {
+        if (!_isReorderingTab || previousTabLefts.Count == 0)
+            return;
+
+        foreach (var child in _tabsPanel.Children.OfType<FrameworkElement>())
+        {
+            if (child.Tag is not MacroWorkspace workspace)
+                continue;
+
+            if (ReferenceEquals(workspace, _draggedTabWorkspace))
+                continue;
+
+            if (!previousTabLefts.TryGetValue(workspace, out var previousLeft))
+                continue;
+
+            var currentLeft = child.TranslatePoint(new Point(0, 0), _tabsPanel).X;
+            var deltaX = previousLeft - currentLeft;
+            if (Math.Abs(deltaX) < 0.5)
+                continue;
+
+            AnimateTabOffsetToRest(child, deltaX);
+        }
+    }
+
+    private static void AnimateTabOffsetToRest(UIElement element, double deltaX)
+    {
+        var transform = new TranslateTransform(deltaX, 0);
+        element.RenderTransform = transform;
+
+        transform.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation
+            {
+                From = deltaX,
+                To = 0,
+                Duration = new Duration(TimeSpan.FromMilliseconds(135)),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+    }
+
+    private double GetDraggedTabWidth()
+    {
+        if (_draggedTabWorkspace == null)
+            return 92;
+
+        return _tabsPanel.Children
+            .OfType<FrameworkElement>()
+            .FirstOrDefault(child => ReferenceEquals(child.Tag, _draggedTabWorkspace))
+            ?.ActualWidth ?? 92;
+    }
+
+    private double GetDraggedTabHeight()
+    {
+        if (_draggedTabWorkspace == null)
+            return 22;
+
+        return _tabsPanel.Children
+            .OfType<FrameworkElement>()
+            .FirstOrDefault(child => ReferenceEquals(child.Tag, _draggedTabWorkspace))
+            ?.ActualHeight ?? 22;
     }
 
     private void UpdateEdgeIndicators()
@@ -463,6 +790,43 @@ public sealed class WorkspaceTabController
         }
 
         return false;
+    }
+
+    private static MacroWorkspace? TryGetSourceTabWorkspace(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is FrameworkElement { Tag: MacroWorkspace workspace })
+                return workspace;
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return null;
+    }
+
+    private static bool IsSourceInsideRenameIcon(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is FrameworkElement { Tag: string tag } && tag == RenameIconTag)
+                return true;
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return false;
+    }
+
+    private static int IndexOfWorkspace(IReadOnlyList<MacroWorkspace> workspaces, MacroWorkspace workspace)
+    {
+        for (var i = 0; i < workspaces.Count; i++)
+        {
+            if (ReferenceEquals(workspaces[i], workspace))
+                return i;
+        }
+
+        return -1;
     }
 
     private static string NormalizeWorkspaceName(string name)
