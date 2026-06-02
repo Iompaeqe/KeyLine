@@ -42,15 +42,24 @@ public sealed class NodeInspectorBuilder
         if (_selection.HasMultipleNodeSelection)
             return CreateReadonlySectionContent(("Selected", _selection.SelectedNodes.Count.ToString()));
 
-        if (_selection.HasNodeSelection && _selection.SelectedNode != null && HasEditableNodeInspector(_selection.SelectedNode))
-            return CreateNodeInspector(timeline, _selection.SelectedNode);
+        if (_selection.HasNodeSelection && _selection.SelectedNode != null)
+        {
+            var policy = NodeInspectorPolicy.For(timeline, _selection.SelectedNode);
+
+            if (!policy.ShowNodeSection)
+                return null;
+
+            return CreateNodeInspector(timeline, _selection.SelectedNode, policy);
+        }
 
         return null;
     }
 
-    private UIElement CreateNodeInspector(MacroTimeline timeline, MacroNode node)
+    private UIElement CreateNodeInspector(MacroTimeline timeline, MacroNode node,
+        NodeInspectorPolicy nodeInspectorPolicy)
     {
         var section = CreateSection();
+        var policy = NodeInspectorPolicy.For(timeline, node);
 
         section.Children.Add(CreateReadonlyRow("Type", GetNodeTypeText(node)));
 
@@ -68,9 +77,9 @@ public sealed class NodeInspectorBuilder
                     "Delay",
                     node.DelayMs,
                     value => _commitNodeChange(() => node.DelayMs = value),
-                    TooltipNotes.DelayNodeValue));
+                    TooltipNotes.DelayNodeValue,
+                    policy.CanEditDelay));
                 break;
-
             case MacroNodeType.RandomDelay:
                 section.Children.Add(CreateDelayRow(
                     "Min",
@@ -80,7 +89,8 @@ public sealed class NodeInspectorBuilder
                         node.RandomDelayMinMs = value;
                         NormalizeRandomDelay(node);
                     }),
-                    TooltipNotes.RandomDelayMinimum));
+                    TooltipNotes.RandomDelayMinimum,
+                    policy.CanEditRandomDelay));
 
                 section.Children.Add(CreateDelayRow(
                     "Max",
@@ -90,11 +100,12 @@ public sealed class NodeInspectorBuilder
                         node.RandomDelayMaxMs = value;
                         NormalizeRandomDelay(node);
                     }),
-                    TooltipNotes.RandomDelayMaximum));
+                    TooltipNotes.RandomDelayMaximum,
+                    policy.CanEditRandomDelay));
                 break;
 
             case MacroNodeType.Text:
-                section.Children.Add(CreateTextEditRow(timeline, node));
+                section.Children.Add(CreateTextEditRow(timeline, node, policy.CanEditText));
                 break;
 
             case MacroNodeType.CursorMove:
@@ -104,12 +115,16 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "X",
                     node.MouseX,
-                    value => _commitNodeChange(() => node.MouseX = value)));
+                    value => _commitNodeChange(() => node.MouseX = value),
+                    isEnabled: policy.CanEditMousePosition));
+
                 section.Children.Add(CreateNumberRow(
                     "Y",
                     node.MouseY,
-                    value => _commitNodeChange(() => node.MouseY = value)));
-                section.Children.Add(CreatePickPointButton(node));
+                    value => _commitNodeChange(() => node.MouseY = value),
+                    isEnabled: policy.CanEditMousePosition));
+
+                section.Children.Add(CreatePickPointButton(node, policy.CanPickMousePosition));
                 break;
 
             case MacroNodeType.MouseDown:
@@ -120,7 +135,8 @@ public sealed class NodeInspectorBuilder
                     value => _commitNodeChange(() => node.MouseButton = Math.Clamp(value, 1, 5)),
                     "",
                     1,
-                    5));
+                    5,
+                    isEnabled: policy.CanEditMouseButton));
                 break;
 
             case MacroNodeType.KeyDown:
@@ -180,10 +196,13 @@ public sealed class NodeInspectorBuilder
         string suffix = "",
         int min = 0,
         int? max = null,
-        string? tooltip = null)
+        string? tooltip = null,
+        bool isEnabled = true)
     {
         var grid = CreateInspectorRowGrid();
         var rowTooltip = tooltip ?? $"{label} value.";
+        var canEdit = _canEdit() && isEnabled;
+
         grid.ToolTip = rowTooltip;
         grid.Children.Add(CreateInspectorLabel(label, rowTooltip));
 
@@ -196,12 +215,13 @@ public sealed class NodeInspectorBuilder
 
         var numberEntry = new NumberEntryBlock
         {
-            IsEnabled = _canEdit(),
+            IsEnabled = canEdit,
             ToolTip = rowTooltip
         };
+
         var textBox = numberEntry.TextBox;
         textBox.Text = value.ToString();
-        textBox.IsEnabled = _canEdit();
+        textBox.IsEnabled = canEdit;
 
         host.Children.Add(numberEntry);
 
@@ -235,19 +255,29 @@ public sealed class NodeInspectorBuilder
         return grid;
     }
 
-    private UIElement CreateDelayRow(string label, int value, Action<int> commit, string tooltip)
+    private UIElement CreateDelayRow(
+        string label,
+        int value,
+        Action<int> commit,
+        string tooltip,
+        bool isEnabled = true)
     {
         var grid = CreateInspectorRowGrid();
+        var canEdit = _canEdit() && isEnabled;
+
         grid.ToolTip = tooltip;
         grid.Children.Add(CreateInspectorLabel(label, tooltip));
 
         var entry = new TimeEntryBlock
         {
             HorizontalAlignment = HorizontalAlignment.Right,
-            ToolTip = $"{tooltip} Click to edit in milliseconds."
+            ToolTip = $"{tooltip} Click to edit in milliseconds.",
+            IsEnabled = canEdit
         };
+
         entry.SetDisplay(value);
-        entry.TextBox.IsEnabled = _canEdit();
+        entry.TextBox.IsEnabled = canEdit;
+
         Grid.SetColumn(entry, 1);
 
         var textBox = entry.TextBox;
@@ -273,12 +303,15 @@ public sealed class NodeInspectorBuilder
         return grid;
     }
 
-    private UIElement CreateTextEditRow(MacroTimeline timeline, MacroNode node)
+    private UIElement CreateTextEditRow(MacroTimeline timeline, MacroNode node, bool isEnabled)
     {
+        var canEdit = _canEdit() && isEnabled;
+
         var panel = new StackPanel
         {
             Margin = new Thickness(0, 2, 0, 0),
-            ToolTip = TooltipNotes.TextNodeValue
+            ToolTip = TooltipNotes.TextNodeValue,
+            IsEnabled = canEdit
         };
 
         panel.Children.Add(new TextBlock
@@ -297,7 +330,7 @@ public sealed class NodeInspectorBuilder
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            IsEnabled = _canEdit(),
+            IsEnabled = canEdit,
             ToolTip = TooltipNotes.TextNodeEdit
         };
 
@@ -322,14 +355,14 @@ public sealed class NodeInspectorBuilder
         return panel;
     }
 
-    private UIElement CreatePickPointButton(MacroNode node)
+    private UIElement CreatePickPointButton(MacroNode node, bool isEnabled)
     {
         var button = new Button
         {
             Content = "Pick point",
             Height = 22,
             Margin = new Thickness(0, 2, 0, 0),
-            IsEnabled = _canEdit(),
+            IsEnabled = _canEdit() && isEnabled,
             ToolTip = TooltipNotes.PickMouseCoordinates
         };
 
@@ -370,18 +403,6 @@ public sealed class NodeInspectorBuilder
         };
     }
 
-    private static bool HasEditableNodeInspector(MacroNode node) =>
-        !node.IsSyntheticDisplayNode &&
-        node.Type is MacroNodeType.Delay
-            or MacroNodeType.RandomDelay
-            or MacroNodeType.Text
-            or MacroNodeType.CursorMove
-            or MacroNodeType.BackgroundMouseDown
-            or MacroNodeType.BackgroundMouseUp
-            or MacroNodeType.BackgroundMouseClick
-            or MacroNodeType.MouseDown
-            or MacroNodeType.MouseUp;
-
     private static void NormalizeRandomDelay(MacroNode node)
     {
         if (node.RandomDelayMaxMs < node.RandomDelayMinMs)
@@ -392,18 +413,18 @@ public sealed class NodeInspectorBuilder
     {
         return node.Type switch
         {
-            MacroNodeType.KeyDown => "Key down",
-            MacroNodeType.KeyUp => "Key up",
+            MacroNodeType.KeyDown => "Key Down",
+            MacroNodeType.KeyUp => "Key Up",
             MacroNodeType.Delay => "Delay",
-            MacroNodeType.RandomDelay => "Random delay",
+            MacroNodeType.RandomDelay => "Random Delay",
             MacroNodeType.Text => "Text",
-            MacroNodeType.MouseClick => "Mouse click",
-            MacroNodeType.MouseDown => "Mouse down",
-            MacroNodeType.MouseUp => "Mouse up",
-            MacroNodeType.CursorMove => "Move cursor",
-            MacroNodeType.BackgroundMouseDown => "BG mouse down",
-            MacroNodeType.BackgroundMouseUp => "BG mouse up",
-            MacroNodeType.BackgroundMouseClick => "BG mouse click",
+            MacroNodeType.MouseClick => "Mouse Click",
+            MacroNodeType.MouseDown => "Mouse Down",
+            MacroNodeType.MouseUp => "Mouse Up",
+            MacroNodeType.CursorMove => "Move Cursor",
+            MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
+            MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
+            MacroNodeType.BackgroundMouseClick => "BG Mouse Click",
             _ => node.Type.ToString()
         };
     }
