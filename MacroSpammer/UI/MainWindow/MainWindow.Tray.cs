@@ -15,7 +15,7 @@ public partial class MainWindow
         if (WindowState != WindowState.Minimized)
             return;
 
-        _inspectorWindow?.Hide();
+        HideInspector();
 
         if (_settings.MinimizeToTray)
             HideToTray();
@@ -23,7 +23,7 @@ public partial class MainWindow
 
     private void HideToTray()
     {
-        _inspectorWindow?.Hide();
+        HideInspector();;
         EnsureTrayIcon();
         Hide();
     }

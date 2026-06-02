@@ -13,8 +13,8 @@ public partial class MainWindow
         if (draggedItems.Count == 0)
             return;
 
-        if (_selection.HasMultipleStepSelection &&
-            _selection.IsStepSelected(timeline, draggedNode) &&
+        if (_selection.HasMultipleNodeSelection &&
+            _selection.IsNodeSelected(timeline, draggedNode) &&
             TryApplyStepDragPreviewOrder(timeline, draggedNode))
         {
             return;
@@ -23,14 +23,14 @@ public partial class MainWindow
         if (rawInsertAnchor != null && draggedItems.Contains(rawInsertAnchor))
             return;
 
-        var oldFirstIndex = timeline.Steps.IndexOf(draggedItems[0]);
+        var oldFirstIndex = timeline.Nodes.IndexOf(draggedItems[0]);
 
         var newIndexBeforeRemoval = rawInsertAnchor == null
-            ? timeline.Steps.Count
-            : timeline.Steps.IndexOf(rawInsertAnchor);
+            ? timeline.Nodes.Count
+            : timeline.Nodes.IndexOf(rawInsertAnchor);
 
         if (newIndexBeforeRemoval < 0)
-            newIndexBeforeRemoval = timeline.Steps.Count;
+            newIndexBeforeRemoval = timeline.Nodes.Count;
 
         if (IsSameDragPosition(oldFirstIndex, draggedItems.Count, newIndexBeforeRemoval))
             return;
@@ -38,44 +38,44 @@ public partial class MainWindow
         RemoveDraggedItems(timeline, draggedItems);
 
         var insertIndex = rawInsertAnchor == null
-            ? timeline.Steps.Count
-            : timeline.Steps.IndexOf(rawInsertAnchor);
+            ? timeline.Nodes.Count
+            : timeline.Nodes.IndexOf(rawInsertAnchor);
 
         if (insertIndex < 0)
-            insertIndex = timeline.Steps.Count;
+            insertIndex = timeline.Nodes.Count;
 
         InsertDraggedItems(timeline, insertIndex, draggedItems);
 
-        if (_selection.IsStepSelected(timeline, draggedNode))
-            _selection.SelectSteps(
+        if (_selection.IsNodeSelected(timeline, draggedNode))
+            _selection.SelectNodes(
                 timeline,
-                _selection.SelectedSteps.Where(step => timeline.Steps.Contains(step)).ToList(),
-                _selection.AnchorStep);
+                _selection.SelectedNodes.Where(step => timeline.Nodes.Contains(step)).ToList(),
+                _selection.AnchorNode);
         else
-            _selection.SelectStep(timeline, draggedNode);
+            _selection.SelectNode(timeline, draggedNode);
     }
 
     private bool TryApplyStepDragPreviewOrder(MacroTimeline timeline, MacroNode draggedNode)
     {
-        if (_stepDragPreviewRawSteps.Count != timeline.Steps.Count ||
-            _stepDragPreviewRawSteps.Any(step => !timeline.Steps.Contains(step)))
+        if (_stepDragPreviewRawSteps.Count != timeline.Nodes.Count ||
+            _stepDragPreviewRawSteps.Any(step => !timeline.Nodes.Contains(step)))
         {
             return false;
         }
 
-        if (_stepDragPreviewRawSteps.SequenceEqual(timeline.Steps))
+        if (_stepDragPreviewRawSteps.SequenceEqual(timeline.Nodes))
             return true;
 
-        timeline.Steps.Clear();
+        timeline.Nodes.Clear();
         foreach (var step in _stepDragPreviewRawSteps)
-            timeline.Steps.Add(step);
+            timeline.Nodes.Add(step);
 
-        _selection.SelectSteps(
+        _selection.SelectNodes(
             timeline,
-            _selection.SelectedSteps.Where(step => timeline.Steps.Contains(step)).ToList(),
-            _selection.AnchorStep);
-        if (!_selection.HasStepSelection)
-            _selection.SelectStep(timeline, draggedNode);
+            _selection.SelectedNodes.Where(step => timeline.Nodes.Contains(step)).ToList(),
+            _selection.AnchorNode);
+        if (!_selection.HasNodeSelection)
+            _selection.SelectNode(timeline, draggedNode);
 
         return true;
     }
@@ -89,18 +89,18 @@ public partial class MainWindow
     private static void RemoveDraggedItems(MacroTimeline timeline, IEnumerable<MacroNode> draggedItems)
     {
         foreach (var item in draggedItems)
-            timeline.Steps.Remove(item);
+            timeline.Nodes.Remove(item);
     }
 
     private static void InsertDraggedItems(MacroTimeline timeline, int insertIndex, IReadOnlyList<MacroNode> draggedItems)
     {
         for (var i = 0; i < draggedItems.Count; i++)
-            timeline.Steps.Insert(insertIndex + i, draggedItems[i]);
+            timeline.Nodes.Insert(insertIndex + i, draggedItems[i]);
     }
 
     private List<MacroNode> GetRawStepsForDrag(MacroTimeline timeline, MacroNode draggedNode)
     {
-        return _selection.IsStepSelected(timeline, draggedNode)
+        return _selection.IsNodeSelected(timeline, draggedNode)
             ? GetSelectedRawSteps(timeline)
             : GetRawStepsForDisplayStep(timeline, draggedNode);
     }
@@ -110,18 +110,18 @@ public partial class MainWindow
         if (node.IsSyntheticDisplayNode)
         {
             return node.SourceNodes
-                .Where(sourceStep => timeline.Steps.Contains(sourceStep))
+                .Where(sourceStep => timeline.Nodes.Contains(sourceStep))
                 .ToList();
         }
 
-        if (!timeline.Steps.Contains(node))
+        if (!timeline.Nodes.Contains(node))
             return new List<MacroNode>();
 
         var rawSteps = new List<MacroNode> { node };
         AddAttachedStandardDelaySteps(timeline, node, rawSteps);
         return rawSteps
             .Distinct()
-            .OrderBy(rawStep => timeline.Steps.IndexOf(rawStep))
+            .OrderBy(rawStep => timeline.Nodes.IndexOf(rawStep))
             .ToList();
     }
 
@@ -130,7 +130,7 @@ public partial class MainWindow
         if (!timeline.UseStandardDelay || node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
             return;
 
-        var stepIndex = timeline.Steps.IndexOf(node);
+        var stepIndex = timeline.Nodes.IndexOf(node);
         if (stepIndex < 0)
             return;
 

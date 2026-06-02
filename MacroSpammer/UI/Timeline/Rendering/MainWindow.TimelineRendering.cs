@@ -209,15 +209,15 @@ public partial class MainWindow
         if (TimelineRowsPanel == null)
             return;
 
-        if (!_drag.IsDraggingStep || _drag.DraggedStepTimeline == null)
+        if (!_drag.IsDraggingNode || _drag.DraggedNodeTimeline == null)
         {
             RefreshTimeline();
             return;
         }
 
-        var timeline = _drag.DraggedStepTimeline;
+        var timeline = _drag.DraggedNodeTimeline;
 
-        if (_selection.HasMultipleStepSelection && _selection.IsStepSelected(timeline, _drag.DraggedStep!))
+        if (_selection.HasMultipleNodeSelection && _selection.IsNodeSelected(timeline, _drag.DraggedNode!))
         {
             RefreshTimelineRow(timeline);
             return;
@@ -463,9 +463,9 @@ public partial class MainWindow
         var currentLeft = TimelineFirstItemLeft;
 
         var isDraggingThisTimeline =
-            _drag.IsDraggingStep &&
-            ReferenceEquals(_drag.DraggedStepTimeline, timeline) &&
-            _drag.DraggedStep != null;
+            _drag.IsDraggingNode &&
+            ReferenceEquals(_drag.DraggedNodeTimeline, timeline) &&
+            _drag.DraggedNode != null;
 
         var placeholderCount = 0;
         var previewSlots = isDraggingThisTimeline
@@ -525,7 +525,7 @@ public partial class MainWindow
         }
 
         if (isDraggingThisTimeline && placeholderCount == 0)
-            AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedStep!);
+            AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedNode!);
 
                     var addBlock = CreateAddNode(timeline);
         var addSize = MeasureTimelineItem(addBlock);

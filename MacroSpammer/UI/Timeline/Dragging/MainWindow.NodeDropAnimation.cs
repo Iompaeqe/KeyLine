@@ -7,7 +7,7 @@ public partial class MainWindow
 {
     private void CaptureDroppedGhostPositionForAnimation()
     {
-        if (_draggedStepGhostTransform == null || _drag.DraggedStep == null || _drag.DraggedStepTimeline == null)
+        if (_draggedStepGhostTransform == null || _drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
         {
             _lastDroppedGhostRowsPanelPosition = null;
             return;
@@ -24,10 +24,10 @@ public partial class MainWindow
 
     private void SeedDraggedNodeAnimationFromGhost()
     {
-        if (_lastDroppedGhostRowsPanelPosition == null || _drag.DraggedStep == null || _drag.DraggedStepTimeline == null)
+        if (_lastDroppedGhostRowsPanelPosition == null || _drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
             return;
 
-        var animationKey = GetTimelineAnimationKey(_drag.DraggedStepTimeline, _drag.DraggedStep);
+        var animationKey = GetTimelineAnimationKey(_drag.DraggedNodeTimeline, _drag.DraggedNode);
         _timelineVisualPositions[animationKey] = _lastDroppedGhostRowsPanelPosition.Value;
     }
 }

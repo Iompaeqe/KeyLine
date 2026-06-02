@@ -38,7 +38,7 @@ public partial class MainWindow
 
     private static DragUiConfig DragUi => GeneratedUiConfig.Drag;
 
-    private static double StepDragThreshold => DragUi.StepDragThreshold;
+    private static double NodeDragThreshold => DragUi.NodeDragThreshold;
     private static double TimelineHeaderDragThreshold => DragUi.TimelineHeaderDragThreshold;
 
     private void AttachNodeMouseHandlers(NodeBase nodeControl, MacroTimeline timeline, MacroNode node)
@@ -79,7 +79,7 @@ public partial class MainWindow
                 timeline,
                 node,
                 Keyboard.Modifiers,
-                _selection.IsStepSelected(timeline, node));
+                _selection.IsNodeSelected(timeline, node));
 
             if (!_isTimelineEditingEnabled)
             {
@@ -99,8 +99,8 @@ public partial class MainWindow
             if (!_isTimelineEditingEnabled)
                 return;
 
-            if (_drag.DraggedStep == null ||
-                _drag.DraggedStepTimeline == null ||
+            if (_drag.DraggedNode == null ||
+                _drag.DraggedNodeTimeline == null ||
                 e.LeftButton != MouseButtonState.Pressed)
             {
                 return;
@@ -108,15 +108,15 @@ public partial class MainWindow
 
             var currentPoint = e.GetPosition(TimelineRowsPanel);
 
-            if (!_drag.IsDraggingStep)
+            if (!_drag.IsDraggingNode)
             {
-                if (!_drag.ShouldStartStepDrag(currentPoint, StepDragThreshold))
+                if (!_drag.ShouldStartStepDrag(currentPoint, NodeDragThreshold))
                     return;
 
                 _drag.MarkStepDragging();
 
                 ApplyPendingSelectionForDrag();
-                BeginStepDragPreviewModel(_drag.DraggedStepTimeline, _drag.DraggedStep);
+                BeginStepDragPreviewModel(_drag.DraggedNodeTimeline, _drag.DraggedNode);
                 UpdateStepDragPreviewFromMouse(currentPoint);
 
                 BeginWindowLevelStepDragCapture(nodeControl);
@@ -150,7 +150,7 @@ public partial class MainWindow
                 return;
             }
 
-            if (!_drag.IsDraggingStep)
+            if (!_drag.IsDraggingNode)
                 ApplyPendingClickSelection();
 
             CompleteStepDrop();
@@ -159,7 +159,7 @@ public partial class MainWindow
 
         nodeControl.LostMouseCapture += (_, _) =>
         {
-            if (Mouse.LeftButton != MouseButtonState.Pressed && _drag.DraggedStep != null)
+            if (Mouse.LeftButton != MouseButtonState.Pressed && _drag.DraggedNode != null)
                 CancelTimelineDragState();
         };
 
@@ -207,7 +207,7 @@ public partial class MainWindow
         if (!_pendingClickWasSelected && _pendingClickSelectionModifiers == ModifierKeys.None)
         {
             SelectTimeline(_pendingClickSelectionTimeline);
-            _selection.SelectStep(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
+            _selection.SelectNode(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
         }
 
         ClearPendingClickSelection();
@@ -223,7 +223,7 @@ public partial class MainWindow
             return;
         }
 
-        if (modifiers.HasFlag(ModifierKeys.Shift) && _selection.AnchorStep != null &&
+        if (modifiers.HasFlag(ModifierKeys.Shift) && _selection.AnchorNode != null &&
             ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
             SelectTimeline(timeline);
@@ -233,7 +233,7 @@ public partial class MainWindow
         }
 
         SelectTimeline(timeline);
-        _selection.SelectStep(timeline, node);
+        _selection.SelectNode(timeline, node);
         RefreshInspector();
     }
 

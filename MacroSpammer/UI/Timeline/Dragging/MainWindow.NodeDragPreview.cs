@@ -19,10 +19,10 @@ public partial class MainWindow
             return;
 
         _stepDragRawItems.AddRange(draggedItems);
-        _stepDragPreviewSlots.AddRange(BuildPreviewSlots(timeline, timeline.Steps, _stepDragRawItems));
+        _stepDragPreviewSlots.AddRange(BuildPreviewSlots(timeline, timeline.Nodes, _stepDragRawItems));
         SyncStepDragPreviewRawSteps();
 
-        _drag.UpdateStepDragPreview(_drag.StepDragCurrentPoint, GetStepDragPreviewRawInsertAnchor());
+        _drag.UpdateStepDragPreview(_drag.NodeDragCurrentPoint, GetStepDragPreviewRawInsertAnchor());
     }
 
     private List<NodePreviewSlot> BuildPreviewSlots(
@@ -44,8 +44,8 @@ public partial class MainWindow
             if (rawItems.Count == 0)
                 continue;
 
-            var measuredNode = rawItems.Any(draggedItems.Contains) && _drag.DraggedStep != null
-                ? _drag.DraggedStep
+            var measuredNode = rawItems.Any(draggedItems.Contains) && _drag.DraggedNode != null
+                ? _drag.DraggedNode
                 : displayNode;
 
             slots.Add(new NodePreviewSlot
@@ -141,10 +141,10 @@ public partial class MainWindow
 
     private int FindDraggedDisplaySlotIndex(IReadOnlyList<NodePreviewSlot> slots)
     {
-        if (_drag.DraggedStep == null || _drag.DraggedStepTimeline == null)
+        if (_drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
             return -1;
 
-        var draggedRawItems = GetRawStepsForDisplayStep(_stepDragPreviewRawSteps, _drag.DraggedStep);
+        var draggedRawItems = GetRawStepsForDisplayStep(_stepDragPreviewRawSteps, _drag.DraggedNode);
         for (var i = 0; i < slots.Count; i++)
         {
             if (slots[i].RawItems.Any(draggedRawItems.Contains))
@@ -223,20 +223,20 @@ public partial class MainWindow
 
     private IReadOnlyList<MacroNode> GetTimelineRenderRawSteps(MacroTimeline timeline)
     {
-        if (_drag.IsDraggingStep &&
-            ReferenceEquals(_drag.DraggedStepTimeline, timeline) &&
+        if (_drag.IsDraggingNode &&
+            ReferenceEquals(_drag.DraggedNodeTimeline, timeline) &&
             _stepDragPreviewRawSteps.Count > 0)
         {
             return _stepDragPreviewRawSteps;
         }
 
-        return timeline.Steps;
+        return timeline.Nodes;
     }
 
     private IReadOnlyList<NodePreviewSlot> GetTimelineRenderPreviewSlots(MacroTimeline timeline)
     {
-        if (_drag.IsDraggingStep &&
-            ReferenceEquals(_drag.DraggedStepTimeline, timeline) &&
+        if (_drag.IsDraggingNode &&
+            ReferenceEquals(_drag.DraggedNodeTimeline, timeline) &&
             _stepDragPreviewSlots.Count > 0)
         {
             return _stepDragPreviewSlots;

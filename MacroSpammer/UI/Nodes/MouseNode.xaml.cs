@@ -14,7 +14,7 @@ public partial class MouseNode : NodeBase
 
     protected override void UpdateVisual()
     {
-        var step = Step;
+        var step = Node;
         if (step == null)
             return;
 

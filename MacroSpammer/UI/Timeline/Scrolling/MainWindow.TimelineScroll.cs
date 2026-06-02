@@ -232,7 +232,7 @@ public partial class MainWindow
 
     private void DeselectSelectedTimelineNode()
     {
-        if (!_selection.HasStepSelection)
+        if (!_selection.HasNodeSelection)
             return;
 
         Keyboard.ClearFocus();

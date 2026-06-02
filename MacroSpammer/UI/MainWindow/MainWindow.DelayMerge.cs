@@ -20,17 +20,17 @@ public partial class MainWindow
     {
         var changed = false;
 
-        for (var i = 1; i < timeline.Steps.Count; i++)
+        for (var i = 1; i < timeline.Nodes.Count; i++)
         {
-            var previous = timeline.Steps[i - 1];
-            var current = timeline.Steps[i];
+            var previous = timeline.Nodes[i - 1];
+            var current = timeline.Nodes[i];
 
             if (previous.Type != MacroNodeType.Delay || current.Type != MacroNodeType.Delay)
                 continue;
 
             previous.DelayMs += current.DelayMs;
             previous.IsRecordedDelay = previous.IsRecordedDelay && current.IsRecordedDelay;
-            timeline.Steps.RemoveAt(i);
+            timeline.Nodes.RemoveAt(i);
             changed = true;
             i--;
         }
@@ -40,11 +40,11 @@ public partial class MainWindow
 
     private void PruneSelectionAfterDelayMerge(MacroTimeline timeline)
     {
-        if (!ReferenceEquals(_selection.SelectedTimeline, timeline) || !_selection.HasStepSelection)
+        if (!ReferenceEquals(_selection.SelectedTimeline, timeline) || !_selection.HasNodeSelection)
             return;
 
-        var selectedSteps = _selection.SelectedSteps
-            .Where(timeline.Steps.Contains)
+        var selectedSteps = _selection.SelectedNodes
+            .Where(timeline.Nodes.Contains)
             .ToList();
 
         if (selectedSteps.Count == 0)
@@ -53,11 +53,11 @@ public partial class MainWindow
             return;
         }
 
-        var currentAnchor = _selection.AnchorStep;
-        var anchorStep = currentAnchor != null && timeline.Steps.Contains(currentAnchor)
+        var currentAnchor = _selection.AnchorNode;
+        var anchorStep = currentAnchor != null && timeline.Nodes.Contains(currentAnchor)
             ? currentAnchor
             : selectedSteps[^1];
 
-        _selection.SelectSteps(timeline, selectedSteps, anchorStep);
+        _selection.SelectNodes(timeline, selectedSteps, anchorStep);
     }
 }

@@ -13,7 +13,7 @@ public partial class MainWindow
     private IntPtr _mousePickHook;
     private MouseTargetIndicatorWindow? _mouseTargetIndicator;
 
-    private async Task PickMouseCoordinatesForStepAsync(MacroNode node)
+    private async Task PickMouseCoordinatesForNodeAsync(MacroNode node)
     {
         var target = GetTargetHandle();
         if (target == null || target.Handle == 0)

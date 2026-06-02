@@ -81,7 +81,7 @@ public sealed class MacroDocument
 
         if (Timelines.Count == 1)
         {
-            timeline.Steps.Clear();
+            timeline.Nodes.Clear();
             ActiveTimelineIndex = 0;
             return;
         }

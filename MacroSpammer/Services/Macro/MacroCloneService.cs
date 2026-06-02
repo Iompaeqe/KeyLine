@@ -48,8 +48,8 @@ public static class MacroCloneService
             BaseDelayMs = source.BaseDelayMs
         };
 
-        foreach (var step in source.Steps.Where(step => !step.IsSyntheticDisplayNode))
-            clone.Steps.Add(CloneStep(step));
+        foreach (var step in source.Nodes.Where(step => !step.IsSyntheticDisplayNode))
+            clone.Nodes.Add(CloneStep(step));
 
         return clone;
     }

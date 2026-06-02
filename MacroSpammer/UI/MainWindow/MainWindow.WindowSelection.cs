@@ -71,60 +71,6 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void TargetWindowSearchPill_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (!TargetWindowSearchPill.IsEnabled)
-            return;
-
-        TargetWindowSearchPill.IsTextInput = true;
-        TargetWindowSearchPill.FocusInput();
-        e.Handled = true;
-    }
-
-    private void TargetWindowSearchTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        CommitTargetWindowSearchName(resolveIfMissingTarget: true);
-        TargetWindowSearchPill.IsTextInput = false;
-    }
-
-    private void TargetWindowSearchTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.Enter:
-                CommitTargetWindowSearchName(resolveIfMissingTarget: true);
-                Keyboard.ClearFocus();
-                e.Handled = true;
-                break;
-            case Key.Escape:
-                TargetWindowSearchTextBox.Text = _activeWorkspace.TargetWindowSearchName;
-                TargetWindowSearchPill.IsTextInput = false;
-                Keyboard.ClearFocus();
-                e.Handled = true;
-                break;
-        }
-    }
-
-    private void CommitTargetWindowSearchName(bool resolveIfMissingTarget)
-    {
-        var searchName = TargetWindowSearchTextBox.Text.Trim();
-        if (string.Equals(_activeWorkspace.TargetWindowSearchName, searchName, StringComparison.Ordinal))
-        {
-            if (resolveIfMissingTarget && !string.IsNullOrWhiteSpace(searchName))
-                TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
-
-            return;
-        }
-
-        _activeWorkspace.TargetWindowSearchName = searchName;
-        ClearMacroError(_activeWorkspace);
-
-        if (resolveIfMissingTarget && !string.IsNullOrWhiteSpace(searchName))
-            TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
-
-        ScheduleSaveState();
-    }
-
     private TargetWindowInfo? GetTargetHandle()
     {
         if (HandleComboBox.Visibility == Visibility.Visible)

@@ -13,18 +13,18 @@ public enum InlineEditorActivationMode
 
 public abstract class NodeBase : UserControl
 {
-    private MacroNode? _step;
+    private MacroNode? _node;
     private bool _isSelected;
 
-    public MacroNode? Step
+    public MacroNode? Node
     {
-        get => _step;
+        get => _node;
         set
         {
-            if (ReferenceEquals(_step, value))
+            if (ReferenceEquals(_node, value))
                 return;
 
-            _step = value;
+            _node = value;
             Tag = value;
             UpdateVisual();
         }

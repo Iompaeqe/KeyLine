@@ -6,7 +6,7 @@ public sealed class MacroTimeline
 {
     public string Name { get; set; } = "T1";
 
-    public ObservableCollection<MacroNode> Steps { get; } = new();
+    public ObservableCollection<MacroNode> Nodes { get; } = new();
 
     public bool UseStandardDelay { get; set; }
 
@@ -20,10 +20,10 @@ public sealed class MacroTimeline
 
     public int BaseDelayMs { get; set; } = 50;
 
-    public bool HasSteps => Steps.Count > 0;
+    public bool HasNodes => Nodes.Count > 0;
 
     public List<MacroNode> ToPlaybackList()
     {
-        return Steps.ToList();
+        return Nodes.ToList();
     }
 }

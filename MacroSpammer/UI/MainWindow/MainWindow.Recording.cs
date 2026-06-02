@@ -50,7 +50,7 @@ public partial class MainWindow
             return;
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
-        var addedSteps = _recorder.RecordMouseDown(mouseButton, timeline.Steps.Count > 0).ToList();
+        var addedSteps = _recorder.RecordMouseDown(mouseButton, timeline.Nodes.Count > 0).ToList();
 
         AppendRecordedInputSteps(timeline, addedSteps);
     }
@@ -61,7 +61,7 @@ public partial class MainWindow
             return;
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
-        var addedSteps = _recorder.RecordMouseUp(mouseButton, timeline.Steps.Count > 0).ToList();
+        var addedSteps = _recorder.RecordMouseUp(mouseButton, timeline.Nodes.Count > 0).ToList();
 
         AppendRecordedInputSteps(timeline, addedSteps);
     }
@@ -74,7 +74,7 @@ public partial class MainWindow
         SaveUndoSnapshot();
 
         foreach (var step in addedSteps)
-            timeline.Steps.Add(step);
+            timeline.Nodes.Add(step);
 
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
 
@@ -88,7 +88,7 @@ public partial class MainWindow
         if (!_recorder.IsRecording)
             CancelTimelineDragState();
 
-        if (_isCapturingShortcut)
+        if (IsShortcutCaptureActive())
             return;
 
         if (!_recorder.IsRecording && TryHandleEditingShortcut(e))
@@ -105,7 +105,7 @@ public partial class MainWindow
             return;
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
-        var addedSteps = _recorder.RecordKeyDown(e, timeline.Steps.Count > 0).ToList();
+        var addedSteps = _recorder.RecordKeyDown(e, timeline.Nodes.Count > 0).ToList();
 
         e.Handled = true;
         AppendRecordedInputSteps(timeline, addedSteps);
@@ -117,7 +117,7 @@ public partial class MainWindow
             return;
 
         var timeline = _recordingTimeline ?? _document.ActiveTimeline;
-        var addedSteps = _recorder.RecordKeyUp(e, timeline.Steps.Count > 0).ToList();
+        var addedSteps = _recorder.RecordKeyUp(e, timeline.Nodes.Count > 0).ToList();
 
         e.Handled = true;
         AppendRecordedInputSteps(timeline, addedSteps);

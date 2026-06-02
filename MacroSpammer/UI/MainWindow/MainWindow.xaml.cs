@@ -1,13 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Macro;
 using MacroSpammer.Services.Recording;
 using MacroSpammer.State;
-using MacroSpammer.UI.Inspector;
 
 namespace MacroSpammer;
 
@@ -45,8 +43,6 @@ public partial class MainWindow : Window
     private bool _isShortcutClearConfirmationActive;
 
     private bool _didInitialTimelineRefresh;
-    private InspectorWindow? _inspectorWindow;
-    private bool _isInspectorRequestedOpen;
 
     public MainWindow()
     {
@@ -62,6 +58,12 @@ public partial class MainWindow : Window
         _document = _activeWorkspace.Document;
 
         InitializeComponent();
+        InitializeSettingsModal();
+        InitializeInspector();
+        InitializeMacroOptions();
+        InitializeStatePersistence();
+        InitializeShortcuts();
+        ApplyShortcutHookState();
         
         MacroTabsScrollViewer.PreviewMouseWheel += MacroTabsScrollViewer_PreviewMouseWheel;
         MacroTabsScrollViewer.PreviewMouseLeftButtonDown += MacroTabsScrollViewer_PreviewMouseLeftButtonDown;
@@ -78,128 +80,18 @@ public partial class MainWindow : Window
 
         AddMacroTabButton.Click += AddMacroTabButton_Click;
         
-        ShortcutBorder.MouseRightButtonDown += ShortcutBorder_MouseRightButtonDown;
-        ShortcutPill.MouseLeftButtonDown += ShortcutTextBlock_MouseLeftButtonDown;
-        ShortcutPill.PreviewKeyDown += ShortcutTextBlock_PreviewKeyDown;
-        ShortcutPill.PreviewKeyUp += ShortcutTextBlock_PreviewKeyUp;
-        ShortcutPill.LostKeyboardFocus += ShortcutTextBlock_LostKeyboardFocus;
-        ShortcutTogglePill.MouseLeftButtonDown += ShortcutToggleTextBlock_MouseLeftButtonDown;
-        LoopTypePager.PageRequested += LoopTypePager_PageRequested;
-        
-        TargetWindowSearchPill.MouseLeftButtonDown += TargetWindowSearchPill_MouseLeftButtonDown;
-        TargetWindowSearchTextBox.LostFocus += TargetWindowSearchTextBox_LostFocus;
-        TargetWindowSearchTextBox.KeyDown += TargetWindowSearchTextBox_KeyDown;
         WindowComboBox.DropDownOpened += WindowComboBox_DropDownOpened;
         WindowComboBox.SelectionChanged += WindowComboBox_SelectionChanged;
         HandleComboBox.SelectionChanged += HandleComboBox_SelectionChanged;
 
-        InitializeStatePersistence();
-        ApplyShortcutHookState();
         ActivateWorkspace(_activeWorkspaceIndex, false);
 
         Loaded += MainWindow_Loaded;
-        Activated += MainWindow_Activated;
-        LocationChanged += MainWindow_LocationChanged;
-        SizeChanged += MainWindow_SizeChanged;
         StateChanged += MainWindow_StateChanged;
 
         if (_settings.StartMinimized)
             WindowState = WindowState.Minimized;
     }
-
-    private void MainWindow_LocationChanged(object? sender, EventArgs e)
-    {
-        if (_isInspectorAnimating)
-        {
-            _isInspectorAnimating = false;
-            _inspectorWindow?.BeginAnimation(Window.LeftProperty, null);
-        }
-
-        UpdateInspectorPosition();
-    }
-
-    private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateInspectorPosition();
-    }
-
-    private void MainWindow_Activated(object? sender, EventArgs e)
-    {
-        if (_inspectorWindow == null || !_isInspectorRequestedOpen || WindowState == WindowState.Minimized)
-            return;
-
-        if (!_inspectorWindow.IsVisible)
-            _inspectorWindow.Show();
-
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(() =>
-            {
-                UpdateInspectorPosition();
-                EnforceInspectorZOrder();
-            }));
-    }
-
-    private bool _isInspectorAnimating;
-
-    private void UpdateInspectorPosition(bool closed = false)
-    {
-        if (_inspectorWindow == null || !_inspectorWindow.IsVisible)
-            return;
-
-        if (WindowState == WindowState.Minimized)
-        {
-            _inspectorWindow.Hide();
-            return;
-        }
-
-        var targetHeight = Math.Max(100, ActualHeight - 48);
-        _inspectorWindow.Height = targetHeight;
-        _inspectorWindow.Top = Top + (ActualHeight - targetHeight) / 2;
-        _inspectorWindow.Left = closed ? GetInspectorClosedLeft() : GetInspectorOpenLeft();
-
-        EnforceInspectorZOrder();
-    }
-
-    private void PrepareInspectorPosition(bool closed)
-    {
-        if (_inspectorWindow == null)
-            return;
-
-        var targetHeight = Math.Max(100, ActualHeight - 48);
-        _inspectorWindow.Height = targetHeight;
-        _inspectorWindow.Top = Top + (ActualHeight - targetHeight) / 2;
-        _inspectorWindow.Left = closed ? GetInspectorClosedLeft() : GetInspectorOpenLeft();
-    }
-
-    private double GetInspectorOpenLeft() => Left + ActualWidth - 8;
-
-    private double GetInspectorClosedLeft()
-    {
-        var inspectorWidth = _inspectorWindow?.Width ?? 208;
-        return Left + ActualWidth - inspectorWidth - 2;
-    }
-
-    private void EnforceInspectorZOrder()
-    {
-        if (_inspectorWindow == null || !_inspectorWindow.IsVisible)
-            return;
-
-        var helper = new WindowInteropHelper(_inspectorWindow);
-        var mainHelper = new WindowInteropHelper(this);
-        if (helper.Handle != IntPtr.Zero && mainHelper.Handle != IntPtr.Zero)
-        {
-            SetWindowPos(helper.Handle, mainHelper.Handle, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        }
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-
-    private const uint SWP_NOSIZE = 0x0001;
-    private const uint SWP_NOMOVE = 0x0002;
-    private const uint SWP_NOACTIVATE = 0x0010;
-    private const uint SWP_SHOWWINDOW = 0x0040;
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
@@ -272,151 +164,5 @@ public partial class MainWindow : Window
     private static int GetYLParam(IntPtr lParam)
     {
         return unchecked((short)((long)lParam >> 16));
-    }
-
-    private void LoopTypePager_PageRequested(object? sender, EventArgs e)
-    {
-        if (!_isTimelineEditingEnabled)
-            return;
-
-        LoopTypePager.Text = LoopTypePager.Text == "asynced" ? "synced" : "asynced";
-        _activeWorkspace.LoopType = LoopTypePager.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
-        CaptureActiveWorkspaceState(); // Ensure all state is synced
-        ScheduleSaveState();
-    }
-
-    private void ToggleRightPanelButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_inspectorWindow == null)
-            CreateInspectorWindow();
-
-        if (_inspectorWindow!.IsVisible)
-            CloseInspector(animate: true);
-        else
-            OpenInspector();
-    }
-
-    private void OpenInspectorFromSelection()
-    {
-        if (_inspectorWindow == null)
-            CreateInspectorWindow();
-
-        if (_inspectorWindow!.IsVisible)
-        {
-            RefreshInspector();
-            UpdateInspectorPosition();
-            return;
-        }
-
-        OpenInspector();
-    }
-
-    private void CreateInspectorWindow()
-    {
-        _inspectorWindow = new InspectorWindow
-        {
-            WindowStartupLocation = WindowStartupLocation.Manual,
-            ShowActivated = false,
-            Opacity = 0
-        };
-
-        new WindowInteropHelper(_inspectorWindow).EnsureHandle();
-        InitializeInspectorWindowEvents(_inspectorWindow);
-        RefreshInspector();
-    }
-
-    private void OpenInspector()
-    {
-        if (_inspectorWindow == null)
-            return;
-
-        _isInspectorRequestedOpen = true;
-        _inspectorWindow.BeginAnimation(Window.LeftProperty, null);
-        _isInspectorAnimating = false;
-
-        RefreshInspector();
-        PrepareInspectorPosition(closed: true);
-        _inspectorWindow.Opacity = 1;
-        _inspectorWindow.Show();
-        EnforceInspectorZOrder();
-
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Render,
-            new Action(() =>
-            {
-                if (_inspectorWindow == null || !_inspectorWindow.IsVisible)
-                    return;
-
-                EnforceInspectorZOrder();
-                AnimateInspectorTo(GetInspectorOpenLeft(), TimeSpan.FromMilliseconds(340), System.Windows.Media.Animation.EasingMode.EaseOut, hideWhenDone: false);
-            }));
-    }
-
-    private void CloseInspector(bool animate = true)
-    {
-        if (_inspectorWindow == null || !_inspectorWindow.IsVisible)
-            return;
-
-        _isInspectorRequestedOpen = false;
-        if (!animate)
-        {
-            _inspectorWindow.Hide();
-            return;
-        }
-
-        AnimateInspectorTo(GetInspectorClosedLeft(), TimeSpan.FromMilliseconds(240), System.Windows.Media.Animation.EasingMode.EaseIn, hideWhenDone: true);
-    }
-
-    private void AnimateInspectorTo(
-        double targetLeft,
-        TimeSpan duration,
-        System.Windows.Media.Animation.EasingMode easingMode,
-        bool hideWhenDone)
-    {
-        if (_inspectorWindow == null)
-            return;
-
-        var animation = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            To = targetLeft,
-            Duration = duration,
-            EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = easingMode }
-        };
-
-        _isInspectorAnimating = true;
-        animation.Completed += (_, _) =>
-        {
-            _isInspectorAnimating = false;
-            if (_inspectorWindow == null)
-                return;
-
-            _inspectorWindow.BeginAnimation(Window.LeftProperty, null);
-            _inspectorWindow.Left = targetLeft;
-
-            if (hideWhenDone)
-                _inspectorWindow.Hide();
-            else
-                EnforceInspectorZOrder();
-        };
-
-        _inspectorWindow.BeginAnimation(Window.LeftProperty, animation);
-        EnforceInspectorZOrderWhileAnimating();
-    }
-
-    private void EnforceInspectorZOrderWhileAnimating()
-    {
-        var animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        var ticks = 0;
-
-        animationTimer.Tick += (_, _) =>
-        {
-            EnforceInspectorZOrder();
-            ticks++;
-
-            if (ticks > 30 || !_isInspectorAnimating)
-                animationTimer.Stop();
-        };
-
-        animationTimer.Start();
     }
 }

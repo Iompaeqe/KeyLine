@@ -16,7 +16,7 @@ public partial class TextNode : NodeBase
 
     protected override void UpdateVisual()
     {
-        var step = Step;
+        var step = Node;
         if (step == null)
             return;
 

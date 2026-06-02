@@ -6,18 +6,18 @@ public partial class MainWindow
 {
     private void CompleteStepDrop()
     {
-        if (_drag.IsDraggingStep && _drag.DraggedStepTimeline != null && _drag.DraggedStep != null)
+        if (_drag.IsDraggingNode && _drag.DraggedNodeTimeline != null && _drag.DraggedNode != null)
         {
             SaveUndoSnapshot();
             CaptureDroppedGhostPositionForAnimation();
 
             MoveStepBeforeRawAnchor(
-                _drag.DraggedStepTimeline,
-                _drag.DraggedStep,
-                _drag.StepDropRawInsertAnchor);
+                _drag.DraggedNodeTimeline,
+                _drag.DraggedNode,
+                _drag.NodeDropRawInsertAnchor);
 
             SeedDraggedNodeAnimationFromGhost();
-            MergeAdjacentDelayNodesIfEnabled(_drag.DraggedStepTimeline);
+            MergeAdjacentDelayNodesIfEnabled(_drag.DraggedNodeTimeline);
         }
 
         CancelTimelineDragState();
@@ -37,8 +37,8 @@ public partial class MainWindow
         _lastStepDragPreviewMousePoint = null;
         ClearPendingClickSelection();
 
-        if (_drag.DraggedStepTimeline != null)
-            _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(_drag.DraggedStepTimeline));
+        if (_drag.DraggedNodeTimeline != null)
+            _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(_drag.DraggedNodeTimeline));
 
         _drag.EndStepDrag();
         _drag.EndTimelineHeaderDrag();

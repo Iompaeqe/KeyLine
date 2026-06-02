@@ -286,6 +286,7 @@ public partial class SettingsView : UserControl
             _commitShortcut = changed;
             _capturedShortcutKeys.Clear();
             button.Content = "press shortcut";
+            _actions.SetShortcutCaptureActive(true);
             Focus();
         };
         panel.Children.Add(button);

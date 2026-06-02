@@ -64,7 +64,7 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroNode
+        timeline.Nodes.Add(new MacroNode
         {
             Type = MacroNodeType.Delay,
             DelayMs = 100,
@@ -84,7 +84,7 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroNode
+        timeline.Nodes.Add(new MacroNode
         {
             Type = MacroNodeType.RandomDelay,
             RandomDelayMinMs = 50,
@@ -110,7 +110,7 @@ public partial class MainWindow
             return;
 
         SaveUndoSnapshot();
-        timeline.Steps.Add(new MacroNode
+        timeline.Nodes.Add(new MacroNode
         {
             Type = MacroNodeType.Text,
             Text = dialog.ResultText
@@ -135,7 +135,7 @@ public partial class MainWindow
             MouseY = 0
         };
 
-        timeline.Steps.Add(step);
+        timeline.Nodes.Add(step);
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
@@ -157,7 +157,7 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Steps.Add(new MacroNode
+        timeline.Nodes.Add(new MacroNode
         {
             Type = type,
             MouseX = 0,

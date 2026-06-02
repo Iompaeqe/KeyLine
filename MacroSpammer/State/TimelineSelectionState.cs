@@ -5,64 +5,64 @@ namespace MacroSpammer.State;
 public sealed class TimelineSelectionState
 {
     public MacroTimeline? SelectedTimeline { get; private set; }
-    public MacroNode? SelectedStep { get; private set; }
-    public MacroNode? AnchorStep { get; private set; }
-    public List<MacroNode> SelectedSteps { get; } = new();
+    public MacroNode? SelectedNode { get; private set; }
+    public MacroNode? AnchorNode { get; private set; }
+    public List<MacroNode> SelectedNodes { get; } = new();
 
-    public bool HasStepSelection => SelectedTimeline != null && SelectedStep != null;
-    public bool HasMultipleStepSelection => SelectedTimeline != null && SelectedSteps.Count > 1;
-    public bool HasTimelineSelection => SelectedTimeline != null && SelectedStep == null;
+    public bool HasNodeSelection => SelectedTimeline != null && SelectedNode != null;
+    public bool HasMultipleNodeSelection => SelectedTimeline != null && SelectedNodes.Count > 1;
+    public bool HasTimelineSelection => SelectedTimeline != null && SelectedNode == null;
 
-    public void SelectStep(MacroTimeline timeline, MacroNode node)
+    public void SelectNode(MacroTimeline timeline, MacroNode node)
     {
         SelectedTimeline = timeline;
-        SelectedStep = node;
-        AnchorStep = node;
-        SelectedSteps.Clear();
-        SelectedSteps.Add(node);
+        SelectedNode = node;
+        AnchorNode = node;
+        SelectedNodes.Clear();
+        SelectedNodes.Add(node);
     }
 
-    public void SelectSteps(MacroTimeline timeline, IEnumerable<MacroNode> steps, MacroNode? anchorStep = null)
+    public void SelectNodes(MacroTimeline timeline, IEnumerable<MacroNode> nodes, MacroNode? anchorNode = null)
     {
         SelectedTimeline = timeline;
-        SelectedSteps.Clear();
-        SelectedSteps.AddRange(steps);
-        SelectedStep = SelectedSteps.FirstOrDefault();
-        AnchorStep = anchorStep ?? SelectedStep;
+        SelectedNodes.Clear();
+        SelectedNodes.AddRange(nodes);
+        SelectedNode = SelectedNodes.FirstOrDefault();
+        AnchorNode = anchorNode ?? SelectedNode;
 
-        if (SelectedStep == null)
+        if (SelectedNode == null)
         {
             SelectedTimeline = null;
-            AnchorStep = null;
+            AnchorNode = null;
         }
     }
 
     public void SelectTimeline(MacroTimeline timeline)
     {
         SelectedTimeline = timeline;
-        SelectedStep = null;
-        AnchorStep = null;
-        SelectedSteps.Clear();
+        SelectedNode = null;
+        AnchorNode = null;
+        SelectedNodes.Clear();
     }
 
     public void Clear()
     {
         SelectedTimeline = null;
-        SelectedStep = null;
-        AnchorStep = null;
-        SelectedSteps.Clear();
+        SelectedNode = null;
+        AnchorNode = null;
+        SelectedNodes.Clear();
     }
 
     public bool IsTimelineSelected(MacroTimeline timeline)
     {
-        return ReferenceEquals(SelectedTimeline, timeline) && SelectedStep == null;
+        return ReferenceEquals(SelectedTimeline, timeline) && SelectedNode == null;
     }
 
-    public bool IsStepSelected(MacroTimeline timeline, MacroNode node)
+    public bool IsNodeSelected(MacroTimeline timeline, MacroNode node)
     {
-        if (!ReferenceEquals(SelectedTimeline, timeline) || SelectedSteps.Count == 0)
+        if (!ReferenceEquals(SelectedTimeline, timeline) || SelectedNodes.Count == 0)
             return false;
 
-        return SelectedSteps.Any(selected => ReferenceEquals(selected, node));
+        return SelectedNodes.Any(selected => ReferenceEquals(selected, node));
     }
 }

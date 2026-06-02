@@ -66,6 +66,8 @@ public partial class SettingsView
 
     private void EndShortcutCapture()
     {
+        _actions.SetShortcutCaptureActive(false);
+        
         _capturingShortcutButton = null;
         _commitShortcut = null;
         _capturedShortcutKeys.Clear();

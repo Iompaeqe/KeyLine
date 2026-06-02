@@ -33,9 +33,9 @@ public partial class MainWindow
 
     private void Window_PreviewMouseMoveForTimelineDrag(object sender, MouseEventArgs e)
     {
-        if (!_drag.IsDraggingStep ||
-            _drag.DraggedStepTimeline == null ||
-            _drag.DraggedStep == null ||
+        if (!_drag.IsDraggingNode ||
+            _drag.DraggedNodeTimeline == null ||
+            _drag.DraggedNode == null ||
             e.LeftButton != MouseButtonState.Pressed)
         {
             return;
@@ -57,7 +57,7 @@ public partial class MainWindow
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        if (!_drag.IsDraggingStep && !_drag.IsDraggingTimelineHeader)
+        if (!_drag.IsDraggingNode && !_drag.IsDraggingTimelineHeader)
             return;
 
         CompleteStepDrop();

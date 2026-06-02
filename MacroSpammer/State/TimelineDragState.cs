@@ -5,10 +5,10 @@ namespace MacroSpammer.State;
 
 public sealed class TimelineDragState
 {
-    public MacroTimeline? DraggedStepTimeline { get; private set; }
-    public MacroNode? DraggedStep { get; private set; }
-    public Point StepDragStartPoint { get; private set; }
-    public bool IsDraggingStep { get; private set; }
+    public MacroTimeline? DraggedNodeTimeline { get; private set; }
+    public MacroNode? DraggedNode { get; private set; }
+    public Point NodeDragStartPoint { get; private set; }
+    public bool IsDraggingNode { get; private set; }
 
     public MacroTimeline? DraggedTimelineHeader { get; private set; }
     public Point HeaderDragStartPoint { get; private set; }
@@ -19,52 +19,52 @@ public sealed class TimelineDragState
     public Point TimelinePanStartMouse { get; private set; }
     public double TimelinePanStartOffset { get; private set; }
     
-    public Point StepDragCurrentPoint { get; private set; }
-    public MacroNode? StepDropRawInsertAnchor { get; private set; }
+    public Point NodeDragCurrentPoint { get; private set; }
+    public MacroNode? NodeDropRawInsertAnchor { get; private set; }
 
     public void BeginStepDrag(MacroTimeline timeline, MacroNode node, Point startPoint)
     {
-        DraggedStepTimeline = timeline;
-        DraggedStep = node;
-        StepDragStartPoint = startPoint;
-        StepDragCurrentPoint = startPoint;
-        StepDropRawInsertAnchor = null;
-        IsDraggingStep = false;
+        DraggedNodeTimeline = timeline;
+        DraggedNode = node;
+        NodeDragStartPoint = startPoint;
+        NodeDragCurrentPoint = startPoint;
+        NodeDropRawInsertAnchor = null;
+        IsDraggingNode = false;
     }
     
     public bool UpdateStepDragPreview(Point currentPoint, MacroNode? rawInsertAnchor)
     {
-        StepDragCurrentPoint = currentPoint;
+        NodeDragCurrentPoint = currentPoint;
 
-        if (ReferenceEquals(StepDropRawInsertAnchor, rawInsertAnchor))
+        if (ReferenceEquals(NodeDropRawInsertAnchor, rawInsertAnchor))
             return false;
 
-        StepDropRawInsertAnchor = rawInsertAnchor;
+        NodeDropRawInsertAnchor = rawInsertAnchor;
         return true;
     }
 
     public bool ShouldStartStepDrag(Point currentPoint, double dragThreshold)
     {
-        if (DraggedStep == null)
+        if (DraggedNode == null)
             return false;
 
-        var dragDistance = Math.Abs(currentPoint.X - StepDragStartPoint.X);
+        var dragDistance = Math.Abs(currentPoint.X - NodeDragStartPoint.X);
         return dragDistance >= dragThreshold;
     }
 
     public void MarkStepDragging()
     {
-        IsDraggingStep = true;
+        IsDraggingNode = true;
     }
 
     public void EndStepDrag()
     {
-        DraggedStepTimeline = null;
-        DraggedStep = null;
-        StepDragStartPoint = default;
-        StepDragCurrentPoint = default;
-        StepDropRawInsertAnchor = null;
-        IsDraggingStep = false;
+        DraggedNodeTimeline = null;
+        DraggedNode = null;
+        NodeDragStartPoint = default;
+        NodeDragCurrentPoint = default;
+        NodeDropRawInsertAnchor = null;
+        IsDraggingNode = false;
     }
 
     public void BeginTimelineHeaderDrag(MacroTimeline timeline, Point startPoint, int startIndex)

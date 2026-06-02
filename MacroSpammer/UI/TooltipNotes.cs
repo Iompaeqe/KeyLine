@@ -37,7 +37,7 @@ public static class TooltipNotes
     public const string TimelineStandardDelayEdit = "Shared delay inserted between nodes.";
     public const string TimelineShowKeyUpDown = "Show key down and key up nodes separately.";
 
-    public const string DelayStepValue = "Delay before the next node.";
+    public const string DelayNodeValue = "Delay before the next node.";
     public const string RandomDelayMinimum = "Minimum random delay.";
     public const string RandomDelayMaximum = "Maximum random delay.";
     public const string TextNodeValue = "Text sent by this node.";

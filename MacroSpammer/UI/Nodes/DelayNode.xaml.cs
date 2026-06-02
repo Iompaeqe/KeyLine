@@ -57,7 +57,7 @@ public partial class DelayNode : NodeBase
 
     protected override void UpdateVisual()
     {
-        var step = Step;
+        var step = Node;
         if (step == null)
             return;
 
@@ -118,21 +118,21 @@ public partial class DelayNode : NodeBase
 
     private void ValueTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        if (Step == null)
+        if (Node == null)
             return;
 
         _isEditing = true;
 
-        if (Step.Type == MacroNodeType.RandomDelay)
+        if (Node.Type == MacroNodeType.RandomDelay)
         {
-            MinValueTextBox.Text = Step.RandomDelayMinMs.ToString();
-            MaxValueTextBox.Text = Step.RandomDelayMaxMs.ToString();
+            MinValueTextBox.Text = Node.RandomDelayMinMs.ToString();
+            MaxValueTextBox.Text = Node.RandomDelayMaxMs.ToString();
             MinUnitTextBlock.Text = "ms";
             MaxUnitTextBlock.Text = "ms";
         }
         else
         {
-            ValueTextBox.Text = Step.DelayMs.ToString();
+            ValueTextBox.Text = Node.DelayMs.ToString();
         }
 
         if (sender is TextBox textBox)
@@ -156,7 +156,7 @@ public partial class DelayNode : NodeBase
 
     private void CommitDelay()
     {
-        if (Step == null)
+        if (Node == null)
             return;
 
         if (!_isEditing)
@@ -164,20 +164,20 @@ public partial class DelayNode : NodeBase
 
         _isEditing = false;
 
-        if (Step.Type == MacroNodeType.RandomDelay)
+        if (Node.Type == MacroNodeType.RandomDelay)
         {
             if (int.TryParse(MinValueTextBox.Text, out var min))
-                Step.RandomDelayMinMs = Math.Max(0, min);
+                Node.RandomDelayMinMs = Math.Max(0, min);
 
             if (int.TryParse(MaxValueTextBox.Text, out var max))
-                Step.RandomDelayMaxMs = Math.Max(0, max);
+                Node.RandomDelayMaxMs = Math.Max(0, max);
 
-            if (Step.RandomDelayMaxMs < Step.RandomDelayMinMs)
-                (Step.RandomDelayMinMs, Step.RandomDelayMaxMs) = (Step.RandomDelayMaxMs, Step.RandomDelayMinMs);
+            if (Node.RandomDelayMaxMs < Node.RandomDelayMinMs)
+                (Node.RandomDelayMinMs, Node.RandomDelayMaxMs) = (Node.RandomDelayMaxMs, Node.RandomDelayMinMs);
         }
         else if (int.TryParse(ValueTextBox.Text, out var value))
         {
-            Step.DelayMs = Math.Max(0, value);
+            Node.DelayMs = Math.Max(0, value);
         }
 
         UpdateVisual();

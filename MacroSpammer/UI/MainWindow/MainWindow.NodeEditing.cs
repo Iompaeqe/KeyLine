@@ -16,7 +16,7 @@ public partial class MainWindow
         ResetClearConfirmation();
         ResetTimelineDeleteConfirmation();
 
-        if (_selection.HasStepSelection)
+        if (_selection.HasNodeSelection)
         {
             DeleteSelectedStep();
             return;
@@ -50,16 +50,16 @@ public partial class MainWindow
     {
         var timeline = _selection.SelectedTimeline;
 
-        if (timeline == null || _selection.SelectedStep == null)
+        if (timeline == null || _selection.SelectedNode == null)
             return;
 
-        if (!_selection.HasMultipleStepSelection)
+        if (!_selection.HasMultipleNodeSelection)
         {
-            DeleteStep(timeline, _selection.SelectedStep);
+            DeleteStep(timeline, _selection.SelectedNode);
             return;
         }
 
-        DeleteSteps(timeline, _selection.SelectedSteps.ToList());
+        DeleteSteps(timeline, _selection.SelectedNodes.ToList());
     }
 
     private void DeleteStep(MacroTimeline timeline, MacroNode node)
@@ -72,7 +72,7 @@ public partial class MainWindow
             AddStandardDelayCleanupSteps(timeline, stepsToRemove);
 
         foreach (var stepToRemove in stepsToRemove)
-            timeline.Steps.Remove(stepToRemove);
+            timeline.Nodes.Remove(stepToRemove);
 
         MergeAdjacentDelayNodesIfEnabled(timeline);
         _selection.Clear();
@@ -103,8 +103,8 @@ public partial class MainWindow
             return;
 
         SaveUndoSnapshot();
-        foreach (var stepToRemove in stepsToRemove.OrderByDescending(timeline.Steps.IndexOf))
-            timeline.Steps.Remove(stepToRemove);
+        foreach (var stepToRemove in stepsToRemove.OrderByDescending(timeline.Nodes.IndexOf))
+            timeline.Nodes.Remove(stepToRemove);
 
         MergeAdjacentDelayNodesIfEnabled(timeline);
         _selection.Clear();
@@ -118,11 +118,11 @@ public partial class MainWindow
         if (node.IsSyntheticDisplayNode)
         {
             return node.SourceNodes
-                .Where(timeline.Steps.Contains)
+                .Where(timeline.Nodes.Contains)
                 .ToList();
         }
 
-        return timeline.Steps.Contains(node)
+        return timeline.Nodes.Contains(node)
             ? new List<MacroNode> { node }
             : new List<MacroNode>();
     }
@@ -133,7 +133,7 @@ public partial class MainWindow
             return;
 
         var indexes = stepsToRemove
-            .Select(timeline.Steps.IndexOf)
+            .Select(timeline.Nodes.IndexOf)
             .Where(index => index >= 0)
             .Order()
             .ToList();
@@ -156,8 +156,8 @@ public partial class MainWindow
     {
         var result = new List<MacroNode>();
 
-        for (var i = stepIndex - 1; i >= 0 && IsDelayCleanupStep(timeline.Steps[i]); i--)
-            result.Add(timeline.Steps[i]);
+        for (var i = stepIndex - 1; i >= 0 && IsDelayCleanupStep(timeline.Nodes[i]); i--)
+            result.Add(timeline.Nodes[i]);
 
         return result;
     }
@@ -166,8 +166,8 @@ public partial class MainWindow
     {
         var result = new List<MacroNode>();
 
-        for (var i = stepIndex + 1; i < timeline.Steps.Count && IsDelayCleanupStep(timeline.Steps[i]); i++)
-            result.Add(timeline.Steps[i]);
+        for (var i = stepIndex + 1; i < timeline.Nodes.Count && IsDelayCleanupStep(timeline.Nodes[i]); i++)
+            result.Add(timeline.Nodes[i]);
 
         return result;
     }
@@ -266,7 +266,7 @@ public partial class MainWindow
         if (ReferenceEquals(_recordingTimeline, timeline))
             StopRecording();
 
-        timeline.Steps.Clear();
+        timeline.Nodes.Clear();
 
         if (ReferenceEquals(_selection.SelectedTimeline, timeline))
             _selection.Clear();

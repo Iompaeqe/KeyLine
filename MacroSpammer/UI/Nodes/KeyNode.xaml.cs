@@ -32,7 +32,7 @@ public partial class KeyNode : NodeBase
         if (!IsLoaded && KeyBorder == null)
             return;
 
-        var step = Step;
+        var step = Node;
         if (step == null)
             return;
 

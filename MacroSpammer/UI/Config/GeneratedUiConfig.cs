@@ -137,7 +137,7 @@ public sealed class AddStepUiConfig
 
 public sealed class DragUiConfig
 {
-    public double StepDragThreshold { get; init; } = 6;
+    public double NodeDragThreshold { get; init; } = 6;
     public double TimelineHeaderDragThreshold { get; init; } = 6;
 
     public double GhostOpacity { get; init; } = 0.86;

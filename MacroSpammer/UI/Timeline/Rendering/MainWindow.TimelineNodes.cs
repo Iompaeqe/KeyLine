@@ -24,7 +24,7 @@ public partial class MainWindow
     {
         var control = new KeyNode
         {
-            Step = node,
+            Node = node,
             IsSelected = IsStepSelected(timeline, node),
             ShowKeyUpDown = timeline.ShowKeyUpDown,
             Tag = node
@@ -38,7 +38,7 @@ public partial class MainWindow
     {
         var control = new TextNode
         {
-            Step = node,
+            Node = node,
             IsSelected = IsStepSelected(timeline, node),
             Tag = node
         };
@@ -51,7 +51,7 @@ public partial class MainWindow
     {
         var control = new DelayNode
         {
-            Step = node,
+            Node = node,
             IsSelected = IsStepSelected(timeline, node),
             Tag = node
         };
@@ -71,7 +71,7 @@ public partial class MainWindow
     {
         var control = new BackgroundMouseNode
         {
-            Step = node,
+            Node = node,
             IsSelected = IsStepSelected(timeline, node),
             Tag = node
         };
@@ -86,8 +86,8 @@ public partial class MainWindow
         {
             SaveUndoSnapshot();
             SelectTimeline(timeline);
-            _selection.SelectStep(timeline, node);
-            await PickMouseCoordinatesForStepAsync(node);
+            _selection.SelectNode(timeline, node);
+            await PickMouseCoordinatesForNodeAsync(node);
         };
 
         AttachNodeMouseHandlers(control, timeline, node);
@@ -98,7 +98,7 @@ public partial class MainWindow
     {
         var control = new MouseNode
         {
-            Step = node,
+            Node = node,
             IsSelected = IsStepSelected(timeline, node),
             Tag = node
         };
@@ -120,13 +120,13 @@ public partial class MainWindow
 
     private bool IsStepSelected(MacroTimeline timeline, MacroNode node)
     {
-        if (!_selection.HasStepSelection || _selection.SelectedTimeline == null || _selection.SelectedSteps.Count == 0)
+        if (!_selection.HasNodeSelection || _selection.SelectedTimeline == null || _selection.SelectedNodes.Count == 0)
             return false;
 
         if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
             return false;
 
-        return _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(node, selectedStep));
+        return _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(node, selectedStep));
     }
 
     private static bool IsSameSelectedStep(MacroNode node, MacroNode selectedNode)

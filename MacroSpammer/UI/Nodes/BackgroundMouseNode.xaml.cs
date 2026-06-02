@@ -17,7 +17,7 @@ public partial class BackgroundMouseNode : NodeBase
 
     protected override void UpdateVisual()
     {
-        var step = Step;
+        var step = Node;
         if (step == null)
             return;
 

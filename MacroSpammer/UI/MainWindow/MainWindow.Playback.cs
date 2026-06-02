@@ -41,7 +41,7 @@ public partial class MainWindow
             return;
 
         var runnableTimelines = _document.Timelines
-            .Where(timeline => timeline.Steps.Count > 0)
+            .Where(timeline => timeline.Nodes.Count > 0)
             .ToList();
 
         if (runnableTimelines.Count == 0)
@@ -90,7 +90,7 @@ public partial class MainWindow
             var timeline = runnableTimelines[i];
             var runnerIndex = i;
             var runner = GetRunner(timeline);
-            var steps = timeline.Steps.ToList();
+            var steps = timeline.Nodes.ToList();
             var loopCount = Math.Max(0, timeline.LoopCount);
             var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
             var useStandardDelay = timeline.UseStandardDelay;
@@ -223,7 +223,7 @@ public partial class MainWindow
         }
 
         var runnableTimelines = workspace.Document.Timelines
-            .Where(timeline => timeline.Steps.Count > 0)
+            .Where(timeline => timeline.Nodes.Count > 0)
             .ToList();
 
         if (runnableTimelines.Count == 0)
@@ -241,7 +241,7 @@ public partial class MainWindow
         foreach (var timeline in runnableTimelines)
         {
             var runner = GetRunner(timeline);
-            var steps = timeline.Steps.ToList();
+            var steps = timeline.Nodes.ToList();
             var loopCount = Math.Max(0, timeline.LoopCount);
             var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
             var useStandardDelay = timeline.UseStandardDelay;
@@ -350,7 +350,7 @@ public partial class MainWindow
 
                 var runnerIndex = i;
                 var runner = GetRunner(timeline);
-                var steps = timeline.Steps.ToList();
+                var steps = timeline.Nodes.ToList();
                 var baseDelayMs = targetLoops == 0
                     ? Math.Max(10, timeline.BaseDelayMs)
                     : Math.Max(0, timeline.BaseDelayMs);
@@ -586,10 +586,9 @@ public partial class MainWindow
         AddTimelineButton.IsEnabled = isEnabled;
         ClearButton.IsEnabled = isEnabled;
         AddMacroTabButton.IsEnabled = true;
-        LoopTypePager.IsEnabled = isEnabled;
-        TargetWindowSearchPill.IsEnabled = isEnabled;
-        WindowComboBox.IsEnabled = isEnabled;
-        HandleComboBox.IsEnabled = isEnabled;
+        
+        SetMacroOptionsEditingEnabled(isEnabled);
+        
         RefreshInspector();
     }
 

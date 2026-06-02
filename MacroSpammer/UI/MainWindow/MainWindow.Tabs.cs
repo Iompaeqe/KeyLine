@@ -100,11 +100,8 @@ public partial class MainWindow
             _timelineVisualPositions.Clear();
             ResetClearConfirmation();
 
-            TimerMinutesTextBox.Text = _activeWorkspace.TimerMs.ToString();
-            LoopTypePager.Text = _activeWorkspace.LoopType == MacroLoopType.Sync ? "synced" : "asynced";
-            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _activeWorkspace.TimerMs);
-            TargetWindowSearchTextBox.Text = _activeWorkspace.TargetWindowSearchName;
-            UpdateShortcutText();
+            ApplyMacroOptionsFromWorkspace(_activeWorkspace);
+            
             RefreshMacroTabs();
             RestoreTargetWindowSelection(_activeWorkspace);
             if (!HasResolvedTargetSelection() && !string.IsNullOrWhiteSpace(_activeWorkspace.TargetWindowSearchName))
@@ -285,19 +282,10 @@ public partial class MainWindow
             return;
 
         _activeWorkspace.Document = _document;
-        if (IsWorkspaceRunning(_activeWorkspace))
-        {
-            _activeWorkspace.TimerMs = Math.Max(0, _originalTimerMs);
-        }
-        else
-        {
-            _activeWorkspace.TimerMs = GetTimerMs();
-        }
+
+        CaptureMacroOptionsToWorkspace(_activeWorkspace);
 
         _activeWorkspace.LoopCount = _document.ActiveTimeline.LoopCount;
         _activeWorkspace.BaseDelayMs = _document.ActiveTimeline.BaseDelayMs;
-        _activeWorkspace.LoopType = LoopTypePager.Text == "synced" ? MacroLoopType.Sync : MacroLoopType.Async;
-        _activeWorkspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
-        CaptureSelectedTargetWindow(_activeWorkspace);
     }
 }

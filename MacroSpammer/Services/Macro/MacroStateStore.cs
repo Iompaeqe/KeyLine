@@ -175,8 +175,8 @@ public static class MacroStateStore
             BaseDelayMs = Math.Max(0, persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs)
         };
 
-        foreach (var persistedStep in persistedTimeline.Steps)
-            timeline.Steps.Add(ToStep(persistedStep));
+        foreach (var persistedStep in persistedTimeline.Nodes)
+            timeline.Nodes.Add(ToStep(persistedStep));
 
         return timeline;
     }
@@ -223,7 +223,7 @@ public static class MacroStateStore
             UseTextInputMode = timeline.UseTextInputMode,
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = Math.Max(0, timeline.BaseDelayMs),
-            Steps = timeline.Steps
+            Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
                 .ToList()
@@ -320,7 +320,7 @@ public static class MacroStateStore
         public bool UseTextInputMode { get; set; }
         public int? LoopCount { get; set; }
         public int? BaseDelayMs { get; set; }
-        public List<PersistedStep> Steps { get; set; } = new();
+        public List<PersistedStep> Nodes { get; set; } = new();
     }
 
     private sealed class PersistedStep

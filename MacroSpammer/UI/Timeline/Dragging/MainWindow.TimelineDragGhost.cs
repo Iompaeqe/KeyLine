@@ -12,12 +12,12 @@ public partial class MainWindow
 {
     private void BeginDraggedStepGhost()
     {
-        if (_drag.DraggedStepTimeline == null || _drag.DraggedStep == null)
+        if (_drag.DraggedNodeTimeline == null || _drag.DraggedNode == null)
             return;
 
         EndDraggedStepGhost();
 
-        var ghost = CreateDraggedStepGhostElement(_drag.DraggedStepTimeline, _drag.DraggedStep);
+        var ghost = CreateDraggedStepGhostElement(_drag.DraggedNodeTimeline, _drag.DraggedNode);
 
         if (ghost is not FrameworkElement ghostElement)
             return;
@@ -87,16 +87,16 @@ public partial class MainWindow
 
     private List<MacroNode> GetDraggedDisplaySteps(MacroTimeline timeline, MacroNode draggedNode)
     {
-        if (!_selection.HasMultipleStepSelection || !_selection.IsStepSelected(timeline, draggedNode))
+        if (!_selection.HasMultipleNodeSelection || !_selection.IsNodeSelected(timeline, draggedNode))
             return new List<MacroNode> { draggedNode };
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-            timeline.Steps.ToList(),
+            timeline.Nodes.ToList(),
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
         return visibleSteps
-            .Where(step => _selection.SelectedSteps.Any(selectedStep => IsSameSelectedStep(step, selectedStep)))
+            .Where(step => _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(step, selectedStep)))
             .ToList();
     }
 
@@ -105,12 +105,12 @@ public partial class MainWindow
         if (_draggedStepGhost == null)
             return;
 
-        if (!_drag.IsDraggingStep || _drag.DraggedStepTimeline == null)
+        if (!_drag.IsDraggingNode || _drag.DraggedNodeTimeline == null)
             return;
 
         var mouse = Mouse.GetPosition(TimelineDragOverlayCanvas);
 
-        var rowTopInRowsPanel = GetTimelineRowTopY(_drag.DraggedStepTimeline);
+        var rowTopInRowsPanel = GetTimelineRowTopY(_drag.DraggedNodeTimeline);
 
         var targetX = mouse.X - (_draggedStepGhostWidth / 2.0) + MainWindow.DragUi.GhostCursorOffsetX;
         var targetY = rowTopInRowsPanel + MainWindow.TimelineConnectorY - (_draggedStepGhostHeight / 2.0) + MainWindow.DragUi.GhostCursorOffsetY;
@@ -147,7 +147,7 @@ public partial class MainWindow
         if (_draggedStepGhostTransform == null || _draggedStepGhost == null)
             return;
 
-        if (!_drag.IsDraggingStep)
+        if (!_drag.IsDraggingNode)
             return;
 
         if (ApplyStepDragAutoScroll())

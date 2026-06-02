@@ -13,4 +13,5 @@ public interface ISettingsActions
     void ResetDefaults();
     void ResetSettings();
     void ResetAllSavedData();
+    void SetShortcutCaptureActive(bool isActive);
 }
