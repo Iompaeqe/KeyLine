@@ -16,11 +16,6 @@ public static class NodeDisplayFormatter
         return node.KeyName;
     }
 
-    public static bool IsComboKey(MacroNode node)
-    {
-        return IsComboKey(GetKeyText(node));
-    }
-
     public static bool IsComboKey(string keyText)
     {
         return keyText.Contains('+');
@@ -45,5 +40,25 @@ public static class NodeDisplayFormatter
         return normalizedText.Length <= ui.MaxPreviewCharacters
             ? normalizedText
             : normalizedText[..ui.MaxPreviewCharacters] + "…";
+    }
+
+    public static string GetNodeTypeText(MacroNode node)
+    {
+        return node.Type switch
+        {
+            MacroNodeType.KeyDown => "Key Down",
+            MacroNodeType.KeyUp => "Key Up",
+            MacroNodeType.Delay => "Delay",
+            MacroNodeType.RandomDelay => "Random Delay",
+            MacroNodeType.Text => "Text",
+            MacroNodeType.MouseClick => "Mouse Click",
+            MacroNodeType.MouseDown => "Mouse Down",
+            MacroNodeType.MouseUp => "Mouse Up",
+            MacroNodeType.CursorMove => "Move Cursor",
+            MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
+            MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
+            MacroNodeType.BackgroundMouseClick => "BG Mouse Click",
+            _ => node.Type.ToString()
+        };
     }
 }

@@ -2,7 +2,7 @@
 
 public sealed class NodeInspectorPolicy
 {
-    public bool ShowNodeSection { get; init; } = true;
+    public bool HasInspector { get; init; } = true;
 
     public bool CanEditDelay { get; init; }
     public bool CanEditRandomDelay { get; init; }
@@ -17,7 +17,7 @@ public sealed class NodeInspectorPolicy
         {
             return new NodeInspectorPolicy
             {
-                ShowNodeSection = false
+                HasInspector = false
             };
         }
 
@@ -55,22 +55,22 @@ public sealed class NodeInspectorPolicy
 
             MacroNodeType.MouseDown or MacroNodeType.MouseUp => new NodeInspectorPolicy
             {
-                ShowNodeSection = false
+                HasInspector = false
             },
 
             MacroNodeType.KeyDown or MacroNodeType.KeyUp => new NodeInspectorPolicy
             {
-                ShowNodeSection = false
+                HasInspector = false
             },
 
             MacroNodeType.MouseClick => new NodeInspectorPolicy
             {
-                ShowNodeSection = false
+                HasInspector = false
             },
 
             _ => new NodeInspectorPolicy
             {
-                ShowNodeSection = false
+                HasInspector = false
             }
         };
     }

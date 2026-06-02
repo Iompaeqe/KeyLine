@@ -46,7 +46,7 @@ public sealed class NodeInspectorBuilder
         {
             var policy = NodeInspectorPolicy.For(timeline, _selection.SelectedNode);
 
-            if (!policy.ShowNodeSection)
+            if (!policy.HasInspector)
                 return null;
 
             return CreateNodeInspector(timeline, _selection.SelectedNode, policy);
@@ -55,20 +55,11 @@ public sealed class NodeInspectorBuilder
         return null;
     }
 
-    private UIElement CreateNodeInspector(MacroTimeline timeline, MacroNode node,
-        NodeInspectorPolicy nodeInspectorPolicy)
+    private UIElement CreateNodeInspector(MacroTimeline timeline, MacroNode node, NodeInspectorPolicy policy)
     {
         var section = CreateSection();
-        var policy = NodeInspectorPolicy.For(timeline, node);
 
-        section.Children.Add(CreateReadonlyRow("Type", GetNodeTypeText(node)));
-
-        if (node.IsSyntheticDisplayNode)
-        {
-            section.Children.Add(CreateReadonlyRow("Value", NodeDisplayFormatter.GetKeyText(node)));
-            section.Children.Add(CreateReadonlyRow("Parts", node.SourceNodes.Count.ToString()));
-            return section;
-        }
+        section.Children.Add(CreateReadonlyRow("Type", NodeDisplayFormatter.GetNodeTypeText(node)));
 
         switch (node.Type)
         {
@@ -80,6 +71,7 @@ public sealed class NodeInspectorBuilder
                     TooltipNotes.DelayNodeValue,
                     policy.CanEditDelay));
                 break;
+
             case MacroNodeType.RandomDelay:
                 section.Children.Add(CreateDelayRow(
                     "Min",
@@ -105,7 +97,7 @@ public sealed class NodeInspectorBuilder
                 break;
 
             case MacroNodeType.Text:
-                section.Children.Add(CreateTextEditRow(timeline, node, policy.CanEditText));
+                section.Children.Add(CreateTextEditRow(node, policy.CanEditText));
                 break;
 
             case MacroNodeType.CursorMove:
@@ -133,9 +125,8 @@ public sealed class NodeInspectorBuilder
                     "Button",
                     Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
                     value => _commitNodeChange(() => node.MouseButton = Math.Clamp(value, 1, 5)),
-                    "",
-                    1,
-                    5,
+                    min: 1,
+                    max: 5,
                     isEnabled: policy.CanEditMouseButton));
                 break;
 
@@ -201,7 +192,7 @@ public sealed class NodeInspectorBuilder
     {
         var grid = CreateInspectorRowGrid();
         var rowTooltip = tooltip ?? $"{label} value.";
-        var canEdit = _canEdit() && isEnabled;
+        var canEdit = CanEditOption(isEnabled);
 
         grid.ToolTip = rowTooltip;
         grid.Children.Add(CreateInspectorLabel(label, rowTooltip));
@@ -240,7 +231,8 @@ public sealed class NodeInspectorBuilder
 
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
         textBox.GotKeyboardFocus += (_, _) => textBox.SelectAll();
-        textBox.LostFocus += (_, _) => InspectorCommitService.CommitNumberText(textBox, value, commit, min, max, _isRefreshing());
+        textBox.LostFocus += (_, _) =>
+            InspectorCommitService.CommitNumberText(textBox, value, commit, min, max, _isRefreshing());
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
@@ -263,7 +255,7 @@ public sealed class NodeInspectorBuilder
         bool isEnabled = true)
     {
         var grid = CreateInspectorRowGrid();
-        var canEdit = _canEdit() && isEnabled;
+        var canEdit = CanEditOption(isEnabled);
 
         grid.ToolTip = tooltip;
         grid.Children.Add(CreateInspectorLabel(label, tooltip));
@@ -303,9 +295,9 @@ public sealed class NodeInspectorBuilder
         return grid;
     }
 
-    private UIElement CreateTextEditRow(MacroTimeline timeline, MacroNode node, bool isEnabled)
+    private UIElement CreateTextEditRow(MacroNode node, bool isEnabled)
     {
-        var canEdit = _canEdit() && isEnabled;
+        var canEdit = CanEditOption(isEnabled);
 
         var panel = new StackPanel
         {
@@ -362,7 +354,7 @@ public sealed class NodeInspectorBuilder
             Content = "Pick point",
             Height = 22,
             Margin = new Thickness(0, 2, 0, 0),
-            IsEnabled = _canEdit() && isEnabled,
+            IsEnabled = CanEditOption(isEnabled),
             ToolTip = TooltipNotes.PickMouseCoordinates
         };
 
@@ -409,23 +401,8 @@ public sealed class NodeInspectorBuilder
             (node.RandomDelayMinMs, node.RandomDelayMaxMs) = (node.RandomDelayMaxMs, node.RandomDelayMinMs);
     }
 
-    private static string GetNodeTypeText(MacroNode node)
+    private bool CanEditOption(bool optionEnabled)
     {
-        return node.Type switch
-        {
-            MacroNodeType.KeyDown => "Key Down",
-            MacroNodeType.KeyUp => "Key Up",
-            MacroNodeType.Delay => "Delay",
-            MacroNodeType.RandomDelay => "Random Delay",
-            MacroNodeType.Text => "Text",
-            MacroNodeType.MouseClick => "Mouse Click",
-            MacroNodeType.MouseDown => "Mouse Down",
-            MacroNodeType.MouseUp => "Mouse Up",
-            MacroNodeType.CursorMove => "Move Cursor",
-            MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
-            MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
-            MacroNodeType.BackgroundMouseClick => "BG Mouse Click",
-            _ => node.Type.ToString()
-        };
+        return _canEdit() && optionEnabled;
     }
 }
