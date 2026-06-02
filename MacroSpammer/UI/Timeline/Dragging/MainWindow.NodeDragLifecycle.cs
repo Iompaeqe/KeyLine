@@ -24,7 +24,7 @@ public partial class MainWindow
         RefreshTimeline();
         ScheduleSaveState();
 
-        _lastDroppedGhostRowsPanelPosition = null;
+        NodeDragGhost.ClearDropPosition();
     }
 
     private void CancelTimelineDragState()

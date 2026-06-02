@@ -1,7 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Macro;
 using MacroSpammer.UI.Timeline;
@@ -18,35 +20,17 @@ public partial class MainWindow
         EndDraggedStepGhost();
 
         var ghost = CreateDraggedStepGhostElement(_drag.DraggedNodeTimeline, _drag.DraggedNode);
-
         if (ghost is not FrameworkElement ghostElement)
             return;
 
-        ghostElement.IsHitTestVisible = false;
-        ghostElement.Opacity = MainWindow.DragUi.GhostOpacity;
-        ghostElement.RenderTransformOrigin = new Point(0.5, 0.5);
-
-        var transformGroup = new TransformGroup();
-        transformGroup.Children.Add(new ScaleTransform(MainWindow.DragUi.GhostScale, MainWindow.DragUi.GhostScale));
-
-        _draggedStepGhostTransform = new TranslateTransform();
-        transformGroup.Children.Add(_draggedStepGhostTransform);
-
-        ghostElement.RenderTransform = transformGroup;
-
         var size = MainWindow.MeasureTimelineItem(ghostElement);
+        NodeDragGhost.Begin(
+            ghostElement,
+            size,
+            MainWindow.DragUi.GhostOpacity,
+            MainWindow.DragUi.GhostScale,
+            GetDraggedStepGhostTargetPosition(size));
 
-        _draggedStepGhostWidth = size.Width;
-        _draggedStepGhostHeight = size.Height;
-        _draggedStepGhost = ghostElement;
-
-        TimelineDragOverlayCanvas.Children.Add(ghostElement);
-
-        Canvas.SetLeft(ghostElement, 0);
-        Canvas.SetTop(ghostElement, 0);
-        Panel.SetZIndex(ghostElement, 1000);
-
-        UpdateDraggedStepGhostTargetPosition(snap: true);
         StartDragGhostAnimation();
     }
 
@@ -54,7 +38,7 @@ public partial class MainWindow
     {
         var ghostSteps = GetDraggedDisplaySteps(timeline, draggedNode);
         if (ghostSteps.Count <= 1)
-        return CreateNode(timeline, draggedNode);
+            return CreateNode(timeline, draggedNode);
 
         var canvas = new Canvas
         {
@@ -66,7 +50,7 @@ public partial class MainWindow
         var maxHeight = 0.0;
         foreach (var step in ghostSteps)
         {
-        var block = CreateNode(timeline, step);
+            var block = CreateNode(timeline, step);
             if (block is not FrameworkElement element)
                 continue;
 
@@ -102,49 +86,44 @@ public partial class MainWindow
 
     private void UpdateDraggedStepGhostTargetPosition(bool snap = false)
     {
-        if (_draggedStepGhost == null)
+        if (!NodeDragGhost.HasGhost)
             return;
 
         if (!_drag.IsDraggingNode || _drag.DraggedNodeTimeline == null)
             return;
 
-        var mouse = Mouse.GetPosition(TimelineDragOverlayCanvas);
+        NodeDragGhost.UpdateTarget(
+            GetDraggedStepGhostTargetPosition(new Size(NodeDragGhost.Width, NodeDragGhost.Height)),
+            snap);
+    }
 
+    private Point GetDraggedStepGhostTargetPosition(Size ghostSize)
+    {
+        if (_drag.DraggedNodeTimeline == null)
+            return default;
+
+        var mouse = Mouse.GetPosition(TimelineDragOverlayCanvas);
         var rowTopInRowsPanel = GetTimelineRowTopY(_drag.DraggedNodeTimeline);
 
-        var targetX = mouse.X - (_draggedStepGhostWidth / 2.0) + MainWindow.DragUi.GhostCursorOffsetX;
-        var targetY = rowTopInRowsPanel + MainWindow.TimelineConnectorY - (_draggedStepGhostHeight / 2.0) + MainWindow.DragUi.GhostCursorOffsetY;
+        var targetX = mouse.X - (ghostSize.Width / 2.0) + MainWindow.DragUi.GhostCursorOffsetX;
+        var targetY = rowTopInRowsPanel + MainWindow.TimelineConnectorY - (ghostSize.Height / 2.0) + MainWindow.DragUi.GhostCursorOffsetY;
 
-        _dragGhostTargetPosition = new Point(targetX, targetY);
-
-        if (!snap)
-            return;
-
-        _dragGhostCurrentPosition = _dragGhostTargetPosition;
-        ApplyDragGhostPosition();
+        return new Point(targetX, targetY);
     }
 
     private void StartDragGhostAnimation()
     {
-        if (_isDragGhostAnimating)
-            return;
-
-        _isDragGhostAnimating = true;
-        CompositionTarget.Rendering += DragGhost_Rendering;
+        NodeDragGhost.StartAnimation(DragGhost_Rendering);
     }
 
     private void StopDragGhostAnimation()
     {
-        if (!_isDragGhostAnimating)
-            return;
-
-        _isDragGhostAnimating = false;
-        CompositionTarget.Rendering -= DragGhost_Rendering;
+        NodeDragGhost.StopAnimation(DragGhost_Rendering);
     }
 
     private void DragGhost_Rendering(object? sender, EventArgs e)
     {
-        if (_draggedStepGhostTransform == null || _draggedStepGhost == null)
+        if (!NodeDragGhost.HasGhost)
             return;
 
         if (!_drag.IsDraggingNode)
@@ -160,24 +139,7 @@ public partial class MainWindow
         }
 
         UpdateDraggedStepGhostTargetPosition();
-
-        var followStrength = MainWindow.DragUi.GhostFollowStrength;
-
-        var dx = _dragGhostTargetPosition.X - _dragGhostCurrentPosition.X;
-        var dy = _dragGhostTargetPosition.Y - _dragGhostCurrentPosition.Y;
-
-        if (Math.Abs((double)dx) < 0.2 && Math.Abs((double)dy) < 0.2)
-        {
-            _dragGhostCurrentPosition = _dragGhostTargetPosition;
-        }
-        else
-        {
-            _dragGhostCurrentPosition = new Point(
-                _dragGhostCurrentPosition.X + (dx * followStrength),
-                _dragGhostCurrentPosition.Y + (dy * followStrength));
-        }
-
-        ApplyDragGhostPosition();
+        NodeDragGhost.MoveTowardTarget(MainWindow.DragUi.GhostFollowStrength);
     }
 
     private bool ApplyStepDragAutoScroll()
@@ -228,29 +190,9 @@ public partial class MainWindow
         return true;
     }
 
-    private void ApplyDragGhostPosition()
-    {
-        if (_draggedStepGhostTransform == null)
-            return;
-
-        _draggedStepGhostTransform.X = _dragGhostCurrentPosition.X;
-        _draggedStepGhostTransform.Y = _dragGhostCurrentPosition.Y;
-    }
-
     private void EndDraggedStepGhost()
     {
         StopDragGhostAnimation();
-
-        if (_draggedStepGhost != null)
-            TimelineDragOverlayCanvas.Children.Remove(_draggedStepGhost);
-
-        _draggedStepGhost = null;
-        _draggedStepGhostTransform = null;
-
-        _draggedStepGhostWidth = 0;
-        _draggedStepGhostHeight = 0;
-
-        _dragGhostCurrentPosition = default;
-        _dragGhostTargetPosition = default;
+        NodeDragGhost.End();
     }
 }

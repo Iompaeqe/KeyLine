@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
 using MacroSpammer.Domain;
-using System.Windows.Media;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Nodes;
 using MacroSpammer.UI.Timeline;
@@ -11,19 +10,9 @@ namespace MacroSpammer;
 public partial class MainWindow
 {
     private readonly NodeDragPreviewModel _nodeDragPreview = new();
+    private NodeDragGhostController? _nodeDragGhost;
 
-    private FrameworkElement? _draggedStepGhost;
-    private TranslateTransform? _draggedStepGhostTransform;
-
-    private double _draggedStepGhostWidth;
-    private double _draggedStepGhostHeight;
-
-    private Point? _lastDroppedGhostRowsPanelPosition;
-
-    private Point _dragGhostCurrentPosition;
-    private Point _dragGhostTargetPosition;
-
-    private bool _isDragGhostAnimating;
+    private NodeDragGhostController NodeDragGhost => _nodeDragGhost ??= new NodeDragGhostController(TimelineDragOverlayCanvas);
     private bool _timelineDragGlobalHandlersAttached;
     private bool _isDelayValueMouseEditPending;
     private bool _isMouseNodeEditPending;

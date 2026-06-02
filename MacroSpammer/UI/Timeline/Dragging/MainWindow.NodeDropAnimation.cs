@@ -7,27 +7,27 @@ public partial class MainWindow
 {
     private void CaptureDroppedGhostPositionForAnimation()
     {
-        if (_draggedStepGhostTransform == null || _drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
+        if (_drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
         {
-            _lastDroppedGhostRowsPanelPosition = null;
+            NodeDragGhost.ClearDropPosition();
             return;
         }
 
-        var ghostPositionInRowsPanel = TimelineDragOverlayCanvas.TranslatePoint(
-            new Point(_draggedStepGhostTransform.X, _draggedStepGhostTransform.Y),
-            TimelineRowsPanel);
-
-        _lastDroppedGhostRowsPanelPosition = new Point(
-            ghostPositionInRowsPanel.X,
-            TimelineLayoutCalculator.GetItemTop(MainWindow.TimelineConnectorY, _draggedStepGhostHeight));
+        NodeDragGhost.CaptureDropPosition(
+            TimelineRowsPanel,
+            TimelineLayoutCalculator.GetItemTop(MainWindow.TimelineConnectorY, NodeDragGhost.Height));
     }
 
     private void SeedDraggedNodeAnimationFromGhost()
     {
-        if (_lastDroppedGhostRowsPanelPosition == null || _drag.DraggedNode == null || _drag.DraggedNodeTimeline == null)
+        if (NodeDragGhost.LastDroppedRowsPanelPosition == null ||
+            _drag.DraggedNode == null ||
+            _drag.DraggedNodeTimeline == null)
+        {
             return;
+        }
 
         var animationKey = GetTimelineAnimationKey(_drag.DraggedNodeTimeline, _drag.DraggedNode);
-        _timelineVisualPositions[animationKey] = _lastDroppedGhostRowsPanelPosition.Value;
+        _timelineVisualPositions[animationKey] = NodeDragGhost.LastDroppedRowsPanelPosition.Value;
     }
 }
