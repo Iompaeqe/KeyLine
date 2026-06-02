@@ -1,9 +1,10 @@
 using System.Windows;
 using System.Windows.Threading;
 using MacroSpammer.Domain;
-using MacroSpammer.Services.Macro;
+using MacroSpammer.Services.Playback;
 using MacroSpammer.Services.Recording;
 using MacroSpammer.Services.AppWindow;
+using MacroSpammer.Services.Macro;
 using MacroSpammer.State;
 
 namespace MacroSpammer;
@@ -14,7 +15,7 @@ public partial class MainWindow : Window
     private int _activeWorkspaceIndex;
     private MacroWorkspace _activeWorkspace;
     private MacroDocument _document;
-    private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
+    private readonly PlaybackController _playback = new();
     private readonly MacroRecorder _recorder = new();
     private readonly AppSettings _settings;
 

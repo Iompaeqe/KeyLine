@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using MacroSpammer.UI.Inspector;
 using System.Globalization;
@@ -153,7 +149,7 @@ public partial class MainWindow
 
         private void DelayInputTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            if (_runners.Values.Any(runner => runner.IsRunning))
+            if (AnyPlaybackRunning())
                 return;
 
             if (ReferenceEquals(sender, TimerMinutesTextBox))
@@ -184,7 +180,7 @@ public partial class MainWindow
 
         private void FormatDelayInputTextBox(object sender)
         {
-            if (_runners.Values.Any(runner => runner.IsRunning))
+            if (AnyPlaybackRunning())
                 return;
 
             if (ReferenceEquals(sender, TimerMinutesTextBox))

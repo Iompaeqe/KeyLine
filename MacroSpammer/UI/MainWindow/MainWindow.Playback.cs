@@ -23,16 +23,13 @@ public partial class MainWindow
     private int[] _runnerTargetLoops = Array.Empty<int>();
     private int _remainingLoopCount;
     private bool _restoreInputsOnStop;
-    private bool _playbackStopRequested;
     private bool _isUpdatingPlaybackCounters;
-    private readonly HashSet<MacroWorkspace> _shortcutStartingWorkspaces = new();
 
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsWorkspaceRunning(_activeWorkspace))
         {
             ResumeWorkspacePlayback(_activeWorkspace);
-
             return;
         }
 
@@ -57,8 +54,8 @@ public partial class MainWindow
             .ToArray();
         _remainingLoopCount = GetDisplayedRemainingLoopCount();
         _restoreInputsOnStop = false;
-        _playbackStopRequested = false;
-        _shortcutStartingWorkspaces.Add(_activeWorkspace);
+        _playback.PrepareManualStart();
+        _playback.MarkShortcutStarting(_activeWorkspace);
 
         SetPlaybackUiRunning();
         SetTimelineEditingEnabled(false);
@@ -72,43 +69,13 @@ public partial class MainWindow
         SetRemainingLoopStatus(GetPlaybackLoopCounterText());
 
         if (_activeWorkspace.LoopType == MacroLoopType.Sync && runnableTimelines.Count > 1)
-            await RunSyncedPlayback(target.Handle, runnableTimelines);
+            await _playback.RunSyncedPlayback(target.Handle, runnableTimelines, OnRunnerLoopCompleted);
         else
-            await RunAsyncPlayback(target.Handle, runnableTimelines);
+            await _playback.RunAsyncPlayback(target.Handle, runnableTimelines, OnRunnerLoopCompleted);
 
-        _shortcutStartingWorkspaces.Remove(_activeWorkspace);
+        _playback.UnmarkShortcutStarting(_activeWorkspace);
         SetStoppedStatus(_restoreInputsOnStop);
         PlayMacroSound();
-    }
-
-    private Task RunAsyncPlayback(nint targetHwnd, IReadOnlyList<MacroTimeline> runnableTimelines)
-    {
-        var tasks = new List<Task>();
-
-        for (var i = 0; i < runnableTimelines.Count; i++)
-        {
-            var timeline = runnableTimelines[i];
-            var runnerIndex = i;
-            var runner = GetRunner(timeline);
-            var steps = timeline.Nodes.ToList();
-            var loopCount = Math.Max(0, timeline.LoopCount);
-            var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
-            var useStandardDelay = timeline.UseStandardDelay;
-            var standardDelayMs = timeline.StandardDelayMs;
-            var useTextInputMode = timeline.UseTextInputMode;
-
-            tasks.Add(Task.Run(() => runner.StartAsync(
-                targetHwnd,
-                steps,
-                loopCount,
-                baseDelayMs,
-                useStandardDelay,
-                standardDelayMs,
-                useTextInputMode,
-                () => OnRunnerLoopCompleted(runnerIndex))));
-        }
-
-        return Task.WhenAll(tasks);
     }
 
     private void PauseResumeButton_Click(object sender, RoutedEventArgs e)
@@ -140,67 +107,49 @@ public partial class MainWindow
         SetStoppedStatus(true);
     }
 
-    private MacroRunner GetRunner(MacroTimeline timeline)
-    {
-        if (_runners.TryGetValue(timeline, out var runner))
-            return runner;
+    private bool AnyPlaybackRunning() => _playback.AnyRunnerRunning;
 
-        runner = new MacroRunner();
-        _runners[timeline] = runner;
-        return runner;
+    private bool AnyPlaybackPaused() => _playback.AnyRunnerPaused;
+
+    private bool TryGetTimelineRunner(MacroTimeline timeline, out MacroRunner runner)
+    {
+        return _playback.TryGetRunner(timeline, out runner);
+    }
+
+    private void RemoveTimelineRunner(MacroTimeline timeline)
+    {
+        _playback.RemoveRunner(timeline);
     }
 
     private void StopAllRunners()
     {
-        _playbackStopRequested = true;
-
-        foreach (var runner in _runners.Values)
-            runner.Stop();
+        _playback.StopAll();
     }
 
     private bool IsWorkspaceRunning(MacroWorkspace workspace)
     {
-        if (_shortcutStartingWorkspaces.Contains(workspace))
-            return true;
-
-        return workspace.Document.Timelines.Any(timeline =>
-            _runners.TryGetValue(timeline, out var runner) && runner.IsRunning);
+        return _playback.IsWorkspaceRunning(workspace);
     }
 
     private void StopWorkspaceRunners(MacroWorkspace workspace)
     {
-        foreach (var timeline in workspace.Document.Timelines)
-        {
-            if (_runners.TryGetValue(timeline, out var runner))
-                runner.Stop();
-        }
-
-        _shortcutStartingWorkspaces.Remove(workspace);
+        _playback.StopWorkspace(workspace);
     }
 
     private void PauseWorkspaceRunners(MacroWorkspace workspace)
     {
-        foreach (var timeline in workspace.Document.Timelines)
-        {
-            if (_runners.TryGetValue(timeline, out var runner))
-                runner.Pause();
-        }
+        _playback.PauseWorkspace(workspace);
     }
 
     private void ResumeWorkspaceRunners(MacroWorkspace workspace)
     {
-        foreach (var timeline in workspace.Document.Timelines)
-        {
-            if (_runners.TryGetValue(timeline, out var runner))
-                runner.Resume();
-        }
+        _playback.ResumeWorkspace(workspace);
     }
 
-    private bool IsWorkspacePaused(MacroWorkspace workspace) =>
-        workspace.Document.Timelines.Any(timeline =>
-            _runners.TryGetValue(timeline, out var runner) &&
-            runner.IsRunning &&
-            runner.IsPaused);
+    private bool IsWorkspacePaused(MacroWorkspace workspace)
+    {
+        return _playback.IsWorkspacePaused(workspace);
+    }
 
     private async void StartWorkspacePlaybackFromShortcut(int workspaceIndex)
     {
@@ -208,14 +157,14 @@ public partial class MainWindow
             return;
 
         var workspace = _workspaces[workspaceIndex];
-        if (!_shortcutStartingWorkspaces.Add(workspace))
+        if (!_playback.MarkShortcutStarting(workspace))
             return;
         RefreshMacroTabs();
 
         var target = GetPlaybackTarget(workspace, updateSelection: workspaceIndex == _activeWorkspaceIndex);
         if (target == null)
         {
-            _shortcutStartingWorkspaces.Remove(workspace);
+            _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
             if (workspaceIndex == _activeWorkspaceIndex && string.IsNullOrWhiteSpace(workspace.ErrorMessage))
                 StatusText.Text = "Shortcut target not found";
@@ -228,7 +177,7 @@ public partial class MainWindow
 
         if (runnableTimelines.Count == 0)
         {
-            _shortcutStartingWorkspaces.Remove(workspace);
+            _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
             if (workspaceIndex == _activeWorkspaceIndex)
                 StatusText.Text = "No steps to run";
@@ -236,27 +185,7 @@ public partial class MainWindow
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
-        var tasks = new List<Task>();
-
-        foreach (var timeline in runnableTimelines)
-        {
-            var runner = GetRunner(timeline);
-            var steps = timeline.Nodes.ToList();
-            var loopCount = Math.Max(0, timeline.LoopCount);
-            var baseDelayMs = Math.Max(0, timeline.BaseDelayMs);
-            var useStandardDelay = timeline.UseStandardDelay;
-            var standardDelayMs = timeline.StandardDelayMs;
-            var useTextInputMode = timeline.UseTextInputMode;
-
-            tasks.Add(Task.Run(() => runner.StartAsync(
-                target.Handle,
-                steps,
-                loopCount,
-                baseDelayMs,
-                useStandardDelay,
-                standardDelayMs,
-                useTextInputMode)));
-        }
+        var completionTask = _playback.RunAsyncPlayback(target.Handle, runnableTimelines);
 
         if (workspaceIndex == _activeWorkspaceIndex)
         {
@@ -273,7 +202,6 @@ public partial class MainWindow
 
         try
         {
-            var completionTask = Task.WhenAll(tasks);
             if (timerMs > 0 && await Task.WhenAny(completionTask, Task.Delay(timerMs)) != completionTask)
                 StopWorkspaceRunners(workspace);
 
@@ -281,28 +209,14 @@ public partial class MainWindow
         }
         finally
         {
-            _shortcutStartingWorkspaces.Remove(workspace);
+            _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
 
             if (workspaceIndex == _activeWorkspaceIndex && !IsWorkspaceRunning(workspace))
-            {
                 SetStoppedStatus();
-            }
 
             PlayMacroSound();
         }
-    }
-
-    private void PauseAllRunners()
-    {
-        foreach (var runner in _runners.Values)
-            runner.Pause();
-    }
-
-    private void ResumeAllRunners()
-    {
-        foreach (var runner in _runners.Values)
-            runner.Resume();
     }
 
     private void StopAllPlaybackFromGlobalShortcut()
@@ -315,72 +229,20 @@ public partial class MainWindow
 
     private void PauseResumeAllPlaybackFromGlobalShortcut()
     {
-        if (!_runners.Values.Any(runner => runner.IsRunning))
+        if (!AnyPlaybackRunning())
             return;
 
-        if (_runners.Values.Any(runner => runner.IsPaused))
+        if (AnyPlaybackPaused())
         {
-            ResumeAllRunners();
+            _playback.ResumeAll();
             ResumePlaybackTimer();
             StatusText.Text = "Running";
             return;
         }
 
-        PauseAllRunners();
+        _playback.PauseAll();
         PausePlaybackTimer();
         StatusText.Text = "Paused";
-    }
-
-    private async Task RunSyncedPlayback(nint targetHwnd, List<MacroTimeline> runnableTimelines)
-    {
-        var completedLoops = new int[runnableTimelines.Count];
-
-        while (!_playbackStopRequested)
-        {
-            var tasks = new List<Task>();
-            var startedIndexes = new List<int>();
-
-            for (var i = 0; i < runnableTimelines.Count; i++)
-            {
-                var timeline = runnableTimelines[i];
-                var targetLoops = Math.Max(0, timeline.LoopCount);
-
-                if (targetLoops > 0 && completedLoops[i] >= targetLoops)
-                    continue;
-
-                var runnerIndex = i;
-                var runner = GetRunner(timeline);
-                var steps = timeline.Nodes.ToList();
-                var baseDelayMs = targetLoops == 0
-                    ? Math.Max(10, timeline.BaseDelayMs)
-                    : Math.Max(0, timeline.BaseDelayMs);
-                var useStandardDelay = timeline.UseStandardDelay;
-                var standardDelayMs = timeline.StandardDelayMs;
-                var useTextInputMode = timeline.UseTextInputMode;
-
-                startedIndexes.Add(i);
-                tasks.Add(Task.Run(() => runner.StartAsync(
-                    targetHwnd,
-                    steps,
-                    1,
-                    baseDelayMs,
-                    useStandardDelay,
-                    standardDelayMs,
-                    useTextInputMode,
-                    () => OnRunnerLoopCompleted(runnerIndex))));
-            }
-
-            if (tasks.Count == 0)
-                break;
-
-            await Task.WhenAll(tasks);
-
-            if (_playbackStopRequested)
-                break;
-
-            foreach (var index in startedIndexes)
-                completedLoops[index]++;
-        }
     }
 
     private void SetPlaybackUiRunning()

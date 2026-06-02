@@ -74,7 +74,7 @@ public partial class MainWindow
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (_runners.Values.Any(runner => runner.IsRunning))
+            if (AnyPlaybackRunning())
                 return;
 
             SetStoppedStatus(true);

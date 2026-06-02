@@ -18,7 +18,7 @@ public partial class MainWindow
         if (_shortcutController == null)
             return false;
 
-        var isBlocked = _runners.Values.Any(runner => runner.IsRunning);
+        var isBlocked = AnyPlaybackRunning();
 
         if (!_shortcutController.TryGetEditingCommand(
                 e,

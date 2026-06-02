@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MacroSpammer.Domain;
@@ -698,7 +697,7 @@ public partial class MainWindow
     // From MainWindow.NodeEditing.cs
         private void DeleteSelectedItem()
         {
-            if (_runners.Values.Any(runner => runner.IsRunning))
+            if (AnyPlaybackRunning())
                 return;
 
             ResetClearConfirmation();
@@ -719,10 +718,10 @@ public partial class MainWindow
             ResetTimelineDeleteConfirmation();
 
             SaveUndoSnapshot();
-            if (_runners.TryGetValue(timeline, out var runner))
+            if (TryGetTimelineRunner(timeline, out var runner))
                 runner.Stop();
 
-            _runners.Remove(timeline);
+            RemoveTimelineRunner(timeline);
 
             _document.RemoveTimeline(timeline);
             _selection.Clear();
@@ -883,7 +882,7 @@ public partial class MainWindow
             ResetTimelineDeleteConfirmation();
 
             SaveUndoSnapshot();
-            if (_runners.TryGetValue(timeline, out var runner))
+            if (TryGetTimelineRunner(timeline, out var runner))
                 runner.Stop();
 
             if (ReferenceEquals(_recordingTimeline, timeline))

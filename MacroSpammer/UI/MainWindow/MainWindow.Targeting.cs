@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Media;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Windows;

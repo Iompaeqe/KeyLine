@@ -18,7 +18,7 @@ public partial class MainWindow
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_runners.Values.Any(runner => runner.IsRunning))
+        if (AnyPlaybackRunning())
             return;
 
         _popupTimeline = ResolveTimelineFromSender(sender) ?? _document.ActiveTimeline;

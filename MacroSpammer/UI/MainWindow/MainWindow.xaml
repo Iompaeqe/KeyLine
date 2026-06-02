@@ -223,7 +223,7 @@
                                 Grid.Column="1"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Top"
-                                Margin="0,6,0,0"
+                                Margin="0,-15,0,0"
                                 Padding="10,4"
                                 CornerRadius="8"
                                 Background="#2A0808"
