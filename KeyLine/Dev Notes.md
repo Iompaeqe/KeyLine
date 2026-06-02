@@ -1,7 +1,8 @@
 ﻿# Known Bugs
 
-- **Issue #1**: After drag and drop, the dropped node will snap back from its old place.
-- **Issue #2**: Recording should follow the recording timeline, not the longest.
+- [ ] After drag and drop, the dropped node will snap back from its old place.
+- [X] Recording should follow the recording timeline, not the longest.
+- [X] Multiple deletion doesn't work.
 
 # To Do
 

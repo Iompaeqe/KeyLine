@@ -7,6 +7,8 @@ namespace KeyLine;
 
 public partial class MainWindow
 {
+    private const double RecordingFollowRightOverscan = 96;
+
     private void StartRecording(MacroTimeline timeline)
     {
         SelectTimeline(timeline);
@@ -78,7 +80,7 @@ public partial class MainWindow
 
         AppendRecordedStepsToTimelineRow(timeline, addedSteps);
 
-        ScrollToTimelineEndAfterRecordingAppend();
+        ScrollToTimelineEndAfterRecordingAppend(timeline);
 
         ScheduleSaveState();
     }
@@ -123,14 +125,37 @@ public partial class MainWindow
         AppendRecordedInputSteps(timeline, addedSteps);
     }
 
-    private void ScrollToTimelineEndAfterRecordingAppend()
+    private void ScrollToTimelineEndAfterRecordingAppend(MacroTimeline timeline)
     {
         Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.Background,
             new Action(() =>
             {
-                TimelineScrollViewer.ScrollToRightEnd();
+                TimelineScrollViewer.ScrollToHorizontalOffset(GetTimelineRecordingFollowOffset(timeline));
                 UpdateTimelineScrollIndicator();
             }));
+    }
+
+    private double GetTimelineRecordingFollowOffset(MacroTimeline timeline)
+    {
+        if (TimelineScrollViewer == null)
+            return 0;
+
+        var viewportWidth = TimelineScrollViewer.ViewportWidth > 0
+            ? TimelineScrollViewer.ViewportWidth
+            : TimelineScrollViewer.ActualWidth;
+
+        if (viewportWidth <= 0)
+            return TimelineScrollViewer.HorizontalOffset;
+
+        var rowWidth = _timelineRowRenderStates.TryGetValue(timeline, out var state)
+            ? state.RowWidth
+            : GetMinimumTimelineCanvasWidth();
+
+        var contentEnd = TimelineScrollViewer.Padding.Left + rowWidth + RecordingFollowRightOverscan;
+        var targetOffset = Math.Max(0, contentEnd - viewportWidth);
+        var maxOffset = Math.Max(0, TimelineScrollViewer.ExtentWidth - viewportWidth);
+
+        return Math.Clamp(targetOffset, 0, maxOffset);
     }
 }
