@@ -3,6 +3,7 @@ using System.Windows.Input;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Input;
 using MacroSpammer.Services.Macro;
+using MacroSpammer.Services.Timeline;
 
 namespace MacroSpammer;
 
@@ -406,7 +407,7 @@ public partial class MainWindow
                 : new List<MacroNode>();
 
         return selectedSteps
-            .SelectMany(step => GetRawStepsForDisplayStep(timeline, step))
+            .SelectMany(step => TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, step))
             .Distinct()
             .OrderBy(step => timeline.Nodes.IndexOf(step))
             .ToList();

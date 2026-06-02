@@ -7,6 +7,7 @@ using MacroSpammer.Services.Macro;
 using MacroSpammer.State;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Timeline;
+using MacroSpammer.Services.Timeline;
 
 namespace MacroSpammer;
 
@@ -345,7 +346,7 @@ public partial class MainWindow
             // Animate smooth movement if it moved significantly
             var deltaX = previousLeft - currentLeft;
             if (Math.Abs(deltaX) > 0.5)
-                AnimateRenderOffsetToRest(item.Element, deltaX, 0, animateY: false);
+                TimelineAnimationService.AnimateRenderOffsetToRest(item.Element, deltaX, 0, animateY: false);
 
             Canvas.SetLeft(item.Element, currentLeft);
         }
@@ -600,7 +601,7 @@ public partial class MainWindow
 
     private object GetTimelineAnimationKey(MacroTimeline timeline, MacroNode node)
     {
-        var rawItems = GetRawStepsForDisplayStep(timeline, node);
+        var rawItems = TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, node);
 
         if (rawItems.Count == 0)
             return node;
@@ -836,7 +837,7 @@ public partial class MainWindow
 
             if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaWidth) > 0.5)
             {
-                AnimateRenderOffsetToRest(state.Connector, deltaX, 0, animateY: false);
+                TimelineAnimationService.AnimateRenderOffsetToRest(state.Connector, deltaX, 0, animateY: false);
 
                 var duration = new Duration(TimeSpan.FromMilliseconds(130));
                 var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -1078,7 +1079,7 @@ public partial class MainWindow
             var deltaY = previousPosition.Y - targetTop;
 
             if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaY) > 0.5)
-                AnimateRenderOffsetToRest(item.Element, deltaX, deltaY, animateY: Math.Abs(deltaY) > 0.5);
+                TimelineAnimationService.AnimateRenderOffsetToRest(item.Element, deltaX, deltaY, animateY: Math.Abs(deltaY) > 0.5);
         }
 
         _timelineVisualPositions[item.AnimationKey] = targetPosition;
@@ -1088,86 +1089,5 @@ public partial class MainWindow
     {
         return animationKey is ValueTuple<MacroTimeline, string> tuple &&
                tuple.Item2 == "drop-placeholder";
-    }
-
-    private static TranslateTransform EnsureTranslateTransform(UIElement element)
-    {
-        switch (element.RenderTransform)
-        {
-            case TranslateTransform translate:
-                return translate;
-
-            case TransformGroup group:
-            {
-                var existing = group.Children.OfType<TranslateTransform>().FirstOrDefault();
-                if (existing != null)
-                    return existing;
-
-                var translate = new TranslateTransform();
-                group.Children.Add(translate);
-                return translate;
-            }
-
-            case Transform existingTransform:
-            {
-                var group = new TransformGroup();
-                group.Children.Add(existingTransform);
-
-                var translate = new TranslateTransform();
-                group.Children.Add(translate);
-
-                element.RenderTransform = group;
-                return translate;
-            }
-
-            default:
-            {
-                var translate = new TranslateTransform();
-                element.RenderTransform = translate;
-                return translate;
-            }
-        }
-    }
-
-    private static void AnimateRenderOffsetToRest(UIElement element, double deltaX, double deltaY, bool animateY)
-    {
-        var transform = EnsureTranslateTransform(element);
-        var currentX = transform.X;
-        var currentY = transform.Y;
-
-        transform.BeginAnimation(TranslateTransform.XProperty, null);
-        transform.BeginAnimation(TranslateTransform.YProperty, null);
-
-        var startX = currentX + deltaX;
-        var startY = currentY + deltaY;
-
-        transform.X = startX;
-        transform.Y = animateY ? startY : 0;
-
-        var duration = new Duration(TimeSpan.FromMilliseconds(130));
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-        transform.BeginAnimation(
-            TranslateTransform.XProperty,
-            new DoubleAnimation
-            {
-                From = startX,
-                To = 0,
-                Duration = duration,
-                EasingFunction = easing
-            });
-
-        if (!animateY)
-            return;
-
-        transform.BeginAnimation(
-            TranslateTransform.YProperty,
-            new DoubleAnimation
-            {
-                From = startY,
-                To = 0,
-                Duration = duration,
-                EasingFunction = easing
-            });
     }
 }

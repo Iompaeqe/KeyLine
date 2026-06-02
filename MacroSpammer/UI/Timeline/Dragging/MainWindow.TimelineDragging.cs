@@ -10,11 +10,7 @@ namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private readonly List<NodePreviewSlot> _stepDragPreviewSlots = new();
-    private readonly List<MacroNode> _stepDragPreviewRawSteps = new();
-    private readonly List<MacroNode> _stepDragRawItems = new();
-    private double _stepDragPreviewContentLeftX;
-    private Point? _lastStepDragPreviewMousePoint;
+    private readonly NodeDragPreviewModel _nodeDragPreview = new();
 
     private FrameworkElement? _draggedStepGhost;
     private TranslateTransform? _draggedStepGhostTransform;

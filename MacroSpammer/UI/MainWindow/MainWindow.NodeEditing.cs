@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using MacroSpammer.Domain;
+using MacroSpammer.Services.Timeline;
 
 namespace MacroSpammer;
 
@@ -67,9 +68,9 @@ public partial class MainWindow
         ResetTimelineDeleteConfirmation();
 
         SaveUndoSnapshot();
-        var stepsToRemove = GetStepsToRemoveForDelete(timeline, node);
-        if (timeline.UseStandardDelay && stepsToRemove.Any(IsDelayCleanupActionStep))
-            AddStandardDelayCleanupSteps(timeline, stepsToRemove);
+        var stepsToRemove = TimelineNodeMutationService.GetStepsToRemoveForDelete(timeline, node);
+        if (timeline.UseStandardDelay && stepsToRemove.Any(TimelineNodeMutationService.IsDelayCleanupActionStep))
+            TimelineNodeMutationService.AddStandardDelayCleanupSteps(timeline, stepsToRemove);
 
         foreach (var stepToRemove in stepsToRemove)
             timeline.Nodes.Remove(stepToRemove);
@@ -88,9 +89,9 @@ public partial class MainWindow
         var stepsToRemove = new List<MacroNode>();
         foreach (var step in steps)
         {
-            var rawSteps = GetStepsToRemoveForDelete(timeline, step);
-            if (timeline.UseStandardDelay && rawSteps.Any(IsDelayCleanupActionStep))
-                AddStandardDelayCleanupSteps(timeline, rawSteps);
+            var rawSteps = TimelineNodeMutationService.GetStepsToRemoveForDelete(timeline, step);
+            if (timeline.UseStandardDelay && rawSteps.Any(TimelineNodeMutationService.IsDelayCleanupActionStep))
+                TimelineNodeMutationService.AddStandardDelayCleanupSteps(timeline, rawSteps);
 
             foreach (var rawStep in rawSteps)
             {
@@ -112,71 +113,6 @@ public partial class MainWindow
         RefreshTimeline();
         ScheduleSaveState();
     }
-
-    private static List<MacroNode> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroNode node)
-    {
-        if (node.IsSyntheticDisplayNode)
-        {
-            return node.SourceNodes
-                .Where(timeline.Nodes.Contains)
-                .ToList();
-        }
-
-        return timeline.Nodes.Contains(node)
-            ? new List<MacroNode> { node }
-            : new List<MacroNode>();
-    }
-
-    private static void AddStandardDelayCleanupSteps(MacroTimeline timeline, List<MacroNode> stepsToRemove)
-    {
-        if (stepsToRemove.Count == 0)
-            return;
-
-        var indexes = stepsToRemove
-            .Select(timeline.Nodes.IndexOf)
-            .Where(index => index >= 0)
-            .Order()
-            .ToList();
-
-        if (indexes.Count == 0)
-            return;
-
-        var cleanupSteps = GetContiguousDelayStepsBefore(timeline, indexes[0]);
-        if (cleanupSteps.Count == 0)
-            cleanupSteps = GetContiguousDelayStepsAfter(timeline, indexes[^1]);
-
-        foreach (var cleanupStep in cleanupSteps)
-        {
-            if (!stepsToRemove.Contains(cleanupStep))
-                stepsToRemove.Add(cleanupStep);
-        }
-    }
-
-    private static List<MacroNode> GetContiguousDelayStepsBefore(MacroTimeline timeline, int stepIndex)
-    {
-        var result = new List<MacroNode>();
-
-        for (var i = stepIndex - 1; i >= 0 && IsDelayCleanupStep(timeline.Nodes[i]); i--)
-            result.Add(timeline.Nodes[i]);
-
-        return result;
-    }
-
-    private static List<MacroNode> GetContiguousDelayStepsAfter(MacroTimeline timeline, int stepIndex)
-    {
-        var result = new List<MacroNode>();
-
-        for (var i = stepIndex + 1; i < timeline.Nodes.Count && IsDelayCleanupStep(timeline.Nodes[i]); i++)
-            result.Add(timeline.Nodes[i]);
-
-        return result;
-    }
-
-    private static bool IsDelayCleanupStep(MacroNode node) =>
-        node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
-
-    private static bool IsDelayCleanupActionStep(MacroNode node) =>
-        !IsDelayCleanupStep(node);
 
     private void EditTextStep(MacroTimeline timeline, MacroNode node)
     {

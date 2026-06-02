@@ -31,10 +31,7 @@ public partial class MainWindow
     {
         EndDraggedStepGhost();
 
-        _stepDragPreviewSlots.Clear();
-        _stepDragPreviewRawSteps.Clear();
-        _stepDragRawItems.Clear();
-        _lastStepDragPreviewMousePoint = null;
+        _nodeDragPreview.Clear();
         ClearPendingClickSelection();
 
         if (_drag.DraggedNodeTimeline != null)

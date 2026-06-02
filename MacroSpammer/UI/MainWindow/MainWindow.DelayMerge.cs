@@ -1,4 +1,5 @@
 using MacroSpammer.Domain;
+using MacroSpammer.Services.Timeline;
 
 namespace MacroSpammer;
 
@@ -9,34 +10,13 @@ public partial class MainWindow
         if (!_settings.MergeRepeatedDelayNodes)
             return false;
 
-        var changed = MergeAdjacentDelayNodes(timeline);
+        var changed = TimelineNodeMutationService.MergeAdjacentDelayNodes(timeline);
         if (changed)
             PruneSelectionAfterDelayMerge(timeline);
 
         return changed;
     }
 
-    private static bool MergeAdjacentDelayNodes(MacroTimeline timeline)
-    {
-        var changed = false;
-
-        for (var i = 1; i < timeline.Nodes.Count; i++)
-        {
-            var previous = timeline.Nodes[i - 1];
-            var current = timeline.Nodes[i];
-
-            if (previous.Type != MacroNodeType.Delay || current.Type != MacroNodeType.Delay)
-                continue;
-
-            previous.DelayMs += current.DelayMs;
-            previous.IsRecordedDelay = previous.IsRecordedDelay && current.IsRecordedDelay;
-            timeline.Nodes.RemoveAt(i);
-            changed = true;
-            i--;
-        }
-
-        return changed;
-    }
 
     private void PruneSelectionAfterDelayMerge(MacroTimeline timeline)
     {
