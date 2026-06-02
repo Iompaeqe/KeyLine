@@ -1,0 +1,38 @@
+﻿<UserControl x:Class="KeyLine.UI.Common.EntryBlocks.NameEntryBlock"
+             x:Name="Root"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="22">
+
+    <Grid>
+        <Grid x:Name="ReadOnlyHost">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="DisplayTextBlock"
+                       Text="-"
+                       Style="{DynamicResource Dim}"
+                       MaxWidth="120"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+
+            <TextBlock x:Name="EditIcon"
+                       Grid.Column="1"
+                       Text="✎"
+                       FontSize="11"
+                       Foreground="#8EA0B6"
+                       Opacity="0.65"
+                       Margin="7,-1,0,0"
+                       Cursor="Hand"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <TextBox x:Name="EditTextBox"
+                 Width="126"
+                 Height="20"
+                 Padding="5,0,5,0"
+                 Visibility="Collapsed"/>
+    </Grid>
+</UserControl>

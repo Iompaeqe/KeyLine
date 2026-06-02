@@ -1,6 +1,0 @@
-<UserControl x:Class="MacroSpammer.UI.Nodes.AddNode"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Button x:Name="AddButton"
-            Content="+" />
-</UserControl>
