@@ -118,6 +118,9 @@ public static class MacroStateStore
                 Math.Max(0, persistedWorkspace.LoopCount),
                 Math.Max(0, persistedWorkspace.BaseDelayMs)),
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
+            LoopType = Enum.IsDefined(persistedWorkspace.LoopType)
+                ? persistedWorkspace.LoopType
+                : MacroLoopType.Async,
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
             ShortcutKeys = persistedWorkspace.ShortcutKeys,
@@ -136,6 +139,7 @@ public static class MacroStateStore
             Name = "Macro 1",
             Document = ToDocument(state.Timelines, state.ActiveTimelineIndex, Math.Max(0, state.LoopCount), 50),
             LoopCount = Math.Max(0, state.LoopCount),
+            LoopType = MacroLoopType.Async,
             TimerMs = Math.Max(0, state.TimerMs > 0 ? state.TimerMs : state.TimerMinutes * 60_000),
             BaseDelayMs = 50
         };
@@ -240,6 +244,7 @@ public static class MacroStateStore
                 0,
                 Math.Max(0, workspace.Document.Timelines.Count - 1)),
             LoopCount = Math.Max(0, workspace.LoopCount),
+            LoopType = workspace.LoopType,
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
@@ -299,6 +304,7 @@ public static class MacroStateStore
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public MacroLoopType LoopType { get; set; } = MacroLoopType.Async;
         public int TimerMinutes { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;

@@ -88,6 +88,7 @@ public partial class MainWindow
         target.LoopCount = snapshot.LoopCount;
         target.TimerMs = snapshot.TimerMs;
         target.BaseDelayMs = snapshot.BaseDelayMs;
+        target.LoopType = snapshot.LoopType;
         target.ShortcutKeys = snapshot.ShortcutKeys;
         target.TargetWindowSearchName = snapshot.TargetWindowSearchName;
         target.TargetWindowHandle = snapshot.TargetWindowHandle;

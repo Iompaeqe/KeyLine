@@ -40,7 +40,8 @@ public partial class MainWindow
                 Name = $"Macro {number}",
                 TimerMs = settings?.DefaultTimerMs ?? 0,
                 LoopCount = settings?.DefaultLoopCount ?? 0,
-                BaseDelayMs = settings?.DefaultBaseDelayMs ?? 50
+                BaseDelayMs = settings?.DefaultBaseDelayMs ?? 50,
+                LoopType = settings?.DefaultLoopType ?? MacroLoopType.Async
             };
 
             if (settings != null)

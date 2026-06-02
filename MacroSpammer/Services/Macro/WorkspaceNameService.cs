@@ -39,7 +39,7 @@ public static class WorkspaceNameService
             ? "Macro"
             : sourceName.Trim();
 
-        var preferredName = $"{baseName} - dub";
+        var preferredName = $"{baseName} - copy";
 
         if (existingWorkspaces.All(workspace =>
                 !string.Equals(workspace.Name, preferredName, StringComparison.OrdinalIgnoreCase)))

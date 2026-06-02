@@ -37,6 +37,7 @@ public static class MacroFileStore
             Name = workspace.Name,
             ActiveTimelineIndex = workspace.Document.ActiveTimelineIndex,
             LoopCount = Math.Max(0, workspace.LoopCount),
+            LoopType = workspace.LoopType,
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
@@ -87,6 +88,9 @@ public static class MacroFileStore
         {
             Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Imported Macro" : persisted.Name,
             LoopCount = Math.Max(0, persisted.LoopCount),
+            LoopType = Enum.IsDefined(persisted.LoopType)
+                ? persisted.LoopType
+                : MacroLoopType.Async,
             TimerMs = Math.Max(0, persisted.TimerMs),
             BaseDelayMs = Math.Max(0, persisted.BaseDelayMs),
             ShortcutKeys = persisted.ShortcutKeys,
@@ -161,6 +165,7 @@ public static class MacroFileStore
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
+        public MacroLoopType LoopType { get; set; } = MacroLoopType.Async;
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
