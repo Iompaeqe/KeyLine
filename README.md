@@ -2,111 +2,97 @@
 
 License: MIT
 
-A lightweight window-targeted macro recorder for Windows.
+KeyLine is a lightweight timeline-based macro recorder and editor for Windows.
 
-My goal was simple:
+It lets you select a target window, record or build a macro, and run it using visual timelines. In compatible applications, keyboard input can be sent to an unfocused/background window while you continue using your PC normally.
 
-Select a target window → record/edit a macro → let it run in the background while continuing to use the PC normally.
-
-No giant scripting system.
-Just a fast and practical macro recorder.
-
-The goal is to have a lightweight and practical macro tool focused specifically on window-targeted keyboard and mouse macros, without turning into a massive automation framework.
+KeyLine is not meant to be a huge automation framework. It is designed to be simple, practical, and fast to use.
 
 ---
 
-## Screenshot
-
-<img width="2080" height="793" alt="image" src="https://github.com/user-attachments/assets/ead59753-008d-4e81-9c7a-d38b15f6598e" />
-
----
-
-## How it works
-
-KeyLine can send keyboard input directly to selected windows using WinAPI window messages (`PostMessage` / `SendMessage`) instead of only relying on global keyboard simulation.
-
-This allows compatible macros to run on unfocused/background windows while you continue using your PC normally.
-
-Some applications handle this well, while others may partially or completely ignore it depending on how they process input internally.
-
-Mouse input is also supported. Foreground mouse input works normally, while background mouse input is experimental and only works with some applications.
+<img width="2286" height="745" alt="image" src="https://github.com/user-attachments/assets/883ec9d6-ba85-4091-8e74-b4582252cfb7" />
 
 ---
 
 ## Features
 
-### Macro Recording & Playback
-
-- Record keyboard input
-- Record mouse input
-- Send keyboard input to unfocused/background windows
-- Foreground mouse input support
-- Experimental background mouse input support
-- Cursor move nodes
-- Text input nodes
-- Delay and random delay nodes
-- Loop and timer support
-
-### Timeline Editor
-
-- Visual timeline-based macro editing
-- Multiple timelines per macro
-- Multiple macro tabs
-- Drag & reorder nodes
-- Edit, copy, paste, duplicate, and delete nodes
-- Copy, paste, and duplicate timelines
-- Copy, paste, and duplicate macros
-- Undo / redo support
+* Visual timeline-based macro editing
+* Multiple macro tabs
+* Multiple timelines per macro
+* Keyboard recording
+* Mouse recording
+* Key down / key up nodes
+* Text nodes
+* Delay and random delay nodes
+* Mouse input nodes
+* Cursor move nodes
+* Per-macro shortcuts
+* Global playback shortcuts
+* Undo / redo
+* Copy / paste / duplicate for nodes, timelines, and macros
+* Import / export
+* Tray support
+* Auto Target window matching
+* Experimental background mouse input
 
 ---
 
-## Timeline System
+## Inspector Panel
 
-Macros are built from timeline nodes.
+KeyLine uses an Inspector panel for selected timeline and node settings.
 
-Supported node types include:
+The UI is now split more clearly:
 
-- Key Down
-- Key Up
-- Text
-- Delay
-- Random Delay
-- Mouse Down
-- Mouse Up
-- Cursor Move
-- Experimental Background Mouse Input
+* Macro settings are in OPTIONS.
+* Timeline settings are in the Inspector.
+* Node settings are in the Inspector.
 
-Recording captures keyboard inputs, mouse inputs, and the delays between them.
-
-After recording, nodes can be edited, reordered, copied, pasted, duplicated, removed, or adjusted directly inside the timeline.
+This keeps the main window cleaner and makes the app easier to extend.
 
 ---
 
-## Import / Export
+## Loop Modes
 
-Macros can be exported and imported from the settings panel.
+KeyLine supports four macro loop modes:
+
+* **Async**: Timelines loop independently.
+* **Sync**: Timelines wait for each other before starting the next loop.
+* **Cycle**: Runs one loop of each timeline in order, skipping finished timelines.
+
+  * Example: A×3, B×5, C×4 → ABCABCABCBCB
+* **Chain**: Fully completes each timeline before starting the next.
+
+  * Example: A×3, B×5, C×4 → AAABBBBBCCCC
+
+Loop count and loop delay are set per timeline, allowing more complex macro setups.
 
 ---
 
-## Notes / Limitations
+## Background Input
 
-KeyLine uses different input methods depending on the selected node/input type.
+KeyLine can send keyboard input to selected windows using WinAPI window messages.
 
-Because Windows applications do not all process input the same way, compatibility can vary:
+This can allow macros to run on compatible background windows, but support depends on the target application.
 
-- Background keyboard input works well in many normal desktop applications.
-- Some applications may ignore window-message-based keyboard input.
-- Foreground mouse input works normally.
-- Experimental background mouse input works in some applications.
-- Many games and protected applications may ignore background mouse input.
+Some apps accept background input. Some ignore it. Some games or protected applications may block it completely.
 
-This is a practical macro tool, not a guaranteed universal automation system.
+Background mouse input is experimental and only works in some applications.
+
+---
+
+## Limitations
+
+KeyLine does not guarantee that every application will accept background input.
+
+Compatibility depends on how the target window handles input.
+
+Foreground input should behave normally. Background input is application-dependent.
 
 ---
 
 ## Planned Features
 
-- Repeat / for-loop style timeline nodes
-- Resizable timeline view for better long macro visualization
-- Conditional nodes
-- New run behavior, Repeat while holding.
+* Repeat nodes
+* Conditional nodes
+* More advanced timeline controls
+* Better background mouse support if a reliable method is found
