@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using MacroSpammer.Domain;
+using MacroSpammer.Services.Edit;
 using MacroSpammer.Services.Input;
 using MacroSpammer.Services.Macro;
 using MacroSpammer.Services.Timeline;
@@ -9,11 +10,8 @@ namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private const int MaxUndoSnapshots = 30;
-
-    private readonly Dictionary<MacroWorkspace, Stack<MacroWorkspace>> _undoStacks = new();
-    private readonly Dictionary<MacroWorkspace, Stack<MacroWorkspace>> _redoStacks = new();
-    private EditClipboard? _editClipboard;
+    private readonly WorkspaceHistoryController _workspaceHistory = new();
+    private readonly EditClipboardController _editClipboard = new();
 
     private bool TryHandleEditingShortcut(KeyEventArgs e)
     {
@@ -68,63 +66,19 @@ public partial class MainWindow
     private void SaveUndoSnapshot()
     {
         CaptureActiveWorkspaceState();
-        var stack = GetUndoStack(_activeWorkspace);
-        stack.Push(MacroCloneService.CloneWorkspace(_activeWorkspace));
-
-        while (stack.Count > MaxUndoSnapshots)
-            TrimOldest(stack);
-
-        GetRedoStack(_activeWorkspace).Clear();
+        _workspaceHistory.SaveSnapshot(_activeWorkspace);
     }
 
     private void UndoActiveWorkspace()
     {
-        var undoStack = GetUndoStack(_activeWorkspace);
-        if (undoStack.Count == 0)
-            return;
-
-        GetRedoStack(_activeWorkspace).Push(MacroCloneService.CloneWorkspace(_activeWorkspace));
-        RestoreWorkspaceSnapshot(_activeWorkspace, undoStack.Pop());
+        if (_workspaceHistory.TryUndo(_activeWorkspace, out var snapshot))
+            RestoreWorkspaceSnapshot(_activeWorkspace, snapshot);
     }
 
     private void RedoActiveWorkspace()
     {
-        var redoStack = GetRedoStack(_activeWorkspace);
-        if (redoStack.Count == 0)
-            return;
-
-        GetUndoStack(_activeWorkspace).Push(MacroCloneService.CloneWorkspace(_activeWorkspace));
-        RestoreWorkspaceSnapshot(_activeWorkspace, redoStack.Pop());
-    }
-
-    private Stack<MacroWorkspace> GetUndoStack(MacroWorkspace workspace)
-    {
-        if (!_undoStacks.TryGetValue(workspace, out var stack))
-        {
-            stack = new Stack<MacroWorkspace>();
-            _undoStacks[workspace] = stack;
-        }
-
-        return stack;
-    }
-
-    private Stack<MacroWorkspace> GetRedoStack(MacroWorkspace workspace)
-    {
-        if (!_redoStacks.TryGetValue(workspace, out var stack))
-        {
-            stack = new Stack<MacroWorkspace>();
-            _redoStacks[workspace] = stack;
-        }
-
-        return stack;
-    }
-
-    private static void TrimOldest<T>(Stack<T> stack)
-    {
-        var items = stack.Reverse().Skip(1).Reverse().ToArray();
-        stack.Clear();
-        foreach (var item in items)
-            stack.Push(item);
+        if (_workspaceHistory.TryRedo(_activeWorkspace, out var snapshot))
+            RestoreWorkspaceSnapshot(_activeWorkspace, snapshot);
     }
 
     private void RestoreWorkspaceSnapshot(MacroWorkspace target, MacroWorkspace snapshot)
@@ -152,18 +106,18 @@ public partial class MainWindow
         if (_selection.HasNodeSelection && _selection.SelectedTimeline != null)
         {
             var rawSteps = GetSelectedRawSteps(_selection.SelectedTimeline);
-            _editClipboard = EditClipboard.ForSteps(rawSteps.Select(MacroCloneService.CloneStep).ToList());
+            _editClipboard.SetSteps(rawSteps.Select(MacroCloneService.CloneStep).ToList());
             return;
         }
 
         if (_selection.HasTimelineSelection && _selection.SelectedTimeline != null)
         {
-            _editClipboard = EditClipboard.ForTimelines(new[]
+            _editClipboard.SetTimelines(new[]
                 { MacroCloneService.CloneTimeline(_selection.SelectedTimeline) });
             return;
         }
 
-        _editClipboard = EditClipboard.ForWorkspaces(new[] { MacroCloneService.CloneWorkspace(_activeWorkspace) });
+        _editClipboard.SetWorkspaces(new[] { MacroCloneService.CloneWorkspace(_activeWorkspace) });
     }
 
     private void SelectStepFromPointer(MacroTimeline timeline, MacroNode node)
@@ -262,21 +216,22 @@ public partial class MainWindow
 
     private void PasteSelection()
     {
-        if (_editClipboard == null)
+        var clipboard = _editClipboard.Current;
+        if (clipboard == null)
             return;
 
         SaveUndoSnapshot();
 
-        switch (_editClipboard.Kind)
+        switch (clipboard.Kind)
         {
             case EditClipboardKind.Nodes:
-                PasteSteps(_editClipboard.Nodes);
+                PasteSteps(clipboard.Nodes);
                 break;
             case EditClipboardKind.Timelines:
-                PasteTimelines(_editClipboard.Timelines);
+                PasteTimelines(clipboard.Timelines);
                 break;
             case EditClipboardKind.Workspaces:
-                PasteWorkspaces(_editClipboard.Workspaces);
+                PasteWorkspaces(clipboard.Workspaces);
                 break;
         }
 
@@ -411,29 +366,5 @@ public partial class MainWindow
             .Distinct()
             .OrderBy(step => timeline.Nodes.IndexOf(step))
             .ToList();
-    }
-
-    private sealed class EditClipboard
-    {
-        public EditClipboardKind Kind { get; private init; }
-        public List<MacroNode> Nodes { get; private init; } = new();
-        public List<MacroTimeline> Timelines { get; private init; } = new();
-        public List<MacroWorkspace> Workspaces { get; private init; } = new();
-
-        public static EditClipboard ForSteps(List<MacroNode> nodes) =>
-            new() { Kind = EditClipboardKind.Nodes, Nodes = nodes };
-
-        public static EditClipboard ForTimelines(IEnumerable<MacroTimeline> timelines) =>
-            new() { Kind = EditClipboardKind.Timelines, Timelines = timelines.ToList() };
-
-        public static EditClipboard ForWorkspaces(IEnumerable<MacroWorkspace> workspaces) =>
-            new() { Kind = EditClipboardKind.Workspaces, Workspaces = workspaces.ToList() };
-    }
-
-    private enum EditClipboardKind
-    {
-        Nodes,
-        Timelines,
-        Workspaces
     }
 }
