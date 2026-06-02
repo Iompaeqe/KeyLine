@@ -171,15 +171,23 @@ public partial class MainWindow
             nodeControl.PreviewMouseRightButtonDown += (_, e) =>
             {
                 CancelTimelineDragState();
-                SelectStepFromPointer(timeline, node);
 
                 if (!_isTimelineEditingEnabled)
                 {
+                    SelectStepFromPointer(timeline, node);
                     e.Handled = true;
                     return;
                 }
 
-                DeleteStep(timeline, node);
+                if (_selection.HasMultipleNodeSelection && _selection.IsNodeSelected(timeline, node))
+                {
+                    DeleteSteps(timeline, _selection.SelectedNodes.ToList());
+                }
+                else
+                {
+                    SelectStepFromPointer(timeline, node);
+                    DeleteStep(timeline, node);
+                }
 
                 e.Handled = true;
             };
