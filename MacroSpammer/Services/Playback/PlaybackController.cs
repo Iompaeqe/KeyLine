@@ -70,6 +70,8 @@ public sealed class PlaybackController
 
     public void StopWorkspace(MacroWorkspace workspace)
     {
+        StopRequested = true;
+
         foreach (var timeline in workspace.Document.Timelines)
         {
             if (_runners.TryGetValue(timeline, out var runner))
@@ -119,6 +121,7 @@ public sealed class PlaybackController
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null)
     {
+        StopRequested = false;
         var tasks = new List<Task>();
 
         for (var i = 0; i < runnableTimelines.Count; i++)
@@ -152,6 +155,7 @@ public sealed class PlaybackController
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null)
     {
+        StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
 
         while (!StopRequested)
@@ -200,5 +204,80 @@ public sealed class PlaybackController
             foreach (var index in startedIndexes)
                 completedLoops[index]++;
         }
+    }
+
+    public async Task RunSequencePlayback(
+        nint targetHwnd,
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        Action<int>? onRunnerLoopCompleted = null)
+    {
+        StopRequested = false;
+        var completedLoops = new int[runnableTimelines.Count];
+
+        while (!StopRequested)
+        {
+            var startedAnyTimeline = false;
+
+            for (var i = 0; i < runnableTimelines.Count; i++)
+            {
+                if (StopRequested)
+                    break;
+
+                var timeline = runnableTimelines[i];
+                var targetLoops = Math.Max(0, timeline.LoopCount);
+
+                if (targetLoops > 0 && completedLoops[i] >= targetLoops)
+                    continue;
+
+                startedAnyTimeline = true;
+
+                var runner = GetRunner(timeline);
+                var steps = timeline.Nodes.ToList();
+                var useStandardDelay = timeline.UseStandardDelay;
+                var standardDelayMs = timeline.StandardDelayMs;
+                var useTextInputMode = timeline.UseTextInputMode;
+
+                await Task.Run(() => runner.StartAsync(
+                    targetHwnd,
+                    steps,
+                    1,
+                    0,
+                    useStandardDelay,
+                    standardDelayMs,
+                    useTextInputMode)).ConfigureAwait(false);
+
+                if (StopRequested)
+                    break;
+
+                completedLoops[i]++;
+                onRunnerLoopCompleted?.Invoke(i);
+
+                if (!HasEligibleSequenceTimeline(runnableTimelines, completedLoops))
+                    continue;
+
+                var delayMs = targetLoops == 0
+                    ? Math.Max(10, timeline.BaseDelayMs)
+                    : Math.Max(0, timeline.BaseDelayMs);
+
+                await runner.DelayAsync(delayMs).ConfigureAwait(false);
+            }
+
+            if (!startedAnyTimeline)
+                break;
+        }
+    }
+
+    private static bool HasEligibleSequenceTimeline(
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        IReadOnlyList<int> completedLoops)
+    {
+        for (var i = 0; i < runnableTimelines.Count && i < completedLoops.Count; i++)
+        {
+            var targetLoops = Math.Max(0, runnableTimelines[i].LoopCount);
+            if (targetLoops == 0 || completedLoops[i] < targetLoops)
+                return true;
+        }
+
+        return false;
     }
 }

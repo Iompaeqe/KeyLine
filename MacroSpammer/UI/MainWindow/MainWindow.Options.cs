@@ -62,8 +62,9 @@ public partial class MainWindow
         }
 
     // From MainWindow.MacroOptions.cs
-        private const string LoopTypeAsyncText = "asynced";
+        private const string LoopTypeAsyncText = "async";
         private const string LoopTypeSyncText = "synced";
+        private const string LoopTypeSequenceText = "sequence";
 
         private void InitializeMacroOptions()
         {
@@ -87,9 +88,7 @@ public partial class MainWindow
         {
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, Math.Max(0, workspace.TimerMs));
 
-            LoopTypePager.Text = workspace.LoopType == MacroLoopType.Sync
-                ? LoopTypeSyncText
-                : LoopTypeAsyncText;
+            LoopTypePager.Text = GetMacroLoopTypeText(workspace.LoopType);
 
             TargetWindowSearchTextBox.Text = workspace.TargetWindowSearchName;
 
@@ -120,9 +119,13 @@ public partial class MainWindow
 
         private MacroLoopType GetSelectedMacroLoopType()
         {
-            return string.Equals(LoopTypePager.Text, LoopTypeSyncText, StringComparison.OrdinalIgnoreCase)
-                ? MacroLoopType.Sync
-                : MacroLoopType.Async;
+            if (string.Equals(LoopTypePager.Text, LoopTypeSyncText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopType.Sync;
+
+            if (string.Equals(LoopTypePager.Text, LoopTypeSequenceText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopType.Sequence;
+
+            return MacroLoopType.Async;
         }
 
         private void LoopTypePager_PageRequested(object? sender, EventArgs e)
@@ -130,16 +133,32 @@ public partial class MainWindow
             if (!_isTimelineEditingEnabled)
                 return;
 
-            _activeWorkspace.LoopType = _activeWorkspace.LoopType == MacroLoopType.Sync
-                ? MacroLoopType.Async
-                : MacroLoopType.Sync;
+            _activeWorkspace.LoopType = GetNextMacroLoopType(_activeWorkspace.LoopType);
 
-            LoopTypePager.Text = _activeWorkspace.LoopType == MacroLoopType.Sync
-                ? LoopTypeSyncText
-                : LoopTypeAsyncText;
+            LoopTypePager.Text = GetMacroLoopTypeText(_activeWorkspace.LoopType);
 
             CaptureActiveWorkspaceState();
             ScheduleSaveState();
+        }
+
+        private static MacroLoopType GetNextMacroLoopType(MacroLoopType loopType)
+        {
+            return loopType switch
+            {
+                MacroLoopType.Async => MacroLoopType.Sync,
+                MacroLoopType.Sync => MacroLoopType.Sequence,
+                _ => MacroLoopType.Async
+            };
+        }
+
+        private static string GetMacroLoopTypeText(MacroLoopType loopType)
+        {
+            return loopType switch
+            {
+                MacroLoopType.Sync => LoopTypeSyncText,
+                MacroLoopType.Sequence => LoopTypeSequenceText,
+                _ => LoopTypeAsyncText
+            };
         }
 
         private void TimerMinutesTextBox_TextChanged(object sender, TextChangedEventArgs e)

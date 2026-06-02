@@ -102,6 +102,11 @@ public partial class SettingsView : UserControl
         AddNumber("Default base delay", _settings.DefaultBaseDelayMs, value => Set(value, v => _settings.DefaultBaseDelayMs = v), "ms");
         AddNumber("Default timer value", _settings.DefaultTimerMs, value => Set(value, v => _settings.DefaultTimerMs = v), "ms");
         AddNumber("Default loop count", _settings.DefaultLoopCount, value => Set(value, v => _settings.DefaultLoopCount = v), "");
+        AddChoice("Default loop type", FormatLoopType(_settings.DefaultLoopType), new[] { "async", "synced", "sequence" }, value =>
+        {
+            _settings.DefaultLoopType = ParseLoopType(value);
+            NotifyChanged();
+        });
         AddChoice("Default input mode", _settings.DefaultTextInputMode ? "Text" : "Key", new[] { "Key", "Text" }, value =>
         {
             _settings.DefaultTextInputMode = value == "Text";
@@ -274,6 +279,26 @@ public partial class SettingsView : UserControl
                 changed(selected);
         };
         panel.Children.Add(comboBox);
+    }
+
+    private static string FormatLoopType(MacroLoopType loopType)
+    {
+        return loopType switch
+        {
+            MacroLoopType.Sync => "synced",
+            MacroLoopType.Sequence => "sequence",
+            _ => "async"
+        };
+    }
+
+    private static MacroLoopType ParseLoopType(string value)
+    {
+        return value switch
+        {
+            "synced" => MacroLoopType.Sync,
+            "sequence" => MacroLoopType.Sequence,
+            _ => MacroLoopType.Async
+        };
     }
 
     private void AddShortcut(string label, string shortcut, Action<string> changed)

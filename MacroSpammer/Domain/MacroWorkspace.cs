@@ -3,7 +3,8 @@ namespace MacroSpammer.Domain;
 public enum MacroLoopType
 {
     Async,
-    Sync
+    Sync,
+    Sequence
 }
 
 public sealed class MacroWorkspace

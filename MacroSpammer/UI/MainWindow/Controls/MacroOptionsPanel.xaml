@@ -56,13 +56,27 @@
                                 <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeAsync}"/>
                                 <LineBreak/>
                                 <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeSync}"/>
+                                <LineBreak/>
+                                <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeSequence}"/>
                             </TextBlock>
                         </TextBlock.ToolTip>
                     </TextBlock>
 
                     <entryBlocks:PagerEntryBlock x:Name="LoopTypePager"
-                                                 ValueMinWidth="42"
-                                                 ToolTip="{x:Static ui:TooltipNotes.MacroLoopType}" />
+                                                 ValueMinWidth="62">
+                        <entryBlocks:PagerEntryBlock.ToolTip>
+                            <TextBlock>
+                                <Run Text="{x:Static ui:TooltipNotes.MacroLoopType}"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeAsync}"/>
+                                <LineBreak/>
+                                <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeSync}"/>
+                                <LineBreak/>
+                                <Run Text="{x:Static ui:TooltipNotes.MacroLoopTypeSequence}"/>
+                            </TextBlock>
+                        </entryBlocks:PagerEntryBlock.ToolTip>
+                    </entryBlocks:PagerEntryBlock>
                 </StackPanel>
             </Grid>
         </StackPanel>

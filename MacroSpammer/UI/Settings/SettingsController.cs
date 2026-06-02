@@ -218,6 +218,7 @@ public sealed class SettingsController : ISettingsActions
         _settings.DefaultBaseDelayMs = 50;
         _settings.DefaultTimerMs = 0;
         _settings.DefaultLoopCount = 0;
+        _settings.DefaultLoopType = MacroLoopType.Async;
         _settings.DefaultTextInputMode = false;
 
         ApplySettings();

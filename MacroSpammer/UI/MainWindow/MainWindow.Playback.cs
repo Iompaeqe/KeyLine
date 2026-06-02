@@ -68,10 +68,11 @@ public partial class MainWindow
         StartPlaybackTimer(timerMs);
         SetRemainingLoopStatus(GetPlaybackLoopCounterText());
 
-        if (_activeWorkspace.LoopType == MacroLoopType.Sync && runnableTimelines.Count > 1)
-            await _playback.RunSyncedPlayback(target.Handle, runnableTimelines, OnRunnerLoopCompleted);
-        else
-            await _playback.RunAsyncPlayback(target.Handle, runnableTimelines, OnRunnerLoopCompleted);
+        await RunPlaybackForLoopType(
+            target.Handle,
+            _activeWorkspace,
+            runnableTimelines,
+            OnRunnerLoopCompleted);
 
         _playback.UnmarkShortcutStarting(_activeWorkspace);
         SetStoppedStatus(_restoreInputsOnStop);
@@ -185,7 +186,7 @@ public partial class MainWindow
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
-        var completionTask = _playback.RunAsyncPlayback(target.Handle, runnableTimelines);
+        var completionTask = RunPlaybackForLoopType(target.Handle, workspace, runnableTimelines);
 
         if (workspaceIndex == _activeWorkspaceIndex)
         {
@@ -225,6 +226,29 @@ public partial class MainWindow
         StopAllRunners();
         SetStoppedStatus(true);
         PlayMacroSound();
+    }
+
+    private Task RunPlaybackForLoopType(
+        nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        Action<int>? onRunnerLoopCompleted = null)
+    {
+        return workspace.LoopType switch
+        {
+            MacroLoopType.Sequence => _playback.RunSequencePlayback(
+                targetHwnd,
+                runnableTimelines,
+                onRunnerLoopCompleted),
+            MacroLoopType.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
+                targetHwnd,
+                runnableTimelines,
+                onRunnerLoopCompleted),
+            _ => _playback.RunAsyncPlayback(
+                targetHwnd,
+                runnableTimelines,
+                onRunnerLoopCompleted)
+        };
     }
 
     private void PauseResumeAllPlaybackFromGlobalShortcut()

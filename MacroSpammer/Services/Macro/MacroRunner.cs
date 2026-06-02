@@ -86,6 +86,33 @@ public sealed class MacroRunner
         _cts?.Cancel();
     }
 
+    public async Task DelayAsync(int milliseconds)
+    {
+        if (_cts != null)
+            return;
+
+        var delayMs = Math.Max(0, milliseconds);
+        if (delayMs <= 0)
+            return;
+
+        _cts = new CancellationTokenSource();
+        _pauseGate = null;
+        var token = _cts.Token;
+
+        try
+        {
+            await DelayWithPause(delayMs, token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _cts = null;
+            _pauseGate = null;
+        }
+    }
+
     public void Pause()
     {
         if (_cts == null || _pauseGate != null)

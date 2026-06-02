@@ -9,9 +9,10 @@ public static class TooltipNotes
     public const string TargetWindowSearchName = "Window title text used to automatically find a target when this macro has no selected target.";
     public const string MacroShortcutCapture = "Left-click to set. Right-click to clear.";
     public const string MacroShortcutToggle = "Enable or disable the shortcut for this macro.";
-    public const string MacroLoopType = "Choose how timelines restart when looping.";
-    public const string MacroLoopTypeAsync = "Async: Each timeline restarts as soon as its own loop finishes.";
-    public const string MacroLoopTypeSync = "Sync: Timelines wait for each other before starting the next loop.";
+    public const string MacroLoopType = "Choose how multiple timelines are scheduled.";
+    public const string MacroLoopTypeAsync = "Async: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
+    public const string MacroLoopTypeSync = "Synced: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";
+    public const string MacroLoopTypeSequence = "Sequence: timelines run top to bottom, one at a time. Each pass skips timelines that already reached their loop count; 0 loops means that timeline keeps participating forever.";
     public const string AddTimeline = "Add a new timeline to this macro.";
     public const string MacroTimer = "Exact duration for the macro to run. 0 means infinite.";
     public const string ClearSelection = "Clear the selected timeline or current selection.";
@@ -29,8 +30,8 @@ public static class TooltipNotes
     public const string RenameTimeline = "Rename timeline";
     public const string EditTimelineName = "Edit the timeline name.";
     public const string TimelineLoops = "How many times this timeline runs. 0 means infinite.";
-    public const string TimelineLoopDelay = "Delay before this timeline starts its next loop.";
-    public const string TimelineLoopDelayEdit = "Delay before this timeline starts its next loop.";
+    public const string TimelineLoopDelay = "Delay after this timeline completes a pass. In async/synced modes this is the delay before its next loop; in sequence mode this is the delay before the next eligible timeline starts.";
+    public const string TimelineLoopDelayEdit = "Delay after this timeline completes a pass. In sequence mode this separates this timeline from the next eligible timeline.";
     public const string TimelineInputType = "Choose whether keyboard nodes send key messages or text input.";
     public const string TimelineStandardDelay = "Use one shared delay between nodes in this timeline.";
     public const string TimelineStandardDelayValue = "Shared delay inserted between nodes.";
