@@ -3,7 +3,7 @@
 - [X] After drag and drop, the dropped node will snap back from its old place.
 - [X] Recording should follow the recording timeline, not the longest.
 - [X] Multiple deletion doesn't work.
-- [ ] The Window width is not saved.
+- [X] The Window width is not saved.
 
 # Feedbacks
 

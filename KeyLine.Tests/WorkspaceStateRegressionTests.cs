@@ -28,13 +28,14 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     public void SaveAndLoad_PreservesLoopMode()
     {
         var workspace = CreateWorkspace("State Test Macro", MacroLoopMode.Sync);
-        MacroStateStore.Save(new[] { workspace }, 0, shortcutsEnabled: true, new AppSettings());
+        MacroStateStore.Save(new[] { workspace }, 0, shortcutsEnabled: true, new AppSettings(), mainWindowWidth: 1234);
 
         var snapshot = MacroStateStore.Load();
 
         Assert.NotNull(snapshot);
         Assert.Single(snapshot.Workspaces);
         Assert.Equal(MacroLoopMode.Sync, snapshot.Workspaces[0].LoopMode);
+        Assert.Equal(1234, snapshot.MainWindowWidth);
     }
 
     [Fact]
@@ -128,4 +129,3 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         };
     }
 }
-

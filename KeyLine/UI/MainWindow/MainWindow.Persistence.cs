@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Threading;
 using KeyLine.Services.Macro;
 
@@ -35,7 +36,32 @@ public partial class MainWindow
             return;
 
         CaptureActiveWorkspaceState();
-        MacroStateStore.Save(_workspaces, _activeWorkspaceIndex, _shortcutsEnabled, _settings);
+        MacroStateStore.Save(
+            _workspaces,
+            _activeWorkspaceIndex,
+            _shortcutsEnabled,
+            _settings,
+            GetPersistedMainWindowWidth());
+    }
+
+    private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged)
+            ScheduleSaveState();
+    }
+
+    private double GetPersistedMainWindowWidth()
+    {
+        var width = WindowState == WindowState.Minimized && RestoreBounds.Width > 0
+            ? RestoreBounds.Width
+            : ActualWidth > 0
+                ? ActualWidth
+                : Width;
+
+        if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
+            return MinWidth;
+
+        return Math.Max(MinWidth, width);
     }
 
     private int GetLoopCount() =>

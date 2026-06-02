@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         _document = _activeWorkspace.Document;
 
         InitializeComponent();
+        ApplySavedMainWindowWidth(savedState?.MainWindowWidth ?? 0);
         InitializeWorkspaceTabs();
         InitializeSettingsModal();
         InitializeInspector();
@@ -82,10 +83,19 @@ public partial class MainWindow : Window
         ActivateWorkspace(_activeWorkspaceIndex, false);
 
         Loaded += MainWindow_Loaded;
+        SizeChanged += MainWindow_SizeChanged;
         StateChanged += MainWindow_StateChanged;
 
         if (_settings.StartMinimized)
             WindowState = WindowState.Minimized;
+    }
+
+    private void ApplySavedMainWindowWidth(double savedWidth)
+    {
+        if (savedWidth <= 0)
+            return;
+
+        Width = Math.Max(MinWidth, savedWidth);
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
