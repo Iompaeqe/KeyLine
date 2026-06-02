@@ -102,9 +102,9 @@ public partial class SettingsView : UserControl
         AddNumber("Default base delay", _settings.DefaultBaseDelayMs, value => Set(value, v => _settings.DefaultBaseDelayMs = v), "ms");
         AddNumber("Default timer value", _settings.DefaultTimerMs, value => Set(value, v => _settings.DefaultTimerMs = v), "ms");
         AddNumber("Default loop count", _settings.DefaultLoopCount, value => Set(value, v => _settings.DefaultLoopCount = v), "");
-        AddChoice("Default loop type", FormatLoopType(_settings.DefaultLoopType), new[] { "async", "synced", "sequence" }, value =>
+        AddChoice("Default loop mode", FormatLoopMode(_settings.DefaultLoopMode), new[] { "Async", "Sync", "Cycle", "Chain" }, value =>
         {
-            _settings.DefaultLoopType = ParseLoopType(value);
+            _settings.DefaultLoopMode = ParseLoopMode(value);
             NotifyChanged();
         });
         AddChoice("Default input mode", _settings.DefaultTextInputMode ? "Text" : "Key", new[] { "Key", "Text" }, value =>
@@ -281,23 +281,25 @@ public partial class SettingsView : UserControl
         panel.Children.Add(comboBox);
     }
 
-    private static string FormatLoopType(MacroLoopType loopType)
+    private static string FormatLoopMode(MacroLoopMode loopMode)
     {
-        return loopType switch
+        return loopMode switch
         {
-            MacroLoopType.Sync => "synced",
-            MacroLoopType.Sequence => "sequence",
+            MacroLoopMode.Sync => "sync",
+            MacroLoopMode.Cycle => "cycle",
+            MacroLoopMode.Chain => "chain",
             _ => "async"
         };
     }
 
-    private static MacroLoopType ParseLoopType(string value)
+    private static MacroLoopMode ParseLoopMode(string value)
     {
-        return value switch
+        return value.ToLowerInvariant() switch
         {
-            "synced" => MacroLoopType.Sync,
-            "sequence" => MacroLoopType.Sequence,
-            _ => MacroLoopType.Async
+            "sync" or "synced" => MacroLoopMode.Sync,
+            "cycle" or "sequence" => MacroLoopMode.Cycle,
+            "chain" => MacroLoopMode.Chain,
+            _ => MacroLoopMode.Async
         };
     }
 
@@ -375,3 +377,4 @@ public partial class SettingsView : UserControl
 
     private static Brush DimBrush => new SolidColorBrush(Color.FromRgb(142, 160, 182));
 }
+

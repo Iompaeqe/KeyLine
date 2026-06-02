@@ -62,9 +62,18 @@ public partial class MainWindow
         }
 
     // From MainWindow.MacroOptions.cs
-        private const string LoopTypeAsyncText = "asynchron";
-        private const string LoopTypeSyncText = "synchron";
-        private const string LoopTypeSequenceText = "sequence";
+        private const string LoopModeAsyncText = "Async";
+        private const string LoopModeSyncText = "Sync";
+        private const string LoopModeCycleText = "Cycle";
+        private const string LoopModeChainText = "Chain";
+        private static readonly string[] LoopModeOptions =
+        [
+            LoopModeAsyncText,
+            LoopModeSyncText,
+            LoopModeCycleText,
+            LoopModeChainText
+        ];
+        private bool _isUpdatingLoopModeSelection;
 
         private void InitializeMacroOptions()
         {
@@ -75,7 +84,8 @@ public partial class MainWindow
             ShortcutPill.LostKeyboardFocus += ShortcutTextBlock_LostKeyboardFocus;
             ShortcutTogglePill.MouseLeftButtonDown += ShortcutToggleTextBlock_MouseLeftButtonDown;
 
-            LoopTypePager.PageRequested += LoopTypePager_PageRequested;
+            LoopModeComboBox.ItemsSource = LoopModeOptions;
+            LoopModeComboBox.SelectionChanged += LoopModeComboBox_SelectionChanged;
 
             TargetWindowSearchPill.MouseLeftButtonDown += TargetWindowSearchPill_MouseLeftButtonDown;
             TargetWindowSearchTextBox.LostFocus += TargetWindowSearchTextBox_LostFocus;
@@ -88,7 +98,7 @@ public partial class MainWindow
         {
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, Math.Max(0, workspace.TimerMs));
 
-            LoopTypePager.Text = GetMacroLoopTypeText(workspace.LoopType);
+            SetLoopModeSelection(workspace.LoopMode);
 
             TargetWindowSearchTextBox.Text = workspace.TargetWindowSearchName;
 
@@ -99,10 +109,10 @@ public partial class MainWindow
         private void CaptureMacroOptionsToWorkspace(MacroWorkspace workspace)
         {
             workspace.TimerMs = IsWorkspaceRunning(workspace)
-                ? Math.Max(0, _originalTimerMs)
+                ? GetWorkspaceOriginalTimerMs(workspace)
                 : GetTimerMs();
 
-            workspace.LoopType = GetSelectedMacroLoopType();
+            workspace.LoopMode = GetSelectedMacroLoopMode();
             workspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
 
             CaptureSelectedTargetWindow(workspace);
@@ -110,54 +120,68 @@ public partial class MainWindow
 
         private void SetMacroOptionsEditingEnabled(bool isEnabled)
         {
-            LoopTypePager.IsEnabled = isEnabled;
+            LoopModeComboBox.IsEnabled = isEnabled;
 
             TargetWindowSearchPill.IsEnabled = isEnabled;
             WindowComboBox.IsEnabled = isEnabled;
             HandleComboBox.IsEnabled = isEnabled;
         }
 
-        private MacroLoopType GetSelectedMacroLoopType()
+        private MacroLoopMode GetSelectedMacroLoopMode()
         {
-            if (string.Equals(LoopTypePager.Text, LoopTypeSyncText, StringComparison.OrdinalIgnoreCase))
-                return MacroLoopType.Sync;
+            if (LoopModeComboBox.SelectedItem is not string selectedMode)
+                return _activeWorkspace.LoopMode;
 
-            if (string.Equals(LoopTypePager.Text, LoopTypeSequenceText, StringComparison.OrdinalIgnoreCase))
-                return MacroLoopType.Sequence;
+            if (string.Equals(selectedMode, LoopModeSyncText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopMode.Sync;
 
-            return MacroLoopType.Async;
+            if (string.Equals(selectedMode, LoopModeCycleText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopMode.Cycle;
+
+            if (string.Equals(selectedMode, LoopModeChainText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopMode.Chain;
+
+            return MacroLoopMode.Async;
         }
 
-        private void LoopTypePager_PageRequested(object? sender, EventArgs e)
+        private void LoopModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_isTimelineEditingEnabled)
+            if (_isUpdatingLoopModeSelection)
                 return;
 
-            _activeWorkspace.LoopType = GetNextMacroLoopType(_activeWorkspace.LoopType);
+            if (!_isTimelineEditingEnabled)
+            {
+                SetLoopModeSelection(_activeWorkspace.LoopMode);
+                return;
+            }
 
-            LoopTypePager.Text = GetMacroLoopTypeText(_activeWorkspace.LoopType);
-
+            _activeWorkspace.LoopMode = GetSelectedMacroLoopMode();
             CaptureActiveWorkspaceState();
+            RefreshTimelineHeaderStatuses();
             ScheduleSaveState();
         }
 
-        private static MacroLoopType GetNextMacroLoopType(MacroLoopType loopType)
+        private void SetLoopModeSelection(MacroLoopMode loopMode)
         {
-            return loopType switch
+            _isUpdatingLoopModeSelection = true;
+            try
             {
-                MacroLoopType.Async => MacroLoopType.Sync,
-                MacroLoopType.Sync => MacroLoopType.Sequence,
-                _ => MacroLoopType.Async
-            };
+                LoopModeComboBox.SelectedItem = GetMacroLoopModeText(loopMode);
+            }
+            finally
+            {
+                _isUpdatingLoopModeSelection = false;
+            }
         }
 
-        private static string GetMacroLoopTypeText(MacroLoopType loopType)
+        private static string GetMacroLoopModeText(MacroLoopMode loopMode)
         {
-            return loopType switch
+            return loopMode switch
             {
-                MacroLoopType.Sync => LoopTypeSyncText,
-                MacroLoopType.Sequence => LoopTypeSequenceText,
-                _ => LoopTypeAsyncText
+                MacroLoopMode.Sync => LoopModeSyncText,
+                MacroLoopMode.Cycle => LoopModeCycleText,
+                MacroLoopMode.Chain => LoopModeChainText,
+                _ => LoopModeAsyncText
             };
         }
 
@@ -555,3 +579,4 @@ public partial class MainWindow
         }
 
 }
+

@@ -13,7 +13,7 @@ public static class MacroCloneService
             LoopCount = source.LoopCount,
             TimerMs = source.TimerMs,
             BaseDelayMs = source.BaseDelayMs,
-            LoopType = source.LoopType,
+            LoopMode = source.LoopMode,
             ShortcutKeys = source.ShortcutKeys,
             TargetWindowSearchName = source.TargetWindowSearchName,
             TargetWindowHandle = 0,
@@ -73,3 +73,4 @@ public static class MacroCloneService
         };
     }
 }
+

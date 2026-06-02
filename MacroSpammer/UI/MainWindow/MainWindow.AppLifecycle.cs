@@ -36,7 +36,7 @@ public partial class MainWindow
         private OptionsPillBlock ShortcutTogglePill => MacroOptionsPanel.ShortcutTogglePillControl;
         private TextBlock ShortcutTextBlock => MacroOptionsPanel.ShortcutText;
         private TextBlock ShortcutToggleTextBlock => MacroOptionsPanel.ShortcutToggleText;
-        private PagerEntryBlock LoopTypePager => MacroOptionsPanel.LoopTypePagerControl;
+        private ComboBox LoopModeComboBox => MacroOptionsPanel.LoopModeSelector;
 
         private OptionsPillBlock TargetWindowSearchPill => TargetWindowPanel.SearchPill;
         private TextBox TargetWindowSearchTextBox => TargetWindowPanel.SearchTextBox;
@@ -177,3 +177,4 @@ public partial class MainWindow
         }
 
 }
+

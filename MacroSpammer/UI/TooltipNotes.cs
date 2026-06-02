@@ -9,10 +9,11 @@ public static class TooltipNotes
     public const string TargetWindowSearchName = "Window title text used to automatically find a target when this macro has no selected target.";
     public const string MacroShortcutCapture = "Left-click to set. Right-click to clear.";
     public const string MacroShortcutToggle = "Enable or disable the shortcut for this macro.";
-    public const string MacroLoopType = "Choose how multiple timelines are scheduled.";
-    public const string MacroLoopTypeAsync = "Asynchron: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
-    public const string MacroLoopTypeSync = "Synchron: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";
-    public const string MacroLoopTypeSequence = "Sequence: timelines run top to bottom, one at a time. Each pass skips timelines that already reached their loop count; 0 loops means that timeline keeps participating forever.";
+    public const string MacroLoopMode = "Choose how multiple timelines are scheduled.";
+    public const string MacroLoopModeAsync = "Async: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
+    public const string MacroLoopModeSync = "Sync: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";
+    public const string MacroLoopModeCycle = "Cycle: timelines run top to bottom, one at a time. Each pass skips timelines that already reached their loop count; 0 loops means that timeline keeps participating forever.";
+    public const string MacroLoopModeChain = "Chain: each timeline runs until its loop count expires, then playback moves to the next timeline.";
     public const string AddTimeline = "Add a new timeline to this macro.";
     public const string MacroTimer = "Exact duration for the macro to run. 0 means infinite.";
     public const string ClearSelection = "Clear the selected timeline or current selection.";
@@ -30,8 +31,8 @@ public static class TooltipNotes
     public const string RenameTimeline = "Rename timeline";
     public const string EditTimelineName = "Edit the timeline name.";
     public const string TimelineLoops = "How many times this timeline runs. 0 means infinite.";
-    public const string TimelineLoopDelay = "Delay after this timeline completes a pass. In async/synced modes this is the delay before its next loop; in sequence mode this is the delay before the next eligible timeline starts.";
-    public const string TimelineLoopDelayEdit = "Delay after this timeline completes a pass. In sequence mode this separates this timeline from the next eligible timeline.";
+    public const string TimelineLoopDelay = "Delay after this timeline completes a pass. In async/sync modes this is the delay before its next loop; in cycle and chain modes this separates this timeline from the next eligible timeline.";
+    public const string TimelineLoopDelayEdit = "Delay after this timeline completes a pass. In cycle and chain modes this separates this timeline from the next eligible timeline.";
     public const string TimelineInputType = "Choose whether keyboard nodes send key messages or text input.";
     public const string TimelineStandardDelay = "Use one shared delay between nodes in this timeline.";
     public const string TimelineStandardDelayValue = "Shared delay inserted between nodes.";
@@ -47,3 +48,4 @@ public static class TooltipNotes
 
     public const string StandardDelayRequiresEnable = "Enable standard delay to edit this setting.";
 }
+

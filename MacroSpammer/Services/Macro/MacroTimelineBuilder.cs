@@ -149,3 +149,4 @@ public static class MacroTimelineBuilder
     private static int NormalizeMouseButton(int mouseButton) =>
         Math.Clamp(mouseButton <= 0 ? 1 : mouseButton, 1, 5);
 }
+

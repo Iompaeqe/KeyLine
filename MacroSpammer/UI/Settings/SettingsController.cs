@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -218,7 +218,7 @@ public sealed class SettingsController : ISettingsActions
         _settings.DefaultBaseDelayMs = 50;
         _settings.DefaultTimerMs = 0;
         _settings.DefaultLoopCount = 0;
-        _settings.DefaultLoopType = MacroLoopType.Async;
+        _settings.DefaultLoopMode = MacroLoopMode.Async;
         _settings.DefaultTextInputMode = false;
 
         ApplySettings();
@@ -322,3 +322,4 @@ public sealed class SettingsController : ISettingsActions
         return string.IsNullOrWhiteSpace(name) ? "Macro" : name;
     }
 }
+

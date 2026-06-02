@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MacroSpammer.Domain;
 
 namespace MacroSpammer.Services.Macro;
@@ -37,7 +38,7 @@ public static class MacroFileStore
             Name = workspace.Name,
             ActiveTimelineIndex = workspace.Document.ActiveTimelineIndex,
             LoopCount = Math.Max(0, workspace.LoopCount),
-            LoopType = workspace.LoopType,
+            LoopMode = workspace.LoopMode,
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
@@ -88,9 +89,7 @@ public static class MacroFileStore
         {
             Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Imported Macro" : persisted.Name,
             LoopCount = Math.Max(0, persisted.LoopCount),
-            LoopType = Enum.IsDefined(persisted.LoopType)
-                ? persisted.LoopType
-                : MacroLoopType.Async,
+            LoopMode = GetPersistedLoopMode(persisted),
             TimerMs = Math.Max(0, persisted.TimerMs),
             BaseDelayMs = Math.Max(0, persisted.BaseDelayMs),
             ShortcutKeys = persisted.ShortcutKeys,
@@ -132,6 +131,12 @@ public static class MacroFileStore
         return timeline;
     }
 
+    private static MacroLoopMode GetPersistedLoopMode(PersistedWorkspace persisted)
+    {
+        var loopMode = persisted.LoopType ?? persisted.LoopMode;
+        return Enum.IsDefined(loopMode) ? loopMode : MacroLoopMode.Async;
+    }
+
     private static MacroNode ToStep(PersistedStep persisted)
     {
         var type = Enum.TryParse<MacroNodeType>(persisted.Type, out var parsed)
@@ -165,7 +170,9 @@ public static class MacroFileStore
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
-        public MacroLoopType LoopType { get; set; } = MacroLoopType.Async;
+        public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public MacroLoopMode? LoopType { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
@@ -200,3 +207,4 @@ public static class MacroFileStore
         public bool IsRecordedDelay { get; set; }
     }
 }
+

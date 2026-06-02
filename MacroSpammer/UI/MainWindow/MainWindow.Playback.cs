@@ -15,18 +15,23 @@ public partial class MainWindow
     };
 
     private readonly object _loopCountdownLock = new();
-    private DateTime _playbackTimerDeadlineUtc;
-    private TimeSpan _playbackTimerRemaining;
     private bool _isPlaybackStatusTimerInitialized;
-    private int _originalTimerMs;
-    private int[] _runnerCompletedLoops = Array.Empty<int>();
-    private int[] _runnerTargetLoops = Array.Empty<int>();
-    private int _remainingLoopCount;
     private bool _restoreInputsOnStop;
     private bool _isUpdatingPlaybackCounters;
+    private readonly Dictionary<MacroWorkspace, WorkspacePlaybackStatusState> _workspacePlaybackStates = new();
     private MacroWorkspace? _timelinePlaybackStatusWorkspace;
     private readonly Dictionary<MacroTimeline, TimelinePlaybackStatus> _timelinePlaybackStatuses = new();
     private int _timelinePlaybackStatusVersion;
+
+    private sealed class WorkspacePlaybackStatusState
+    {
+        public DateTime TimerDeadlineUtc { get; set; }
+        public TimeSpan TimerRemaining { get; set; }
+        public int OriginalTimerMs { get; init; }
+        public int[] RunnerCompletedLoops { get; init; } = Array.Empty<int>();
+        public int[] RunnerTargetLoops { get; init; } = Array.Empty<int>();
+        public int RemainingLoopCount { get; set; }
+    }
 
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
     {
@@ -49,16 +54,12 @@ public partial class MainWindow
 
         var timerMs = GetTimerMs();
 
-        _originalTimerMs = timerMs;
-        _runnerCompletedLoops = new int[runnableTimelines.Count];
-        _runnerTargetLoops = runnableTimelines
-            .Select(timeline => Math.Max(0, timeline.LoopCount))
-            .ToArray();
-        _remainingLoopCount = GetDisplayedRemainingLoopCount();
+        var workspace = _activeWorkspace;
+        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines);
         _restoreInputsOnStop = false;
         _playback.PrepareManualStart();
-        _playback.MarkShortcutStarting(_activeWorkspace);
-        BeginTimelinePlaybackStatuses(_activeWorkspace, runnableTimelines);
+        _playback.MarkShortcutStarting(workspace);
+        BeginTimelinePlaybackStatuses(workspace, runnableTimelines);
 
         SetPlaybackUiRunning();
         SetTimelineEditingEnabled(false);
@@ -67,18 +68,18 @@ public partial class MainWindow
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
         PlayMacroSound();
 
-        StartPlaybackTimer(timerMs);
+        StartPlaybackTimer(workspace, timerMs);
         UpdatePlaybackStatusText();
 
-        await RunPlaybackForLoopType(
+        await RunPlaybackForLoopMode(
             target.Handle,
-            _activeWorkspace,
+            workspace,
             runnableTimelines,
-            OnRunnerLoopCompleted,
-            CreateTimelineStatusCallback(_activeWorkspace, runnableTimelines));
+            CreateRunnerLoopCompletedCallback(workspace),
+            CreateTimelineStatusCallback(workspace, runnableTimelines));
 
-        _playback.UnmarkShortcutStarting(_activeWorkspace);
-        SetStoppedStatus(_restoreInputsOnStop);
+        _playback.UnmarkShortcutStarting(workspace);
+        SetWorkspaceStoppedStatus(workspace, _restoreInputsOnStop);
         PlayMacroSound();
     }
 
@@ -95,7 +96,7 @@ public partial class MainWindow
 
         PauseWorkspaceRunners(_activeWorkspace);
         if (ReferenceEquals(_activeWorkspace, _workspaces[_activeWorkspaceIndex]))
-            PausePlaybackTimer();
+            PausePlaybackTimer(_activeWorkspace);
 
         SetPauseResumeButtonMode(true);
         PlaybackSplitButton.Visibility = Visibility.Visible;
@@ -189,22 +190,27 @@ public partial class MainWindow
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
+        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines);
 
         if (workspaceIndex == _activeWorkspaceIndex)
         {
-            _originalTimerMs = timerMs;
             BeginTimelinePlaybackStatuses(workspace, runnableTimelines);
             SetPlaybackUiRunning();
             SetTimelineEditingEnabled(false);
-            StartPlaybackTimer(timerMs);
+            StartPlaybackTimer(workspace, timerMs);
             UpdatePlaybackStatusText();
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
         }
+        else
+        {
+            StartPlaybackTimer(workspace, timerMs, updateUi: false);
+        }
 
-        var completionTask = RunPlaybackForLoopType(
+        var completionTask = RunPlaybackForLoopMode(
             target.Handle,
             workspace,
             runnableTimelines,
+            CreateRunnerLoopCompletedCallback(workspace),
             onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines));
 
         PlayMacroSound();
@@ -221,8 +227,8 @@ public partial class MainWindow
             _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
 
-            if (workspaceIndex == _activeWorkspaceIndex && !IsWorkspaceRunning(workspace))
-                SetStoppedStatus();
+            if (!IsWorkspaceRunning(workspace))
+                SetWorkspaceStoppedStatus(workspace);
 
             PlayMacroSound();
         }
@@ -232,25 +238,30 @@ public partial class MainWindow
     {
         _restoreInputsOnStop = true;
         StopAllRunners();
-        SetStoppedStatus(true);
+        SetStoppedStatus(restoreInputs: true, clearAllStates: true);
         PlayMacroSound();
     }
 
-    private Task RunPlaybackForLoopType(
+    private Task RunPlaybackForLoopMode(
         nint targetHwnd,
         MacroWorkspace workspace,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
     {
-        return workspace.LoopType switch
+        return workspace.LoopMode switch
         {
-            MacroLoopType.Sequence => _playback.RunSequencePlayback(
+            MacroLoopMode.Chain => _playback.RunChainPlayback(
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged),
-            MacroLoopType.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
+            MacroLoopMode.Cycle => _playback.RunCyclePlayback(
+                targetHwnd,
+                runnableTimelines,
+                onRunnerLoopCompleted,
+                onTimelineStatusChanged),
+            MacroLoopMode.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
@@ -271,13 +282,13 @@ public partial class MainWindow
         if (AnyPlaybackPaused())
         {
             _playback.ResumeAll();
-            ResumePlaybackTimer();
+            ResumePlaybackTimer(_activeWorkspace);
             UpdatePlaybackStatusText();
             return;
         }
 
         _playback.PauseAll();
-        PausePlaybackTimer();
+        PausePlaybackTimer(_activeWorkspace);
         UpdatePlaybackStatusText(paused: true);
     }
 
@@ -295,7 +306,7 @@ public partial class MainWindow
     {
         ResumeWorkspaceRunners(workspace);
         if (ReferenceEquals(workspace, _activeWorkspace))
-            ResumePlaybackTimer();
+            ResumePlaybackTimer(workspace);
 
         RecordStopButtonHost.Visibility = Visibility.Collapsed;
         RecordStopButtonHost.IsHitTestVisible = false;
@@ -315,26 +326,31 @@ public partial class MainWindow
             SetTimelineEditingEnabled(false);
             RefreshMacroTabs();
             SetPauseResumeButtonMode(IsWorkspacePaused(_activeWorkspace));
+            UpdatePlaybackTimerStatus();
+            if (!IsWorkspaceRunning(_activeWorkspace))
+                return;
+
             UpdatePlaybackStatusText(paused: IsWorkspacePaused(_activeWorkspace));
-            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
             return;
         }
 
         SetStoppedStatus(resetTimer: false);
     }
 
-    private void SetStoppedStatus(bool restoreInputs = false, bool resetTimer = true)
+    private void SetStoppedStatus(bool restoreInputs = false, bool resetTimer = true, bool clearAllStates = false)
     {
-        _playbackStatusTimer.Stop();
-        _playbackTimerRemaining = TimeSpan.Zero;
-        _playbackTimerDeadlineUtc = DateTime.MinValue;
-        _runnerCompletedLoops = Array.Empty<int>();
-        _runnerTargetLoops = Array.Empty<int>();
-        _remainingLoopCount = 0;
+        var originalTimerMs = GetWorkspaceOriginalTimerMs(_activeWorkspace);
+        if (clearAllStates)
+            _workspacePlaybackStates.Clear();
+        else
+            _workspacePlaybackStates.Remove(_activeWorkspace);
+
+        if (!HasRunningTimerState())
+            _playbackStatusTimer.Stop();
         ClearTimelinePlaybackStatuses();
 
         if (resetTimer)
-            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, _originalTimerMs);
+            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, originalTimerMs);
 
         StartStopButton.Content = "\u25B6  Start";
         StartStopButton.Visibility = Visibility.Visible;
@@ -352,44 +368,99 @@ public partial class MainWindow
         RefreshMacroTabs();
     }
 
-    private void StartPlaybackTimer(int milliseconds)
+    private void SetWorkspaceStoppedStatus(MacroWorkspace workspace, bool restoreInputs = false)
+    {
+        var isActiveWorkspace = ReferenceEquals(workspace, _activeWorkspace);
+
+        if (isActiveWorkspace)
+        {
+            SetStoppedStatus(restoreInputs);
+        }
+        else
+        {
+            _workspacePlaybackStates.Remove(workspace);
+            if (!HasRunningTimerState())
+                _playbackStatusTimer.Stop();
+
+            RefreshMacroTabs();
+        }
+    }
+
+    private void InitializeWorkspacePlaybackState(
+        MacroWorkspace workspace,
+        int timerMs,
+        IReadOnlyList<MacroTimeline> runnableTimelines)
+    {
+        var state = new WorkspacePlaybackStatusState
+        {
+            OriginalTimerMs = Math.Max(0, timerMs),
+            RunnerCompletedLoops = new int[runnableTimelines.Count],
+            RunnerTargetLoops = runnableTimelines
+                .Select(timeline => Math.Max(0, timeline.LoopCount))
+                .ToArray()
+        };
+
+        state.RemainingLoopCount = GetDisplayedRemainingLoopCount(state);
+        _workspacePlaybackStates[workspace] = state;
+    }
+
+    private int GetWorkspaceOriginalTimerMs(MacroWorkspace workspace)
+    {
+        return _workspacePlaybackStates.TryGetValue(workspace, out var state)
+            ? state.OriginalTimerMs
+            : Math.Max(0, workspace.TimerMs);
+    }
+
+    private void StartPlaybackTimer(MacroWorkspace workspace, int milliseconds, bool updateUi = true)
     {
         EnsurePlaybackStatusTimerInitialized();
+        var state = GetOrCreateWorkspacePlaybackState(workspace, milliseconds);
 
         if (milliseconds <= 0)
         {
-            _playbackTimerRemaining = TimeSpan.Zero;
-            _playbackTimerDeadlineUtc = DateTime.MinValue;
-            SetCountdownRunningStyle(true);
-            UpdatePlaybackStatusText();
+            state.TimerRemaining = TimeSpan.Zero;
+            state.TimerDeadlineUtc = DateTime.MinValue;
+            if (updateUi && ReferenceEquals(workspace, _activeWorkspace))
+            {
+                SetCountdownRunningStyle(true);
+                UpdatePlaybackStatusText();
+            }
             return;
         }
 
-        _playbackTimerRemaining = TimeSpan.FromMilliseconds(milliseconds);
-        _playbackTimerDeadlineUtc = DateTime.UtcNow + _playbackTimerRemaining;
+        state.TimerRemaining = TimeSpan.FromMilliseconds(milliseconds);
+        state.TimerDeadlineUtc = DateTime.UtcNow + state.TimerRemaining;
         _playbackStatusTimer.Start();
-        UpdatePlaybackTimerStatus();
+        if (updateUi && ReferenceEquals(workspace, _activeWorkspace))
+            UpdatePlaybackTimerStatus();
     }
 
-    private void PausePlaybackTimer()
+    private void PausePlaybackTimer(MacroWorkspace workspace)
     {
-        if (_playbackTimerDeadlineUtc == DateTime.MinValue)
+        if (!_workspacePlaybackStates.TryGetValue(workspace, out var state))
             return;
 
-        _playbackTimerRemaining = _playbackTimerDeadlineUtc - DateTime.UtcNow;
-        if (_playbackTimerRemaining < TimeSpan.Zero)
-            _playbackTimerRemaining = TimeSpan.Zero;
+        if (state.TimerDeadlineUtc == DateTime.MinValue)
+            return;
 
-        _playbackTimerDeadlineUtc = DateTime.MinValue;
-        _playbackStatusTimer.Stop();
+        state.TimerRemaining = state.TimerDeadlineUtc - DateTime.UtcNow;
+        if (state.TimerRemaining < TimeSpan.Zero)
+            state.TimerRemaining = TimeSpan.Zero;
+
+        state.TimerDeadlineUtc = DateTime.MinValue;
+        if (!HasRunningTimerState())
+            _playbackStatusTimer.Stop();
     }
 
-    private void ResumePlaybackTimer()
+    private void ResumePlaybackTimer(MacroWorkspace workspace)
     {
-        if (_playbackTimerRemaining <= TimeSpan.Zero)
+        if (!_workspacePlaybackStates.TryGetValue(workspace, out var state))
             return;
 
-        _playbackTimerDeadlineUtc = DateTime.UtcNow + _playbackTimerRemaining;
+        if (state.TimerRemaining <= TimeSpan.Zero)
+            return;
+
+        state.TimerDeadlineUtc = DateTime.UtcNow + state.TimerRemaining;
         _playbackStatusTimer.Start();
         UpdatePlaybackTimerStatus();
     }
@@ -405,64 +476,91 @@ public partial class MainWindow
 
     private void UpdatePlaybackTimerStatus()
     {
-        if (_playbackTimerDeadlineUtc == DateTime.MinValue)
-            return;
+        var now = DateTime.UtcNow;
 
-        var remaining = _playbackTimerDeadlineUtc - DateTime.UtcNow;
-        if (remaining <= TimeSpan.Zero)
+        foreach (var (workspace, state) in _workspacePlaybackStates.ToList())
         {
-            StatusText.Text = "Timer elapsed; stopping";
-            StopWorkspaceRunners(_activeWorkspace);
-            _playbackStatusTimer.Stop();
-            return;
+            if (state.TimerDeadlineUtc == DateTime.MinValue)
+                continue;
+
+            var remaining = state.TimerDeadlineUtc - now;
+            if (remaining <= TimeSpan.Zero)
+            {
+                state.TimerRemaining = TimeSpan.Zero;
+                if (ReferenceEquals(workspace, _activeWorkspace))
+                    StatusText.Text = "Timer elapsed; stopping";
+
+                StopWorkspaceRunners(workspace);
+                continue;
+            }
+
+            state.TimerRemaining = remaining;
         }
 
-        _playbackTimerRemaining = remaining;
-        UpdatePlaybackStatusText();
-        SetCountdownRunningStyle(true);
+        if (!HasRunningTimerState())
+            _playbackStatusTimer.Stop();
+
+        if (IsWorkspaceRunning(_activeWorkspace))
+        {
+            UpdatePlaybackStatusText(paused: IsWorkspacePaused(_activeWorkspace));
+            SetCountdownRunningStyle(true);
+        }
     }
 
-    private void OnRunnerLoopCompleted(int runnerIndex)
+    private Action<int> CreateRunnerLoopCompletedCallback(MacroWorkspace workspace)
     {
-        if (runnerIndex < 0 || runnerIndex >= _runnerCompletedLoops.Length)
+        return runnerIndex => OnRunnerLoopCompleted(workspace, runnerIndex);
+    }
+
+    private void OnRunnerLoopCompleted(MacroWorkspace workspace, int runnerIndex)
+    {
+        if (!_workspacePlaybackStates.TryGetValue(workspace, out var state))
+            return;
+
+        if (runnerIndex < 0 || runnerIndex >= state.RunnerCompletedLoops.Length)
             return;
 
         var shouldStop = false;
 
         lock (_loopCountdownLock)
         {
-            _runnerCompletedLoops[runnerIndex]++;
-            var remaining = GetDisplayedRemainingLoopCount();
+            state.RunnerCompletedLoops[runnerIndex]++;
+            var remaining = GetDisplayedRemainingLoopCount(state);
 
-            if (remaining != _remainingLoopCount)
+            if (remaining != state.RemainingLoopCount)
             {
-                _remainingLoopCount = remaining;
-                shouldStop = _runnerTargetLoops.Length > 0 &&
-                             _runnerTargetLoops.All(target => target > 0) &&
+                state.RemainingLoopCount = remaining;
+                shouldStop = state.RunnerTargetLoops.Length > 0 &&
+                             state.RunnerTargetLoops.All(target => target > 0) &&
                              remaining <= 0;
             }
         }
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            UpdatePlaybackStatusText();
+            if (ReferenceEquals(workspace, _activeWorkspace))
+                UpdatePlaybackStatusText();
             if (shouldStop)
-                StopWorkspaceRunners(_activeWorkspace);
+                StopWorkspaceRunners(workspace);
         }));
     }
 
-    private int GetDisplayedRemainingLoopCount()
+    private int GetDisplayedRemainingLoopCount(WorkspacePlaybackStatusState? state = null)
     {
-        if (_runnerTargetLoops.Length == 0 || _runnerCompletedLoops.Length == 0)
+        state ??= _workspacePlaybackStates.TryGetValue(_activeWorkspace, out var activeState)
+            ? activeState
+            : null;
+
+        if (state == null || state.RunnerTargetLoops.Length == 0 || state.RunnerCompletedLoops.Length == 0)
             return 0;
 
-        if (_runnerTargetLoops.Any(target => target <= 0))
+        if (state.RunnerTargetLoops.Any(target => target <= 0))
             return int.MaxValue;
 
         var remaining = 0;
 
-        for (var i = 0; i < _runnerTargetLoops.Length && i < _runnerCompletedLoops.Length; i++)
-            remaining = Math.Max(remaining, Math.Max(0, _runnerTargetLoops[i] - _runnerCompletedLoops[i]));
+        for (var i = 0; i < state.RunnerTargetLoops.Length && i < state.RunnerCompletedLoops.Length; i++)
+            remaining = Math.Max(remaining, Math.Max(0, state.RunnerTargetLoops[i] - state.RunnerCompletedLoops[i]));
 
         return remaining;
     }
@@ -496,7 +594,7 @@ public partial class MainWindow
             }
 
             _timelinePlaybackStatuses[timeline] =
-                workspace.LoopType == MacroLoopType.Sequence &&
+                workspace.LoopMode is MacroLoopMode.Cycle or MacroLoopMode.Chain &&
                 !ReferenceEquals(timeline, firstRunnableTimeline)
                     ? TimelinePlaybackStatus.Waiting
                     : TimelinePlaybackStatus.Running;
@@ -543,6 +641,9 @@ public partial class MainWindow
 
     private TimelinePlaybackStatus GetTimelinePlaybackStatusForHeader(MacroTimeline timeline)
     {
+        if (HasChainTimelineWarning(timeline))
+            return TimelinePlaybackStatus.Warning;
+
         if (!IsWorkspaceRunning(_activeWorkspace))
             return TimelinePlaybackStatus.Idle;
 
@@ -560,9 +661,24 @@ public partial class MainWindow
             : TimelinePlaybackStatus.Waiting;
     }
 
+    private bool HasChainTimelineWarning(MacroTimeline timeline)
+    {
+        if (_activeWorkspace.LoopMode != MacroLoopMode.Chain)
+            return false;
+
+        if (!timeline.HasNodes || Math.Max(0, timeline.LoopCount) > 0)
+            return false;
+
+        var timelines = _activeWorkspace.Document.Timelines;
+        var index = timelines.IndexOf(timeline);
+        return index >= 0 && index < timelines.Count - 1;
+    }
+
     private void UpdatePlaybackStatusText(bool paused = false)
     {
         var remainingText = GetPlaybackRemainingText();
+        SetTimerCountdownText(remainingText);
+
         StatusText.Text = paused
             ? $"Paused; {remainingText} remaining"
             : $"Running... {remainingText} remaining";
@@ -574,17 +690,38 @@ public partial class MainWindow
 
     private string GetPlaybackRemainingText()
     {
-        if (_originalTimerMs <= 0)
+        if (!_workspacePlaybackStates.TryGetValue(_activeWorkspace, out var state))
             return "\u221E";
 
-        var remaining = _playbackTimerDeadlineUtc == DateTime.MinValue
-            ? _playbackTimerRemaining
-            : _playbackTimerDeadlineUtc - DateTime.UtcNow;
+        if (state.OriginalTimerMs <= 0)
+            return "\u221E";
+
+        var remaining = state.TimerDeadlineUtc == DateTime.MinValue
+            ? state.TimerRemaining
+            : state.TimerDeadlineUtc - DateTime.UtcNow;
 
         if (remaining <= TimeSpan.Zero)
             remaining = TimeSpan.Zero;
 
         return FormatRemainingTime(remaining);
+    }
+
+    private WorkspacePlaybackStatusState GetOrCreateWorkspacePlaybackState(MacroWorkspace workspace, int timerMs)
+    {
+        if (_workspacePlaybackStates.TryGetValue(workspace, out var state))
+            return state;
+
+        state = new WorkspacePlaybackStatusState
+        {
+            OriginalTimerMs = Math.Max(0, timerMs)
+        };
+        _workspacePlaybackStates[workspace] = state;
+        return state;
+    }
+
+    private bool HasRunningTimerState()
+    {
+        return _workspacePlaybackStates.Values.Any(state => state.TimerDeadlineUtc != DateTime.MinValue);
     }
 
     private void SetTimelineEditingEnabled(bool isEnabled)
@@ -668,3 +805,4 @@ public partial class MainWindow
             StatusText.Text = $"Running; loops left {remainingText}";
     }
 }
+

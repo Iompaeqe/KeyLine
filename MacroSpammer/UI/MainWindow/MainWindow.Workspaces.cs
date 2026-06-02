@@ -43,7 +43,7 @@ public partial class MainWindow
                 TimerMs = settings?.DefaultTimerMs ?? 0,
                 LoopCount = settings?.DefaultLoopCount ?? 0,
                 BaseDelayMs = settings?.DefaultBaseDelayMs ?? 50,
-                LoopType = settings?.DefaultLoopType ?? MacroLoopType.Async
+                LoopMode = settings?.DefaultLoopMode ?? MacroLoopMode.Async
             };
 
             if (settings != null)
@@ -268,3 +268,4 @@ public partial class MainWindow
         }
 
 }
+

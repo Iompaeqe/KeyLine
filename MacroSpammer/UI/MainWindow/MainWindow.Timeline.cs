@@ -177,15 +177,6 @@ public partial class MainWindow
             var isLast = timelineIndex == _document.Timelines.Count - 1;
             var header = CreateTimelineHeader(timeline, isActive, isSelected, isFirst, isLast);
 
-            // Row pattern:
-            // 0 = top extra
-            // 1 = timeline 0 row
-            // 2 = gap after timeline 0
-            // 3 = timeline 1 row
-            // 4 = gap after timeline 1
-            // ...
-            // The header cells must consume the spacer rows too.
-            // Otherwise the spacer rows become visible holes between T1/T2/etc.
             var row = TimelineLayoutCalculator.GetHeaderGridRow(timelineIndex);
             var rowSpan = TimelineLayoutCalculator.GetHeaderGridRowSpan(timelineIndex);
 
@@ -1154,16 +1145,28 @@ public partial class MainWindow
                 TimelinePlaybackStatus.Running => "Running...",
                 TimelinePlaybackStatus.Waiting => "Waiting...",
                 TimelinePlaybackStatus.Stopped => "Stopped",
+                TimelinePlaybackStatus.Warning => "Warning!",
                 _ => string.Empty
             };
+
+            statusTextBlock.ToolTip = status == TimelinePlaybackStatus.Warning
+                ? "Chain mode will not reach later timelines because this timeline is infinite."
+                : null;
 
             statusTextBlock.Foreground = new SolidColorBrush(status switch
             {
                 TimelinePlaybackStatus.Running => Color.FromRgb(52, 211, 153),
                 TimelinePlaybackStatus.Waiting => Color.FromRgb(253, 230, 138),
                 TimelinePlaybackStatus.Stopped => Color.FromRgb(100, 116, 139),
+                TimelinePlaybackStatus.Warning => Color.FromRgb(251, 113, 133),
                 _ => Color.FromRgb(100, 116, 139)
             });
+
+            statusTextBlock.FontSize = status switch
+            {
+                TimelinePlaybackStatus.Warning => 11,
+                _ => 9
+            };
         }
 
         private static string FormatTimelineHeaderLoopCount(MacroTimeline timeline)
@@ -1612,3 +1615,4 @@ public partial class MainWindow
         }
 
 }
+

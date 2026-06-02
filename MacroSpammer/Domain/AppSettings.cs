@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace MacroSpammer.Domain;
 
 public sealed class AppSettings
@@ -14,7 +16,17 @@ public sealed class AppSettings
     public int DefaultBaseDelayMs { get; set; } = 50;
     public int DefaultTimerMs { get; set; }
     public int DefaultLoopCount { get; set; }
-    public MacroLoopType DefaultLoopType { get; set; } = MacroLoopType.Async;
+    public MacroLoopMode DefaultLoopMode { get; set; } = MacroLoopMode.Async;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MacroLoopMode? DefaultLoopType
+    {
+        get => null;
+        set
+        {
+            if (value.HasValue)
+                DefaultLoopMode = value.Value;
+        }
+    }
     public bool DefaultTextInputMode { get; set; }
 
     public string UndoShortcut { get; set; } = "17,90";
@@ -51,7 +63,7 @@ public sealed class AppSettings
         DefaultBaseDelayMs = source.DefaultBaseDelayMs;
         DefaultTimerMs = source.DefaultTimerMs;
         DefaultLoopCount = source.DefaultLoopCount;
-        DefaultLoopType = source.DefaultLoopType;
+        DefaultLoopMode = source.DefaultLoopMode;
         DefaultTextInputMode = source.DefaultTextInputMode;
         UndoShortcut = source.UndoShortcut;
         RedoShortcut = source.RedoShortcut;
@@ -67,3 +79,4 @@ public sealed class AppSettings
         ExperimentalFeaturesEnabled = source.ExperimentalFeaturesEnabled;
     }
 }
+

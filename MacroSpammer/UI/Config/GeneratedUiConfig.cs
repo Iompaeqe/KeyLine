@@ -29,30 +29,6 @@ public sealed class TimelineUiConfig
 
     public double HeaderTopExtra { get; init; } = 28;
     public double HeaderBottomExtra { get; init; } = 30;
-
-    public CornerRadius HeaderCornerRadiusFirst { get; init; } = new(8, 0, 0, 0);
-    public CornerRadius HeaderCornerRadiusMiddle { get; init; } = new(0);
-    public CornerRadius HeaderCornerRadiusLast { get; init; } = new(0, 0, 0, 8);
-    public CornerRadius HeaderCornerRadiusSingle { get; init; } = new(8, 0, 0, 8);
-    public Thickness HeaderBorderThickness { get; init; } = new(0, 1, 1, 1);
-    public double HeaderFontSize { get; init; } = 14;
-
-    public CornerRadius DropPlaceholderCornerRadius { get; init; } = new(10);
-    public Thickness DropPlaceholderBorderThickness { get; init; } = new(1.5);
-
-    public Color ConnectorColor { get; init; } = Color.FromRgb(31, 48, 66);
-
-    public Color HeaderBackground { get; init; } = Color.FromRgb(8, 17, 31);
-    public Color HeaderBackgroundActive { get; init; } = Color.FromRgb(10, 52, 84);
-    public Color HeaderBorder { get; init; } = Color.FromRgb(30, 64, 100);
-    public Color HeaderBorderActive { get; init; } = Color.FromRgb(14, 165, 233);
-    public Color HeaderBorderSelected { get; init; } = Color.FromRgb(226, 232, 240);
-
-    public Color HeaderText { get; init; } = Color.FromRgb(148, 163, 184);
-    public Color HeaderTextActive { get; init; } = Color.FromRgb(224, 242, 254);
-
-    public Color DropPlaceholderBorder { get; init; } = Color.FromArgb(150, 96, 165, 250);
-    public Color DropPlaceholderBackground { get; init; } = Color.FromArgb(30, 96, 165, 250);
 }
 
 public sealed class KeyStepUiConfig

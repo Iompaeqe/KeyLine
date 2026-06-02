@@ -55,7 +55,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Padding" Value="9,0,7,0" />
+            <Setter Property="Padding" Value="5,0,3,0" />
             <Setter Property="MaxDropDownHeight" Value="240" />
             <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItem}" />
 
