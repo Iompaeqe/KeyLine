@@ -1,14 +1,16 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using Forms = System.Windows.Forms;
+using MacroSpammer.Services.Tray;
 
 namespace MacroSpammer;
 
 public partial class MainWindow
 {
-    private Forms.NotifyIcon? _trayIcon;
-    private bool _isClosingForExit;
+    private TrayController? _trayController;
+
+    private TrayController TrayController =>
+        _trayController ??= new TrayController(this, "KeyLine", HideInspector);
 
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
@@ -23,48 +25,22 @@ public partial class MainWindow
 
     private void HideToTray()
     {
-        HideInspector();;
-        EnsureTrayIcon();
-        Hide();
+        TrayController.HideToTray();
     }
 
     private void EnsureTrayIcon()
     {
-        if (_trayIcon != null)
-            return;
-
-        var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Show", null, (_, _) => ShowFromTray());
-        menu.Items.Add("Exit", null, (_, _) =>
-        {
-            _isClosingForExit = true;
-            Close();
-        });
-
-        _trayIcon = new Forms.NotifyIcon
-        {
-            Text = "KeyLine",
-            Visible = true,
-            ContextMenuStrip = menu,
-            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "")
-        };
-        _trayIcon.DoubleClick += (_, _) => ShowFromTray();
+        TrayController.EnsureTrayIcon();
     }
 
     private void ShowFromTray()
     {
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
+        TrayController.ShowFromTray();
     }
 
     private bool ShouldCancelCloseForTray()
     {
-        if (_isClosingForExit || !_settings.CloseToTray)
-            return false;
-
-        HideToTray();
-        return true;
+        return TrayController.ShouldCancelClose(_settings.CloseToTray);
     }
 
     private bool ConfirmCloseIfNeeded()
@@ -135,11 +111,7 @@ public partial class MainWindow
 
     private void DisposeTrayIcon()
     {
-        if (_trayIcon == null)
-            return;
-
-        _trayIcon.Visible = false;
-        _trayIcon.Dispose();
-        _trayIcon = null;
+        _trayController?.Dispose();
+        _trayController = null;
     }
 }
