@@ -526,6 +526,7 @@ public partial class MainWindow
                 CaptureDroppedGhostPositionForAnimation();
 
                 dropTimeline = _drag.DraggedNodeTimeline;
+                var draggedRawItems = GetRawStepsForDrag(dropTimeline, _drag.DraggedNode);
                 changed = MoveStepBeforeRawAnchor(
                     dropTimeline,
                     _drag.DraggedNode,
@@ -533,7 +534,7 @@ public partial class MainWindow
 
                 if (changed)
                 {
-                    SeedDraggedNodeAnimationFromGhost();
+                    SeedDraggedNodeAnimationFromGhost(dropTimeline, draggedRawItems);
                     MergeAdjacentDelayNodesIfEnabled(dropTimeline);
                 }
             }
@@ -657,17 +658,36 @@ public partial class MainWindow
                 TimelineLayoutCalculator.GetItemTop(MainWindow.TimelineConnectorY, NodeDragGhost.Height));
         }
 
-        private void SeedDraggedNodeAnimationFromGhost()
+        private void SeedDraggedNodeAnimationFromGhost(MacroTimeline timeline, IReadOnlyCollection<MacroNode> draggedRawItems)
         {
-            if (NodeDragGhost.LastDroppedRowsPanelPosition == null ||
-                _drag.DraggedNode == null ||
-                _drag.DraggedNodeTimeline == null)
+            if (NodeDragGhost.LastDroppedRowsPanelPosition == null || draggedRawItems.Count == 0)
             {
                 return;
             }
 
-            var animationKey = GetTimelineAnimationKey(_drag.DraggedNodeTimeline, _drag.DraggedNode);
-            _timelineVisualPositions[animationKey] = NodeDragGhost.LastDroppedRowsPanelPosition.Value;
+            var draggedRawItemSet = draggedRawItems.ToHashSet();
+            var droppedPosition = NodeDragGhost.LastDroppedRowsPanelPosition.Value;
+            var currentLeft = droppedPosition.X;
+
+            var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
+                timeline.Nodes.ToList(),
+                timeline.UseStandardDelay,
+                timeline.ShowKeyUpDown);
+
+            foreach (var visibleStep in visibleSteps)
+            {
+                var rawItems = TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, visibleStep);
+                if (!rawItems.Any(draggedRawItemSet.Contains))
+                    continue;
+
+                var animationKey = GetTimelineAnimationKey(timeline, visibleStep);
+                var top = TimelineLayoutCalculator.GetItemTop(
+                    TimelineConnectorY,
+                    MeasureTimelineItem(CreateNode(timeline, visibleStep)).Height);
+
+                _timelineVisualPositions[animationKey] = new Point(currentLeft, top);
+                currentLeft += GetCachedNodePreviewWidth(timeline, visibleStep) + TimelineItemGap;
+            }
         }
 
     // From MainWindow.NodeReordering.cs
