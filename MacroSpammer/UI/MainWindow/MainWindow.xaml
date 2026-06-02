@@ -291,6 +291,20 @@
                                     Background="#94A3B8"
                                     Opacity="0.95" />
                         </Canvas>
+
+                        <TextBlock x:Name="SingleTimelineMetadataText"
+                                   Grid.Row="1"
+                                   Grid.Column="1"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Bottom"
+                                   Margin="16,0,0,15"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource Muted}"
+                                   Opacity="0.82"
+                                   IsHitTestVisible="False"
+                                   Visibility="Collapsed"
+                                   Panel.ZIndex="20" />
                     </Grid>
                 </Border>
 

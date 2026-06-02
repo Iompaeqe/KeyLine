@@ -3,6 +3,14 @@ using MacroSpammer.Services.Macro;
 
 namespace MacroSpammer.Services.Playback;
 
+public enum TimelinePlaybackStatus
+{
+    Idle,
+    Running,
+    Waiting,
+    Stopped
+}
+
 public sealed class PlaybackController
 {
     private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
@@ -119,7 +127,8 @@ public sealed class PlaybackController
     public Task RunAsyncPlayback(
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
-        Action<int>? onRunnerLoopCompleted = null)
+        Action<int>? onRunnerLoopCompleted = null,
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
     {
         StopRequested = false;
         var tasks = new List<Task>();
@@ -136,15 +145,26 @@ public sealed class PlaybackController
             var standardDelayMs = timeline.StandardDelayMs;
             var useTextInputMode = timeline.UseTextInputMode;
 
-            tasks.Add(Task.Run(() => runner.StartAsync(
-                targetHwnd,
-                steps,
-                loopCount,
-                baseDelayMs,
-                useStandardDelay,
-                standardDelayMs,
-                useTextInputMode,
-                onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex))));
+            tasks.Add(Task.Run(async () =>
+            {
+                onTimelineStatusChanged?.Invoke(runnerIndex, TimelinePlaybackStatus.Running);
+                try
+                {
+                    await runner.StartAsync(
+                        targetHwnd,
+                        steps,
+                        loopCount,
+                        baseDelayMs,
+                        useStandardDelay,
+                        standardDelayMs,
+                        useTextInputMode,
+                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex));
+                }
+                finally
+                {
+                    onTimelineStatusChanged?.Invoke(runnerIndex, TimelinePlaybackStatus.Stopped);
+                }
+            }));
         }
 
         return Task.WhenAll(tasks);
@@ -153,7 +173,8 @@ public sealed class PlaybackController
     public async Task RunSyncedPlayback(
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
-        Action<int>? onRunnerLoopCompleted = null)
+        Action<int>? onRunnerLoopCompleted = null,
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
@@ -169,7 +190,10 @@ public sealed class PlaybackController
                 var targetLoops = Math.Max(0, timeline.LoopCount);
 
                 if (targetLoops > 0 && completedLoops[i] >= targetLoops)
+                {
+                    onTimelineStatusChanged?.Invoke(i, TimelinePlaybackStatus.Stopped);
                     continue;
+                }
 
                 var runnerIndex = i;
                 var runner = GetRunner(timeline);
@@ -180,17 +204,28 @@ public sealed class PlaybackController
                 var useStandardDelay = timeline.UseStandardDelay;
                 var standardDelayMs = timeline.StandardDelayMs;
                 var useTextInputMode = timeline.UseTextInputMode;
+                var willExpireAfterThisPass = targetLoops > 0 && completedLoops[i] + 1 >= targetLoops;
 
                 startedIndexes.Add(i);
-                tasks.Add(Task.Run(() => runner.StartAsync(
-                    targetHwnd,
-                    steps,
-                    1,
-                    baseDelayMs,
-                    useStandardDelay,
-                    standardDelayMs,
-                    useTextInputMode,
-                    onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex))));
+                tasks.Add(Task.Run(async () =>
+                {
+                    onTimelineStatusChanged?.Invoke(runnerIndex, TimelinePlaybackStatus.Running);
+                    await runner.StartAsync(
+                        targetHwnd,
+                        steps,
+                        1,
+                        baseDelayMs,
+                        useStandardDelay,
+                        standardDelayMs,
+                        useTextInputMode,
+                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex));
+
+                    onTimelineStatusChanged?.Invoke(
+                        runnerIndex,
+                        willExpireAfterThisPass
+                            ? TimelinePlaybackStatus.Stopped
+                            : TimelinePlaybackStatus.Waiting);
+                }));
             }
 
             if (tasks.Count == 0)
@@ -209,7 +244,8 @@ public sealed class PlaybackController
     public async Task RunSequencePlayback(
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
-        Action<int>? onRunnerLoopCompleted = null)
+        Action<int>? onRunnerLoopCompleted = null,
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
@@ -230,6 +266,7 @@ public sealed class PlaybackController
                     continue;
 
                 startedAnyTimeline = true;
+                PublishSequenceStatuses(runnableTimelines, completedLoops, i, onTimelineStatusChanged);
 
                 var runner = GetRunner(timeline);
                 var steps = timeline.Nodes.ToList();
@@ -251,6 +288,7 @@ public sealed class PlaybackController
 
                 completedLoops[i]++;
                 onRunnerLoopCompleted?.Invoke(i);
+                PublishSequenceStatuses(runnableTimelines, completedLoops, null, onTimelineStatusChanged);
 
                 if (!HasEligibleSequenceTimeline(runnableTimelines, completedLoops))
                     continue;
@@ -279,5 +317,28 @@ public sealed class PlaybackController
         }
 
         return false;
+    }
+
+    private static void PublishSequenceStatuses(
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        IReadOnlyList<int> completedLoops,
+        int? runningIndex,
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged)
+    {
+        if (onTimelineStatusChanged == null)
+            return;
+
+        for (var i = 0; i < runnableTimelines.Count && i < completedLoops.Count; i++)
+        {
+            var targetLoops = Math.Max(0, runnableTimelines[i].LoopCount);
+            var isExpired = targetLoops > 0 && completedLoops[i] >= targetLoops;
+            var status = isExpired
+                ? TimelinePlaybackStatus.Stopped
+                : runningIndex == i
+                    ? TimelinePlaybackStatus.Running
+                    : TimelinePlaybackStatus.Waiting;
+
+            onTimelineStatusChanged(i, status);
+        }
     }
 }

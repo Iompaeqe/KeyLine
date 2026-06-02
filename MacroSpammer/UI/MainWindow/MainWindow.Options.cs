@@ -62,8 +62,8 @@ public partial class MainWindow
         }
 
     // From MainWindow.MacroOptions.cs
-        private const string LoopTypeAsyncText = "async";
-        private const string LoopTypeSyncText = "synced";
+        private const string LoopTypeAsyncText = "asynchron";
+        private const string LoopTypeSyncText = "synchron";
         private const string LoopTypeSequenceText = "sequence";
 
         private void InitializeMacroOptions()
@@ -229,11 +229,12 @@ public partial class MainWindow
             if (!double.TryParse(valueText, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value))
                 return 0;
 
-            var multiplier = unitText switch
+            var normalizedUnit = unitText.Trim().ToLowerInvariant();
+            var multiplier = normalizedUnit switch
             {
-                "sec" => 1_000,
-                "min" => 60_000,
-                "hours" => 3_600_000,
+                "s" or "sec" or "secs" or "second" or "seconds" => 1_000,
+                "m" or "min" or "mins" or "minute" or "minutes" => 60_000,
+                "h" or "hour" or "hours" => 3_600_000,
                 _ => 1
             };
 

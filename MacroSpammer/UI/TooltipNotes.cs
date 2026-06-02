@@ -10,8 +10,8 @@ public static class TooltipNotes
     public const string MacroShortcutCapture = "Left-click to set. Right-click to clear.";
     public const string MacroShortcutToggle = "Enable or disable the shortcut for this macro.";
     public const string MacroLoopType = "Choose how multiple timelines are scheduled.";
-    public const string MacroLoopTypeAsync = "Async: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
-    public const string MacroLoopTypeSync = "Synced: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";
+    public const string MacroLoopTypeAsync = "Asynchron: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
+    public const string MacroLoopTypeSync = "Synchron: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";
     public const string MacroLoopTypeSequence = "Sequence: timelines run top to bottom, one at a time. Each pass skips timelines that already reached their loop count; 0 loops means that timeline keeps participating forever.";
     public const string AddTimeline = "Add a new timeline to this macro.";
     public const string MacroTimer = "Exact duration for the macro to run. 0 means infinite.";

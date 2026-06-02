@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Macro;
+using MacroSpammer.Services.Playback;
 using MacroSpammer.State;
 using MacroSpammer.UI.Config;
 using MacroSpammer.UI.Timeline;
@@ -38,6 +39,7 @@ public partial class MainWindow
         private static double TimelineHeaderBottomExtra => TimelineUi.HeaderBottomExtra;
 
         private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
+        private readonly Dictionary<MacroTimeline, TextBlock> _timelineHeaderStatusTextBlocks = new();
 
         private sealed class TimelineRowVisualModel
         {
@@ -67,6 +69,7 @@ public partial class MainWindow
             TimelineRowsPanel.Children.Clear();
             _timelineRowRenderStates.Clear();
             BuildTimelineHeaderGridRows();
+            UpdateSingleTimelineMetadataText();
 
             if (_document.Timelines.Count == 0)
             {
@@ -122,6 +125,7 @@ public partial class MainWindow
         {
             TimelineHeaderGrid.Children.Clear();
             TimelineHeaderGrid.RowDefinitions.Clear();
+            _timelineHeaderStatusTextBlocks.Clear();
 
             var showHeaderColumn = _document.Timelines.Count > 1;
 
@@ -196,6 +200,7 @@ public partial class MainWindow
             TimelineRowsPanel.Margin = new Thickness(0);
             TimelineHeaderGrid.Visibility = Visibility.Collapsed;
             TimelineHeaderColumn.Width = new GridLength(0);
+            SingleTimelineMetadataText.Visibility = Visibility.Collapsed;
 
             EmptyTimelinePanel.Visibility = Visibility.Visible;
             TimelineScrollViewer.Visibility = Visibility.Hidden;
@@ -209,6 +214,7 @@ public partial class MainWindow
             TimelineScrollViewer.Visibility = Visibility.Visible;
             TimelineDragOverlayCanvas.Visibility = Visibility.Visible;
             TimelineScrollIndicator.Visibility = Visibility.Visible;
+            UpdateSingleTimelineMetadataText();
         }
 
 
@@ -1035,13 +1041,39 @@ public partial class MainWindow
             if (!isPendingDelete)
             {
                 var useVerticalText = timeline.Name.Length > 4;
-                return new TextBlock
+                var content = new Grid
+                {
+                    Margin = new Thickness(2, 4, 2, 4),
+                    ToolTip = $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}"
+                };
+
+                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
+                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(16) });
+
+                var statusText = new TextBlock
+                {
+                    FontSize = 7.5,
+                    FontWeight = FontWeights.Bold,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MaxWidth = Math.Max(28, TimelineHeaderWidth - 6)
+                };
+
+                _timelineHeaderStatusTextBlocks[timeline] = statusText;
+                UpdateTimelineHeaderStatusTextBlock(timeline, statusText);
+                Grid.SetRow(statusText, 0);
+                content.Children.Add(statusText);
+
+                var nameText = new TextBlock
                 {
                     Text = timeline.Name,
                     FontWeight = FontWeights.Black,
-                    FontSize = useVerticalText ? 12 : 14,
+                    FontSize = useVerticalText ? 11 : 13,
                     MaxWidth = useVerticalText
-                        ? Math.Max(36, TimelineRowHeight - 12)
+                        ? Math.Max(26, TimelineRowHeight - 34)
                         : Math.Max(28, TimelineHeaderWidth - 8),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     TextAlignment = TextAlignment.Center,
@@ -1050,9 +1082,29 @@ public partial class MainWindow
                     LayoutTransform = useVerticalText ? new RotateTransform(-90) : null,
                     Foreground = new SolidColorBrush(isActive
                         ? Color.FromRgb(224, 242, 254)
-                        : Color.FromRgb(148, 163, 184)),
-                    ToolTip = timeline.Name
+                        : Color.FromRgb(148, 163, 184))
                 };
+
+                Grid.SetRow(nameText, 1);
+                content.Children.Add(nameText);
+
+                var detailText = new TextBlock
+                {
+                    Text = $"L{FormatTimelineHeaderLoopCount(timeline)} D{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
+                    FontSize = 7.5,
+                    FontWeight = FontWeights.SemiBold,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
+                    Foreground = new SolidColorBrush(Color.FromRgb(120, 136, 149))
+                };
+
+                Grid.SetRow(detailText, 2);
+                content.Children.Add(detailText);
+
+                return content;
             }
 
             return new StackPanel
@@ -1079,6 +1131,69 @@ public partial class MainWindow
                     }
                 }
             };
+        }
+
+        private void RefreshTimelineHeaderStatuses()
+        {
+            foreach (var (timeline, statusTextBlock) in _timelineHeaderStatusTextBlocks)
+                UpdateTimelineHeaderStatusTextBlock(timeline, statusTextBlock);
+        }
+
+        private void UpdateTimelineHeaderPlaybackStatus(MacroTimeline timeline)
+        {
+            if (_timelineHeaderStatusTextBlocks.TryGetValue(timeline, out var statusTextBlock))
+                UpdateTimelineHeaderStatusTextBlock(timeline, statusTextBlock);
+        }
+
+        private void UpdateTimelineHeaderStatusTextBlock(MacroTimeline timeline, TextBlock statusTextBlock)
+        {
+            var status = GetTimelinePlaybackStatusForHeader(timeline);
+
+            statusTextBlock.Text = status switch
+            {
+                TimelinePlaybackStatus.Running => "Running...",
+                TimelinePlaybackStatus.Waiting => "Waiting...",
+                TimelinePlaybackStatus.Stopped => "Stopped",
+                _ => string.Empty
+            };
+
+            statusTextBlock.Foreground = new SolidColorBrush(status switch
+            {
+                TimelinePlaybackStatus.Running => Color.FromRgb(52, 211, 153),
+                TimelinePlaybackStatus.Waiting => Color.FromRgb(253, 230, 138),
+                TimelinePlaybackStatus.Stopped => Color.FromRgb(100, 116, 139),
+                _ => Color.FromRgb(100, 116, 139)
+            });
+        }
+
+        private static string FormatTimelineHeaderLoopCount(MacroTimeline timeline)
+        {
+            var loopCount = Math.Max(0, timeline.LoopCount);
+            return loopCount == 0 ? "\u221E" : loopCount.ToString();
+        }
+
+        private static string FormatTimelineHeaderDelay(int milliseconds)
+        {
+            var delayMs = Math.Max(0, milliseconds);
+            var formatted = DelayFormatter.Format(delayMs);
+            return delayMs < 1000 ? $"{formatted}ms" : formatted;
+        }
+
+        private void UpdateSingleTimelineMetadataText()
+        {
+            if (SingleTimelineMetadataText == null)
+                return;
+
+            if (_document.Timelines.Count != 1)
+            {
+                SingleTimelineMetadataText.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var timeline = _document.Timelines[0];
+            SingleTimelineMetadataText.Text =
+                $"Loops {FormatTimelineHeaderLoopCount(timeline)}  \u00b7  Loop Delay {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}";
+            SingleTimelineMetadataText.Visibility = Visibility.Visible;
         }
 
         private void UpdateWindowHeightForTimelineCount()
