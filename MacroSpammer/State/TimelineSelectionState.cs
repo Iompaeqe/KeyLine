@@ -4,6 +4,8 @@ namespace MacroSpammer.State;
 
 public sealed class TimelineSelectionState
 {
+    private readonly HashSet<MacroNode> _selectedNodeSet = new();
+
     public MacroTimeline? SelectedTimeline { get; private set; }
     public MacroNode? SelectedNode { get; private set; }
     public MacroNode? AnchorNode { get; private set; }
@@ -20,6 +22,8 @@ public sealed class TimelineSelectionState
         AnchorNode = node;
         SelectedNodes.Clear();
         SelectedNodes.Add(node);
+        _selectedNodeSet.Clear();
+        _selectedNodeSet.Add(node);
     }
 
     public void SelectNodes(MacroTimeline timeline, IEnumerable<MacroNode> nodes, MacroNode? anchorNode = null)
@@ -27,6 +31,9 @@ public sealed class TimelineSelectionState
         SelectedTimeline = timeline;
         SelectedNodes.Clear();
         SelectedNodes.AddRange(nodes);
+        _selectedNodeSet.Clear();
+        foreach (var selectedNode in SelectedNodes)
+            _selectedNodeSet.Add(selectedNode);
         SelectedNode = SelectedNodes.FirstOrDefault();
         AnchorNode = anchorNode ?? SelectedNode;
 
@@ -34,6 +41,7 @@ public sealed class TimelineSelectionState
         {
             SelectedTimeline = null;
             AnchorNode = null;
+            _selectedNodeSet.Clear();
         }
     }
 
@@ -43,6 +51,7 @@ public sealed class TimelineSelectionState
         SelectedNode = null;
         AnchorNode = null;
         SelectedNodes.Clear();
+        _selectedNodeSet.Clear();
     }
 
     public void Clear()
@@ -51,6 +60,7 @@ public sealed class TimelineSelectionState
         SelectedNode = null;
         AnchorNode = null;
         SelectedNodes.Clear();
+        _selectedNodeSet.Clear();
     }
 
     public bool IsTimelineSelected(MacroTimeline timeline)
@@ -63,6 +73,6 @@ public sealed class TimelineSelectionState
         if (!ReferenceEquals(SelectedTimeline, timeline) || SelectedNodes.Count == 0)
             return false;
 
-        return SelectedNodes.Any(selected => ReferenceEquals(selected, node));
+        return _selectedNodeSet.Contains(node);
     }
 }

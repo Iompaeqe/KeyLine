@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using MacroSpammer.Domain;
 using MacroSpammer.Services.Input;
 using MacroSpammer.Services.Timeline;
@@ -25,7 +26,7 @@ public partial class MainWindow
                 saveUndoSnapshot: SaveUndoSnapshot,
                 refreshTimeline: () => RefreshTimeline(),
                 scheduleSaveState: ScheduleSaveState,
-                selectTimeline: SelectTimeline,
+                selectTimeline: timeline => SelectTimeline(timeline),
                 pickMouseCoordinatesForNodeAsync: PickMouseCoordinatesForNodeAsync);
         }
 
@@ -42,6 +43,11 @@ public partial class MainWindow
         private void RefreshInspector()
         {
             _inspectorDock?.Refresh();
+        }
+
+        private void RefreshInspectorDeferred()
+        {
+            Dispatcher.BeginInvoke(new Action(RefreshInspector), DispatcherPriority.Background);
         }
 
         private void HideInspector()
@@ -508,13 +514,14 @@ public partial class MainWindow
         }
 
     // From MainWindow.TimelineOptions.cs
-        private void SelectTimeline(MacroTimeline timeline)
+        private void SelectTimeline(MacroTimeline timeline, bool refreshInspector = true)
         {
             if (_isClearConfirmationActive && !ReferenceEquals(_pendingClearTimeline, timeline))
                 ResetClearConfirmation();
 
             _document.SelectTimeline(timeline);
-            SyncOptionsFromActiveTimeline();
+            if (refreshInspector)
+                SyncOptionsFromActiveTimeline();
             ScheduleSaveState();
         }
 

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using MacroSpammer.Domain;
+using System.Collections.Generic;
 
 namespace MacroSpammer.UI.Timeline;
 
@@ -16,4 +17,5 @@ public sealed class TimelineRowRenderState
     public double RowWidth { get; set; }
     public int VisualItemCount { get; set; }
     public List<TimelineVisualItem> VisualItems { get; set; } = new();
+    public Dictionary<object, TimelineVisualItem> VisualItemsByAnimationKey { get; set; } = new();
 }

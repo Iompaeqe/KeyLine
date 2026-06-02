@@ -13,6 +13,7 @@ public sealed class NodeDragPreviewModel
     private readonly List<NodePreviewSlot> _slots = new();
     private readonly List<MacroNode> _previewRawSteps = new();
     private readonly List<MacroNode> _draggedRawItems = new();
+    private readonly HashSet<MacroNode> _draggedRawItemSet = new();
 
     private Point? _lastMousePoint;
 
@@ -38,10 +39,11 @@ public sealed class NodeDragPreviewModel
             return;
 
         _draggedRawItems.AddRange(draggedItems);
+        _draggedRawItemSet.UnionWith(draggedItems);
         _slots.AddRange(BuildSlots(
             timeline,
             rawNodes,
-            draggedItems,
+            _draggedRawItemSet,
             draggedNode,
             measureNodeWidth,
             firstItemLeft,
@@ -83,7 +85,7 @@ public sealed class NodeDragPreviewModel
 
         for (var i = lastDraggedSlotIndex + 1; i < _slots.Count; i++)
         {
-            var nextRawItem = _slots[i].RawItems.FirstOrDefault(rawItem => !_draggedRawItems.Contains(rawItem));
+            var nextRawItem = _slots[i].RawItems.FirstOrDefault(rawItem => !_draggedRawItemSet.Contains(rawItem));
             if (nextRawItem != null)
                 return nextRawItem;
         }
@@ -96,13 +98,14 @@ public sealed class NodeDragPreviewModel
         _slots.Clear();
         _previewRawSteps.Clear();
         _draggedRawItems.Clear();
+        _draggedRawItemSet.Clear();
         _lastMousePoint = null;
     }
 
     private static List<NodePreviewSlot> BuildSlots(
         MacroTimeline timeline,
         IReadOnlyCollection<MacroNode> rawNodes,
-        IReadOnlyCollection<MacroNode> draggedItems,
+        IReadOnlySet<MacroNode> draggedItems,
         MacroNode? draggedNode,
         Func<MacroNode, double> measureNodeWidth,
         double firstItemLeft,
@@ -234,12 +237,13 @@ public sealed class NodeDragPreviewModel
     private void SyncPreviewRawSteps()
     {
         _previewRawSteps.Clear();
+        var seen = new HashSet<MacroNode>();
 
         foreach (var slot in _slots)
         {
             foreach (var rawItem in slot.RawItems)
             {
-                if (!_previewRawSteps.Contains(rawItem))
+                if (seen.Add(rawItem))
                     _previewRawSteps.Add(rawItem);
             }
         }

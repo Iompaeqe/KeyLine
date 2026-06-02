@@ -69,11 +69,22 @@ public partial class MainWindow
                     return;
                 }
 
-                SetPendingClickSelection(
-                    timeline,
-                    node,
-                    Keyboard.Modifiers,
-                    _selection.IsNodeSelected(timeline, node));
+                var modifiers = Keyboard.Modifiers;
+                var wasSelected = _selection.IsNodeSelected(timeline, node);
+                var shouldDeferSelectionCollapse =
+                    wasSelected &&
+                    modifiers == ModifierKeys.None &&
+                    _selection.HasMultipleNodeSelection;
+
+                if (shouldDeferSelectionCollapse)
+                {
+                    SetPendingClickSelection(timeline, node, modifiers, wasSelected);
+                }
+                else
+                {
+                    ClearPendingClickSelection();
+                    SelectStepFromPointer(timeline, node);
+                }
 
                 if (!_isTimelineEditingEnabled)
                 {
@@ -200,8 +211,11 @@ public partial class MainWindow
 
             if (!_pendingClickWasSelected && _pendingClickSelectionModifiers == ModifierKeys.None)
             {
-                SelectTimeline(_pendingClickSelectionTimeline);
+                var previousTimeline = _selection.SelectedTimeline;
+                SelectTimeline(_pendingClickSelectionTimeline, refreshInspector: false);
                 _selection.SelectNode(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
+                UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+                RefreshInspectorDeferred();
             }
 
             ClearPendingClickSelection();
@@ -209,26 +223,31 @@ public partial class MainWindow
 
         private void SelectStepFromStoredClick(MacroTimeline timeline, MacroNode node, ModifierKeys modifiers)
         {
+            var previousTimeline = _selection.SelectedTimeline;
+
             if (modifiers.HasFlag(ModifierKeys.Control))
             {
-                SelectTimeline(timeline);
+                SelectTimeline(timeline, refreshInspector: false);
                 ToggleStepSelection(timeline, node);
-                RefreshInspector();
+                UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+                RefreshInspectorDeferred();
                 return;
             }
 
             if (modifiers.HasFlag(ModifierKeys.Shift) && _selection.AnchorNode != null &&
                 ReferenceEquals(_selection.SelectedTimeline, timeline))
             {
-                SelectTimeline(timeline);
+                SelectTimeline(timeline, refreshInspector: false);
                 SelectStepRange(timeline, node);
-                RefreshInspector();
+                UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+                RefreshInspectorDeferred();
                 return;
             }
 
-            SelectTimeline(timeline);
+            SelectTimeline(timeline, refreshInspector: false);
             _selection.SelectNode(timeline, node);
-            RefreshInspector();
+            UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+            RefreshInspectorDeferred();
         }
 
         private void ClearPendingClickSelection()
@@ -369,7 +388,9 @@ public partial class MainWindow
                 timeline.ShowKeyUpDown);
 
             return visibleSteps
-                .Where(step => _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(step, selectedStep)))
+                .Where(step => !step.IsSyntheticDisplayNode
+                    ? _selection.IsNodeSelected(timeline, step)
+                    : _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(step, selectedStep)))
                 .ToList();
         }
 
@@ -488,23 +509,36 @@ public partial class MainWindow
     // From MainWindow.NodeDragLifecycle.cs
         private void CompleteStepDrop()
         {
+            MacroTimeline? dropTimeline = null;
+            var changed = false;
+
             if (_drag.IsDraggingNode && _drag.DraggedNodeTimeline != null && _drag.DraggedNode != null)
             {
                 SaveUndoSnapshot();
                 CaptureDroppedGhostPositionForAnimation();
 
-                MoveStepBeforeRawAnchor(
-                    _drag.DraggedNodeTimeline,
+                dropTimeline = _drag.DraggedNodeTimeline;
+                changed = MoveStepBeforeRawAnchor(
+                    dropTimeline,
                     _drag.DraggedNode,
                     _drag.NodeDropRawInsertAnchor);
 
-                SeedDraggedNodeAnimationFromGhost();
-                MergeAdjacentDelayNodesIfEnabled(_drag.DraggedNodeTimeline);
+                if (changed)
+                {
+                    SeedDraggedNodeAnimationFromGhost();
+                    MergeAdjacentDelayNodesIfEnabled(dropTimeline);
+                }
             }
 
             CancelTimelineDragState();
-            RefreshTimeline();
-            ScheduleSaveState();
+
+            if (dropTimeline != null)
+                RefreshTimelineRow(dropTimeline);
+
+            if (changed)
+                ScheduleSaveState();
+
+            RefreshInspector();
 
             NodeDragGhost.ClearDropPosition();
         }
@@ -517,7 +551,7 @@ public partial class MainWindow
             ClearPendingClickSelection();
 
             if (_drag.DraggedNodeTimeline != null)
-                _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(_drag.DraggedNodeTimeline));
+                RemoveDropPlaceholderAnimationKeys(_drag.DraggedNodeTimeline);
 
             _drag.EndStepDrag();
             _drag.EndTimelineHeaderDrag();
@@ -531,7 +565,7 @@ public partial class MainWindow
         private void BeginStepDragPreviewModel(MacroTimeline timeline, MacroNode draggedNode)
         {
             _nodeDragPreview.Clear();
-            _timelineVisualPositions.Remove(GetDropPlaceholderAnimationKey(timeline));
+            RemoveDropPlaceholderAnimationKeys(timeline);
 
             var draggedItems = GetRawStepsForDrag(timeline, draggedNode);
             if (draggedItems.Count == 0)
@@ -542,7 +576,7 @@ public partial class MainWindow
                 timeline.Nodes,
                 draggedItems,
                 _drag.DraggedNode,
-                measuredNode => Math.Max(1, MeasureTimelineItem(CreateNode(timeline, measuredNode)).Width),
+                measuredNode => GetCachedNodePreviewWidth(timeline, measuredNode),
                 TimelineFirstItemLeft,
                 TimelineItemGap);
 
@@ -629,20 +663,20 @@ public partial class MainWindow
         }
 
     // From MainWindow.NodeReordering.cs
-        private void MoveStepBeforeRawAnchor(
+        private bool MoveStepBeforeRawAnchor(
             MacroTimeline timeline,
             MacroNode draggedNode,
             MacroNode? rawInsertAnchor)
         {
             var draggedItems = GetRawStepsForDrag(timeline, draggedNode);
             if (draggedItems.Count == 0)
-                return;
+                return false;
 
             if (_selection.HasMultipleNodeSelection &&
                 _selection.IsNodeSelected(timeline, draggedNode) &&
                 TryApplyStepDragPreviewOrder(timeline, draggedNode))
             {
-                return;
+                return true;
             }
 
             var changed = TimelineNodeMutationService.MoveRawStepsBeforeAnchor(
@@ -651,35 +685,46 @@ public partial class MainWindow
                 rawInsertAnchor);
 
             if (!changed)
-                return;
+                return false;
 
             if (_selection.IsNodeSelected(timeline, draggedNode))
+            {
+                var updatedTimelineNodeSet = timeline.Nodes.ToHashSet();
                 _selection.SelectNodes(
                     timeline,
-                    _selection.SelectedNodes.Where(step => timeline.Nodes.Contains(step)).ToList(),
+                    _selection.SelectedNodes.Where(step => updatedTimelineNodeSet.Contains(step)).ToList(),
                     _selection.AnchorNode);
+            }
             else
+            {
                 _selection.SelectNode(timeline, draggedNode);
+            }
+
+            return true;
         }
 
         private bool TryApplyStepDragPreviewOrder(MacroTimeline timeline, MacroNode draggedNode)
         {
-            if (_nodeDragPreview.PreviewRawSteps.Count != timeline.Nodes.Count ||
-                _nodeDragPreview.PreviewRawSteps.Any(step => !timeline.Nodes.Contains(step)))
+            if (_nodeDragPreview.PreviewRawSteps.Count != timeline.Nodes.Count)
             {
                 return false;
             }
 
+            var timelineNodeSet = timeline.Nodes.ToHashSet();
+            if (_nodeDragPreview.PreviewRawSteps.Any(step => !timelineNodeSet.Contains(step)))
+                return false;
+
             if (_nodeDragPreview.PreviewRawSteps.SequenceEqual(timeline.Nodes))
-                return true;
+                return false;
 
             timeline.Nodes.Clear();
             foreach (var step in _nodeDragPreview.PreviewRawSteps)
                 timeline.Nodes.Add(step);
 
+            var updatedTimelineNodeSet = timeline.Nodes.ToHashSet();
             _selection.SelectNodes(
                 timeline,
-                _selection.SelectedNodes.Where(step => timeline.Nodes.Contains(step)).ToList(),
+                _selection.SelectedNodes.Where(step => updatedTimelineNodeSet.Contains(step)).ToList(),
                 _selection.AnchorNode);
             if (!_selection.HasNodeSelection)
                 _selection.SelectNode(timeline, draggedNode);

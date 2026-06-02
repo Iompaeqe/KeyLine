@@ -14,6 +14,7 @@ using MacroSpammer.UI.Timeline;
 using MacroSpammer.Services.Timeline;
 using MacroSpammer.UI.Nodes;
 using System.Windows.Input;
+using System.Runtime.CompilerServices;
 
 namespace MacroSpammer;
 
@@ -225,12 +226,6 @@ public partial class MainWindow
 
             var timeline = _drag.DraggedNodeTimeline;
 
-            if (_selection.HasMultipleNodeSelection && _selection.IsNodeSelected(timeline, _drag.DraggedNode!))
-            {
-                RefreshTimelineRow(timeline);
-                return;
-            }
-
             // Fast path: if we already have a render state for this row, just update positions
             if (_timelineRowRenderStates.TryGetValue(timeline, out var state))
             {
@@ -239,7 +234,7 @@ public partial class MainWindow
                 // If it's the FIRST move after BeginStepDrag, state.VisualItems doesn't have the placeholder.
                 // In that case, we MUST do a full row refresh once to get the placeholder element created.
 
-                var hasPlaceholder = state.VisualItems.Any(v => Equals(v.AnimationKey, (timeline, "drop-placeholder")));
+                var hasPlaceholder = state.VisualItems.Any(item => IsDropPlaceholderAnimationKey(item.AnimationKey));
                 if (!hasPlaceholder)
                 {
                     RefreshTimelineRow(timeline);
@@ -252,19 +247,18 @@ public partial class MainWindow
                 var currentLeft = TimelineFirstItemLeft;
                 var placeholderAdded = false;
 
-                var visualIndex = 0;
                 var orderedVisualItems = new List<TimelineVisualItem>(state.VisualItems.Count);
 
                 foreach (var slot in previewSlots)
                 {
                     if (slot.IsDraggedSlot)
                     {
+                        var placeholderKey = GetDropPlaceholderAnimationKey(timeline, slot.DisplayNode);
                         if (!UpdateOrMoveVisualItem(
                                 state,
                                 orderedVisualItems,
-                                ref visualIndex,
                                 ref currentLeft,
-                                GetDropPlaceholderAnimationKey(timeline)))
+                                placeholderKey))
                             return;
                         placeholderAdded = true;
                         continue;
@@ -273,7 +267,6 @@ public partial class MainWindow
                     if (!UpdateOrMoveVisualItem(
                             state,
                             orderedVisualItems,
-                            ref visualIndex,
                             ref currentLeft,
                             GetTimelineAnimationKey(timeline, slot.DisplayNode)))
                         return;
@@ -281,12 +274,12 @@ public partial class MainWindow
 
                 if (!placeholderAdded)
                 {
+                    var placeholderKey = GetDropPlaceholderAnimationKey(timeline, _drag.DraggedNode!);
                     if (!UpdateOrMoveVisualItem(
                             state,
                             orderedVisualItems,
-                            ref visualIndex,
                             ref currentLeft,
-                            GetDropPlaceholderAnimationKey(timeline)))
+                            placeholderKey))
                         return;
                 }
 
@@ -294,18 +287,20 @@ public partial class MainWindow
                 if (!UpdateOrMoveVisualItem(
                         state,
                         orderedVisualItems,
-                        ref visualIndex,
                         ref currentLeft,
                         (timeline, "add")))
                     return;
 
                 state.VisualItems = orderedVisualItems;
+                state.VisualItemsByAnimationKey = BuildVisualItemLookup(orderedVisualItems);
                 state.VisualItemCount = orderedVisualItems.Count;
                 state.NextLeft = orderedVisualItems[^1].Left;
                 state.RowWidth = orderedVisualItems[^1].Left + orderedVisualItems[^1].Width + TimelineRightPadding;
 
-                UpdateRowConnector(state);
-                FitTimelineCanvasWidthToCurrentContent();
+                if (state.RowWidth > state.Canvas.Width + 1)
+                    EnsureTimelineCanvasWidthForAllRows(state.RowWidth);
+
+                UpdateRowConnector(state, animate: false);
                 return;
             }
 
@@ -315,30 +310,10 @@ public partial class MainWindow
         private bool UpdateOrMoveVisualItem(
             TimelineRowRenderState state,
             List<TimelineVisualItem> orderedVisualItems,
-            ref int visualIndex,
             ref double currentLeft,
             object animationKey)
         {
-            TimelineVisualItem? item = null;
-            if (visualIndex < state.VisualItems.Count)
-            {
-                var candidate = state.VisualItems[visualIndex];
-                if (Equals(candidate.AnimationKey, animationKey))
-                {
-                    item = candidate;
-                }
-                else
-                {
-                    // Try searching for it (it might have moved in the list)
-                    item = state.VisualItems.FirstOrDefault(v => Equals(v.AnimationKey, animationKey));
-                }
-            }
-            else
-            {
-                item = state.VisualItems.FirstOrDefault(v => Equals(v.AnimationKey, animationKey));
-            }
-
-            if (item == null)
+            if (!state.VisualItemsByAnimationKey.TryGetValue(animationKey, out var item))
             {
                 RefreshTimelineRow(state.Timeline);
                 return false;
@@ -352,7 +327,7 @@ public partial class MainWindow
             {
                 // Animate smooth movement if it moved significantly
                 var deltaX = previousLeft - currentLeft;
-                if (Math.Abs(deltaX) > 0.5)
+                if (Math.Abs(deltaX) > 0.5 && IsTimelineItemNearViewport(previousLeft, currentLeft, item.Width))
                     TimelineAnimationService.AnimateRenderOffsetToRest(item.Element, deltaX, 0, animateY: false);
 
                 Canvas.SetLeft(item.Element, currentLeft);
@@ -363,8 +338,6 @@ public partial class MainWindow
 
             // Update the cached position for future full refreshes
             _timelineVisualPositions[animationKey] = new Point(item.Left, TimelineLayoutCalculator.GetItemTop(TimelineConnectorY, item.Size.Height));
-
-            visualIndex++;
             return true;
         }
 
@@ -549,14 +522,19 @@ public partial class MainWindow
             return visualItems;
         }
 
-        private static object GetDropPlaceholderAnimationKey(MacroTimeline timeline)
-        {
-            return (timeline, "drop-placeholder");
-        }
-
         private object GetDropPlaceholderAnimationKey(MacroTimeline timeline, MacroNode node)
         {
             return (timeline, "drop-placeholder", GetTimelineAnimationKey(timeline, node));
+        }
+
+        private void RemoveDropPlaceholderAnimationKeys(MacroTimeline timeline)
+        {
+            var keysToRemove = _timelineVisualPositions.Keys
+                .Where(key => IsDropPlaceholderAnimationKeyForTimeline(key, timeline))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+                _timelineVisualPositions.Remove(key);
         }
 
         private void AddPlaceholderVisualItem(
@@ -585,7 +563,8 @@ public partial class MainWindow
                 RenderTransform = new ScaleTransform(0.96, 0.96)
             };
 
-            if (placeholder.RenderTransform is ScaleTransform scale)
+            var shouldAnimatePlaceholder = IsTimelineItemNearViewport(currentLeft, currentLeft, draggedSize.Width);
+            if (shouldAnimatePlaceholder && placeholder.RenderTransform is ScaleTransform scale)
             {
                 var duration = new Duration(TimeSpan.FromMilliseconds(90));
                 var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -593,6 +572,11 @@ public partial class MainWindow
 
                 scale.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
                 scale.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+            }
+            else if (placeholder.RenderTransform is ScaleTransform restingScale)
+            {
+                restingScale.ScaleX = 1.0;
+                restingScale.ScaleY = 1.0;
             }
 
             visualItems.Add(new TimelineVisualItem
@@ -614,6 +598,18 @@ public partial class MainWindow
                 return node;
 
             return rawItems[0];
+        }
+
+        private double GetCachedNodePreviewWidth(MacroTimeline timeline, MacroNode node)
+        {
+            var animationKey = GetTimelineAnimationKey(timeline, node);
+            if (_timelineRowRenderStates.TryGetValue(timeline, out var state) &&
+                state.VisualItemsByAnimationKey.TryGetValue(animationKey, out var item))
+            {
+                return Math.Max(1, item.Width);
+            }
+
+            return Math.Max(1, MeasureTimelineItem(CreateNode(timeline, node)).Width);
         }
 
         private static Border? CreateTimelineConnector(IReadOnlyList<TimelineVisualItem> visualItems)
@@ -661,8 +657,22 @@ public partial class MainWindow
                 LastCenterX = visualItems[^1].CenterX,
                 RowWidth = addItem.Left + addItem.Width + TimelineRightPadding,
                 VisualItemCount = visualItems.Count,
-                VisualItems = visualItems.ToList()
+                VisualItems = visualItems.ToList(),
+                VisualItemsByAnimationKey = BuildVisualItemLookup(visualItems)
             };
+        }
+
+        private static Dictionary<object, TimelineVisualItem> BuildVisualItemLookup(IReadOnlyList<TimelineVisualItem> visualItems)
+        {
+            var lookup = new Dictionary<object, TimelineVisualItem>();
+
+            foreach (var item in visualItems)
+            {
+                if (item.AnimationKey != null)
+                    lookup[item.AnimationKey] = item;
+            }
+
+            return lookup;
         }
 
         private void RefreshTimelineRow(MacroTimeline timeline)
@@ -698,6 +708,31 @@ public partial class MainWindow
             Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
         }
 
+        private void UpdateSelectionVisuals(MacroTimeline? previousTimeline, MacroTimeline? currentTimeline)
+        {
+            UpdateSelectionVisualsForTimeline(previousTimeline);
+
+            if (currentTimeline != null && !ReferenceEquals(currentTimeline, previousTimeline))
+                UpdateSelectionVisualsForTimeline(currentTimeline);
+        }
+
+        private void UpdateSelectionVisualsForTimeline(MacroTimeline? timeline)
+        {
+            if (timeline == null)
+                return;
+
+            if (!_timelineRowRenderStates.TryGetValue(timeline, out var state))
+                return;
+
+            foreach (var item in state.VisualItems)
+            {
+                if (item.Element is not NodeBase nodeControl || nodeControl.Node == null)
+                    continue;
+
+                nodeControl.IsSelected = IsStepSelected(timeline, nodeControl.Node);
+            }
+        }
+
         private void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroNode> addedRawSteps)
         {
             if (addedRawSteps.Count == 0)
@@ -728,6 +763,8 @@ public partial class MainWindow
             if (state.AddButton != null)
             {
                 state.Canvas.Children.Remove(state.AddButton);
+                state.VisualItems.RemoveAll(item => ReferenceEquals(item.Element, state.AddButton));
+                state.VisualItemsByAnimationKey.Remove((timeline, "add"));
                 state.VisualItemCount = Math.Max(0, state.VisualItemCount - 1);
             }
 
@@ -751,6 +788,9 @@ public partial class MainWindow
                 };
 
                 AddTimelineItem(state.Canvas, item);
+                state.VisualItems.Add(item);
+                if (item.AnimationKey != null)
+                    state.VisualItemsByAnimationKey[item.AnimationKey] = item;
                 UpdateRowConnectorBounds(state, item);
 
                 currentLeft += size.Width + TimelineItemGap;
@@ -768,6 +808,8 @@ public partial class MainWindow
             };
 
             AddTimelineItem(state.Canvas, addItem);
+            state.VisualItems.Add(addItem);
+            state.VisualItemsByAnimationKey[(timeline, "add")] = addItem;
             UpdateRowConnectorBounds(state, addItem);
 
             state.AddButton = addBlock as FrameworkElement;
@@ -791,7 +833,7 @@ public partial class MainWindow
             state.VisualItemCount++;
         }
 
-        private void UpdateRowConnector(TimelineRowRenderState state)
+        private void UpdateRowConnector(TimelineRowRenderState state, bool animate = true)
         {
             if (state.VisualItems.Count <= 1)
             {
@@ -842,7 +884,9 @@ public partial class MainWindow
                 var deltaX = previousLeft - firstCenterX;
                 var deltaWidth = previousWidth - targetWidth;
 
-                if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaWidth) > 0.5)
+                if (animate &&
+                    (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaWidth) > 0.5) &&
+                    IsTimelineItemNearViewport(previousLeft, firstCenterX, Math.Max(previousWidth, targetWidth)))
                 {
                     TimelineAnimationService.AnimateRenderOffsetToRest(state.Connector, deltaX, 0, animateY: false);
 
@@ -1085,17 +1129,57 @@ public partial class MainWindow
                 var deltaX = previousPosition.X - targetLeft;
                 var deltaY = previousPosition.Y - targetTop;
 
-                if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaY) > 0.5)
+                if ((Math.Abs(deltaX) > 0.5 || Math.Abs(deltaY) > 0.5) &&
+                    IsTimelineItemNearViewport(previousPosition.X, targetLeft, item.Width))
+                {
                     TimelineAnimationService.AnimateRenderOffsetToRest(item.Element, deltaX, deltaY, animateY: Math.Abs(deltaY) > 0.5);
+                }
             }
 
             _timelineVisualPositions[item.AnimationKey] = targetPosition;
         }
 
+        private bool IsTimelineItemNearViewport(double previousLeft, double targetLeft, double width)
+        {
+            if (TimelineScrollViewer == null)
+                return true;
+
+            var viewportWidth = TimelineScrollViewer.ViewportWidth > 0
+                ? TimelineScrollViewer.ViewportWidth
+                : TimelineScrollViewer.ActualWidth;
+
+            if (viewportWidth <= 0)
+                return true;
+
+            const double animationOverscan = 96;
+            var viewportLeft = TimelineScrollViewer.HorizontalOffset - animationOverscan;
+            var viewportRight = TimelineScrollViewer.HorizontalOffset + viewportWidth + animationOverscan;
+
+            return IntersectsHorizontalRange(previousLeft, width, viewportLeft, viewportRight) ||
+                   IntersectsHorizontalRange(targetLeft, width, viewportLeft, viewportRight);
+        }
+
+        private static bool IntersectsHorizontalRange(double left, double width, double viewportLeft, double viewportRight)
+        {
+            var right = left + Math.Max(0, width);
+            return right >= viewportLeft && left <= viewportRight;
+        }
+
         private static bool IsDropPlaceholderAnimationKey(object? animationKey)
         {
-            return animationKey is ValueTuple<MacroTimeline, string> tuple &&
-                   tuple.Item2 == "drop-placeholder";
+            return animationKey is ITuple tuple &&
+                   tuple.Length >= 2 &&
+                   tuple[1] is string marker &&
+                   marker == "drop-placeholder";
+        }
+
+        private static bool IsDropPlaceholderAnimationKeyForTimeline(object? animationKey, MacroTimeline timeline)
+        {
+            return animationKey is ITuple tuple &&
+                   tuple.Length >= 2 &&
+                   ReferenceEquals(tuple[0], timeline) &&
+                   tuple[1] is string marker &&
+                   marker == "drop-placeholder";
         }
 
     // From MainWindow.TimelineNodes.cs
@@ -1218,6 +1302,9 @@ public partial class MainWindow
 
             if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
                 return false;
+
+            if (!node.IsSyntheticDisplayNode)
+                return _selection.IsNodeSelected(timeline, node);
 
             return _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(node, selectedStep));
         }

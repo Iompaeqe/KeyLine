@@ -123,12 +123,14 @@ public partial class MainWindow
 
     private void SelectStepFromPointer(MacroTimeline timeline, MacroNode node)
     {
-        SelectTimeline(timeline);
+        var previousTimeline = _selection.SelectedTimeline;
+        SelectTimeline(timeline, refreshInspector: false);
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             ToggleStepSelection(timeline, node);
-            RefreshInspector();
+            UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+            RefreshInspectorDeferred();
             return;
         }
 
@@ -137,17 +139,20 @@ public partial class MainWindow
         {
             if (SelectStepRange(timeline, node))
             {
-                RefreshInspector();
+                UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+                RefreshInspectorDeferred();
                 return;
             }
         }
 
         _selection.SelectNode(timeline, node);
-        RefreshInspector();
+        UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+        RefreshInspectorDeferred();
     }
 
     private void SelectAllNodesInActiveTimeline()
     {
+        var previousTimeline = _selection.SelectedTimeline;
         var timeline = _document.ActiveTimeline;
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
             timeline.Nodes.ToList(),
@@ -161,10 +166,10 @@ public partial class MainWindow
             return;
         }
 
-        SelectTimeline(timeline);
+        SelectTimeline(timeline, refreshInspector: false);
         _selection.SelectNodes(timeline, visibleSteps, visibleSteps[^1]);
-        RefreshInspector();
-        RefreshTimeline();
+        UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
+        RefreshInspectorDeferred();
     }
 
     private bool SelectStepRange(MacroTimeline timeline, MacroNode node)
@@ -362,10 +367,14 @@ public partial class MainWindow
                 ? new List<MacroNode> { _selection.SelectedNode }
                 : new List<MacroNode>();
 
+        var rawOrder = timeline.Nodes
+            .Select((step, index) => (step, index))
+            .ToDictionary(item => item.step, item => item.index);
+
         return selectedSteps
             .SelectMany(step => TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, step))
             .Distinct()
-            .OrderBy(step => timeline.Nodes.IndexOf(step))
+            .OrderBy(step => rawOrder.TryGetValue(step, out var index) ? index : int.MaxValue)
             .ToList();
     }
 }
