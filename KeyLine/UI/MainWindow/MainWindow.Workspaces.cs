@@ -350,6 +350,12 @@ public partial class MainWindow
                 _workspaceTabs.CancelPendingDelete();
             }
 
+            if (_profileDropdown?.HasPendingDelete == true &&
+                !_profileDropdown.IsSourcePendingDeleteProfile(e.OriginalSource as DependencyObject))
+            {
+                _profileDropdown.CancelPendingDelete();
+            }
+
             if (_workspaceTabs?.IsReorderModeEnabled != true)
                 return;
 

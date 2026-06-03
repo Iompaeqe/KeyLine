@@ -34,6 +34,7 @@ public sealed class ProfileDropdownController
     private readonly Action<MacroProfile> _deleteProfile;
     private readonly Action<int, int> _reorderProfile;
 
+    private MacroProfile? _pendingDeleteProfile;
     private MacroProfile? _renamingProfile;
     private bool _isAddingProfile;
 
@@ -86,6 +87,8 @@ public sealed class ProfileDropdownController
         WireEvents();
     }
 
+    public bool HasPendingDelete => _pendingDeleteProfile != null;
+
     public void Refresh()
     {
         _selectedProfileText.Text = GetSelectedProfileName();
@@ -99,6 +102,7 @@ public sealed class ProfileDropdownController
             profile: null,
             index: 0,
             isActive: MacroProfile.IsNoProfile(_getActiveProfileId()),
+            isPendingDelete: false,
             isDragged: false);
 
         var profiles = _getProfiles();
@@ -106,6 +110,7 @@ public sealed class ProfileDropdownController
         {
             var profile = profiles[i];
             var isRenaming = ReferenceEquals(profile, _renamingProfile);
+            var isPendingDelete = ReferenceEquals(profile, _pendingDeleteProfile);
             var isDragged = _isReorderingProfile && ReferenceEquals(profile, _draggedProfile);
 
             if (isRenaming)
@@ -123,6 +128,7 @@ public sealed class ProfileDropdownController
                     MacroProfile.NormalizeId(_getActiveProfileId()),
                     profile.Id,
                     StringComparison.OrdinalIgnoreCase),
+                isPendingDelete: isPendingDelete,
                 isDragged: isDragged);
         }
 
@@ -133,9 +139,28 @@ public sealed class ProfileDropdownController
 
     public void ClearTransientState()
     {
+        _pendingDeleteProfile = null;
         _renamingProfile = null;
         _isAddingProfile = false;
         EndDrag();
+    }
+
+    public void CancelPendingDelete()
+    {
+        if (_pendingDeleteProfile == null)
+            return;
+
+        _pendingDeleteProfile = null;
+        _popup.StaysOpen = false;
+        Refresh();
+    }
+
+    public bool IsSourcePendingDeleteProfile(DependencyObject? source)
+    {
+        if (_pendingDeleteProfile == null)
+            return false;
+
+        return ReferenceEquals(TryGetSourceProfile(source), _pendingDeleteProfile);
     }
 
     private void WireEvents()
@@ -151,7 +176,11 @@ public sealed class ProfileDropdownController
         _popup.Closed += (_, _) =>
         {
             if (_renamingProfile == null)
+            {
+                _pendingDeleteProfile = null;
+                _popup.StaysOpen = false;
                 return;
+            }
 
             CommitRename(_renamingProfile, _renamingProfile.Name);
         };
@@ -190,6 +219,7 @@ public sealed class ProfileDropdownController
         MacroProfile? profile,
         int index,
         bool isActive,
+        bool isPendingDelete,
         bool isDragged)
     {
         var grid = new Grid
@@ -200,11 +230,18 @@ public sealed class ProfileDropdownController
             Tag = profile != null ? profile : id
         };
 
-        var row = CreateProfileRowElement(name, isActive, profile == null);
+        var row = CreateProfileRowElement(name, isActive, isPendingDelete, profile == null);
         row.MouseLeftButtonUp += (_, e) =>
         {
             if (_renamingProfile != null)
                 return;
+
+            if (ReferenceEquals(_pendingDeleteProfile, profile))
+            {
+                BeginOrConfirmDelete(profile!);
+                e.Handled = true;
+                return;
+            }
 
             if (_didDragProfiles)
             {
@@ -219,6 +256,17 @@ public sealed class ProfileDropdownController
 
         if (profile != null)
         {
+            row.PreviewMouseDown += (_, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Middle)
+                {
+                    BeginOrConfirmDelete(profile);
+                    e.Handled = true;
+                    return;
+                }
+
+            };
+
             row.PreviewMouseLeftButtonDown += (_, e) =>
             {
                 if (e.ClickCount < 2)
@@ -235,7 +283,7 @@ public sealed class ProfileDropdownController
         _profilesPanel.Children.Add(grid);
     }
 
-    private Border CreateProfileRowElement(string name, bool isActive, bool isNoProfile)
+    private Border CreateProfileRowElement(string name, bool isActive, bool isPendingDelete, bool isNoProfile)
     {
         var normalBackground = isActive
             ? Color.FromRgb(30, 58, 95)
@@ -244,7 +292,15 @@ public sealed class ProfileDropdownController
             ? Color.FromRgb(35, 72, 116)
             : Color.FromRgb(36, 50, 68);
 
-        var foreground = isActive
+        if (isPendingDelete)
+        {
+            normalBackground = Color.FromRgb(127, 29, 29);
+            hoverBackground = Color.FromRgb(153, 27, 27);
+        }
+
+        var foreground = isPendingDelete
+            ? Color.FromRgb(254, 202, 202)
+            : isActive
             ? Color.FromRgb(189, 235, 255)
             : isNoProfile
                 ? Color.FromRgb(148, 163, 184)
@@ -257,9 +313,12 @@ public sealed class ProfileDropdownController
             Padding = new Thickness(10, 0, 10, 1),
             Background = new SolidColorBrush(normalBackground),
             Cursor = Cursors.Hand,
+            ToolTip = isPendingDelete
+                ? "Left-click or middle-click to confirm delete."
+                : null,
             Child = new TextBlock
             {
-                Text = name,
+                Text = isPendingDelete ? $"{name} - Confirm" : name,
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(foreground),
@@ -289,11 +348,7 @@ public sealed class ProfileDropdownController
         {
             Header = "Delete"
         };
-        deleteItem.Click += (_, _) =>
-        {
-            _deleteProfile(profile);
-            Refresh();
-        };
+        deleteItem.Click += (_, _) => BeginOrConfirmDelete(profile);
 
         contextMenu.Items.Add(editNameItem);
         contextMenu.Items.Add(deleteItem);
@@ -349,9 +404,29 @@ public sealed class ProfileDropdownController
 
     private void BeginRename(MacroProfile profile)
     {
+        _pendingDeleteProfile = null;
         _renamingProfile = profile;
         _isAddingProfile = false;
         _popup.StaysOpen = true;
+        Refresh();
+    }
+
+    private void BeginOrConfirmDelete(MacroProfile profile)
+    {
+        if (ReferenceEquals(_pendingDeleteProfile, profile))
+        {
+            _pendingDeleteProfile = null;
+            _renamingProfile = null;
+            _popup.StaysOpen = false;
+            _deleteProfile(profile);
+            return;
+        }
+
+        _pendingDeleteProfile = profile;
+        _renamingProfile = null;
+        _isAddingProfile = false;
+        _popup.StaysOpen = false;
+        _popup.IsOpen = true;
         Refresh();
     }
 
@@ -384,6 +459,9 @@ public sealed class ProfileDropdownController
             return;
 
         if (_renamingProfile != null)
+            return;
+
+        if (_pendingDeleteProfile != null)
             return;
 
         _draggedProfile = TryGetSourceProfile(e.OriginalSource as DependencyObject);
@@ -515,6 +593,7 @@ public sealed class ProfileDropdownController
                 MacroProfile.NormalizeId(_getActiveProfileId()),
                 _draggedProfile.Id,
                 StringComparison.OrdinalIgnoreCase),
+            isPendingDelete: false,
             isNoProfile: false);
 
         ghostRow.IsHitTestVisible = false;
