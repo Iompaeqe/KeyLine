@@ -1,9 +1,9 @@
-<UserControl x:Class="KeyLine.ExportMacroSelectionView"
+<UserControl x:Class="KeyLine.ImportConfirmationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
-    <Border Width="360"
-            Height="330"
+    <Border Width="460"
+            Height="390"
             CornerRadius="12"
             Background="#121A27"
             BorderBrush="#2A3B55"
@@ -12,40 +12,43 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock x:Name="TitleTextBlock"
-                       Text="Export macros"
+                       Text="Confirm import"
                        FontSize="14"
                        FontWeight="Bold"
                        Foreground="#E5EEF8"
-                       Margin="0,0,0,10" />
+                       Margin="0,0,0,8" />
 
-            <Border Grid.Row="1"
-                    Background="#0B1220"
-                    BorderBrush="#2A3B55"
+            <Border x:Name="WarningBorder"
+                    Grid.Row="1"
+                    CornerRadius="8"
+                    Background="#2A0808"
+                    BorderBrush="#7F1D1D"
                     BorderThickness="1"
-                    CornerRadius="7"
-                    Padding="6">
-                <Grid>
-                    <ListBox x:Name="MacroListBox"
-                             SelectionMode="Multiple"
-                             DisplayMemberPath="Name"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Foreground="#E5EEF8" />
-
-                    <ScrollViewer x:Name="GroupedMacroScrollViewer"
-                                  VerticalScrollBarVisibility="Auto"
-                                  Visibility="Collapsed">
-                        <StackPanel x:Name="GroupedMacroPanel" />
-                    </ScrollViewer>
-                </Grid>
+                    Padding="9,6"
+                    Margin="0,0,0,10"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="WarningTextBlock"
+                           TextWrapping="Wrap"
+                           FontWeight="SemiBold"
+                           Foreground="#FCA5A5" />
             </Border>
 
-            <StackPanel Grid.Row="2"
+            <ScrollViewer Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto"
+                          Background="#0B1220"
+                          BorderBrush="#2A3B55"
+                          BorderThickness="1"
+                          Padding="10">
+                <StackPanel x:Name="ContentPanel" />
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="3"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,12,0,0">
@@ -54,13 +57,14 @@
                         Height="26"
                         Margin="0,0,8,0"
                         Click="CancelButton_Click" />
-                <Button Content="Export"
-                        Width="82"
+                <Button x:Name="ConfirmButton"
+                        Content="Import"
+                        Width="92"
                         Height="26"
                         Background="#123A5A"
                         BorderBrush="#256D9D"
                         Foreground="#BAE6FD"
-                        Click="ExportButton_Click" />
+                        Click="ConfirmButton_Click" />
             </StackPanel>
         </Grid>
     </Border>

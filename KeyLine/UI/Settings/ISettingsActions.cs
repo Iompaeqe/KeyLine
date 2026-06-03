@@ -3,6 +3,7 @@ namespace KeyLine;
 public interface ISettingsActions
 {
     string CurrentVersionText { get; }
+    string ImportExportNotice { get; }
 
     void ApplySettings();
     void SetLaunchOnStartup(bool enabled);
@@ -10,6 +11,7 @@ public interface ISettingsActions
     void ExportMacro();
     void ExportProfile();
     void ExportEverything();
+    void OpenBackups();
     void PreviewPlaybackSound();
     void ResetDefaults();
     void ResetSettings();

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Media;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -30,6 +31,7 @@ public sealed class SettingsController : ISettingsActions
     private readonly Func<int, AppSettings, MacroWorkspace> _createWorkspace;
     private readonly Action _captureActiveWorkspaceState;
     private readonly Action<int, bool> _activateWorkspace;
+    private readonly Action<string> _activateProfile;
     private readonly Action _resetProfiles;
     private readonly Action<bool> _setShortcutsEnabled;
     private readonly Action<double> _applyMainWindowWidth;
@@ -46,7 +48,9 @@ public sealed class SettingsController : ISettingsActions
     private const string ImportExportCategory = "Import/Export";
     private const string GitHubLatestReleaseApi = "https://api.github.com/repos/mkurtt96/KeyLine/releases/latest";
     private const string GitHubReleasesPage = "https://github.com/mkurtt96/KeyLine/releases";
+    private string _importExportNotice = "";
     public string CurrentVersionText => GetCurrentVersionText();
+    public string ImportExportNotice => _importExportNotice;
 
     public SettingsController(
         Window owner,
@@ -64,6 +68,7 @@ public sealed class SettingsController : ISettingsActions
         Func<int, AppSettings, MacroWorkspace> createWorkspace,
         Action captureActiveWorkspaceState,
         Action<int, bool> activateWorkspace,
+        Action<string> activateProfile,
         Action resetProfiles,
         Action<bool> setShortcutsEnabled,
         Action<double> applyMainWindowWidth,
@@ -91,6 +96,7 @@ public sealed class SettingsController : ISettingsActions
         _createWorkspace = createWorkspace;
         _captureActiveWorkspaceState = captureActiveWorkspaceState;
         _activateWorkspace = activateWorkspace;
+        _activateProfile = activateProfile;
         _resetProfiles = resetProfiles;
         _setShortcutsEnabled = setShortcutsEnabled;
         _applyMainWindowWidth = applyMainWindowWidth;
@@ -170,6 +176,8 @@ public sealed class SettingsController : ISettingsActions
 
     public void Import()
     {
+        _importExportNotice = "";
+
         var dialog = new OpenFileDialog
         {
             Filter = "KeyLine package (*.keyline)|*.keyline|All files (*.*)|*.*",
@@ -190,6 +198,7 @@ public sealed class SettingsController : ISettingsActions
 
         _modalHost.Content = new ExportMacroSelectionView(
             _workspaces.ToList(),
+            _profiles.ToList(),
             _getActiveWorkspace(),
             selected =>
             {
@@ -255,6 +264,17 @@ public sealed class SettingsController : ISettingsActions
             _getMainWindowWidth(),
             _profiles.ToList(),
             _getActiveProfileId());
+    }
+
+    public void OpenBackups()
+    {
+        Directory.CreateDirectory(MacroStateStore.BackupsDirectory);
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = MacroStateStore.BackupsDirectory,
+            UseShellExecute = true
+        });
     }
 
     public void PreviewPlaybackSound()
@@ -330,21 +350,28 @@ public sealed class SettingsController : ISettingsActions
 
     private void ImportFiles(IEnumerable<string> paths)
     {
+        _importExportNotice = "";
+
         foreach (var path in paths)
         {
             try
             {
                 if (MacroStateStore.IsEverythingExport(path))
                 {
-                    ImportEverything(path);
-                    continue;
+                    PreviewEverythingImport(path);
+                    return;
                 }
 
                 var package = MacroFileStore.ImportPackage(path);
-                if (package.Kind == MacroFileKind.Profiles)
-                    ImportProfiles(package.Profiles, package.Workspaces);
+                if (package.Kind == MacroFileKind.Profiles || package.Profiles.Count > 0)
+                {
+                    PreviewProfileImport(package.Profiles, package.Workspaces);
+                    return;
+                }
                 else
+                {
                     ImportWorkspaces(package.Workspaces);
+                }
             }
             catch
             {
@@ -353,22 +380,74 @@ public sealed class SettingsController : ISettingsActions
         }
     }
 
-    private void ImportEverything(string path)
+    private void PreviewProfileImport(
+        IReadOnlyList<MacroProfile> importedProfiles,
+        IReadOnlyList<MacroWorkspace> importedWorkspaces)
     {
-        if (MessageBox.Show(
-                _owner,
-                "Importing this file will rewrite every setting, profile, and macro. Continue?",
-                "Import EVERYTHING",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (importedProfiles.Count == 0)
         {
+            ImportWorkspaces(importedWorkspaces);
             return;
         }
 
+        ShowImportConfirmation(new ImportConfirmationView(
+            "Confirm profile import",
+            "Import",
+            CreateProfileImportPreview(importedProfiles, importedWorkspaces),
+            () =>
+            {
+                ImportProfiles(importedProfiles, importedWorkspaces);
+                Close();
+            },
+            () => Show(ImportExportCategory)));
+    }
+
+    private void PreviewEverythingImport(string path)
+    {
         var snapshot = MacroStateStore.ImportSnapshot(path);
         if (snapshot == null || snapshot.Workspaces.Count == 0)
         {
             _setStatusText($"Import failed: {Path.GetFileName(path)}");
+            return;
+        }
+
+        SystemSounds.Exclamation.Play();
+        ShowImportConfirmation(new ImportConfirmationView(
+            "Confirm EVERYTHING import",
+            "Import EVERYTHING",
+            CreateEverythingImportPreview(snapshot),
+            () => ApplyEverythingImport(path, snapshot),
+            () => Show(ImportExportCategory),
+            "Warning: importing EVERYTHING will replace every setting, profile, and macro. The current state will be backed up first.",
+            CreateSettingsPreview(snapshot)));
+    }
+
+    private void ShowImportConfirmation(UIElement view)
+    {
+        _modalHost.Content = view;
+        _modalOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void ApplyEverythingImport(string path, MacroStateSnapshot snapshot)
+    {
+        _captureActiveWorkspaceState();
+
+        string backupPath;
+        try
+        {
+            backupPath = MacroStateStore.CreateAutoBackupBeforeImport(
+                _workspaces.ToList(),
+                _getActiveWorkspaceIndex(),
+                _getShortcutsEnabled(),
+                _settings,
+                _getMainWindowWidth(),
+                _profiles.ToList(),
+                _getActiveProfileId());
+        }
+        catch
+        {
+            _setStatusText("Import failed: could not create backup");
+            Show(ImportExportCategory);
             return;
         }
 
@@ -390,6 +469,9 @@ public sealed class SettingsController : ISettingsActions
         _setShortcutsEnabled(snapshot.ShortcutsEnabled);
         ApplySettings();
         _saveStateNow();
+        _importExportNotice =
+            $"Notice: the old state is saved in the backups. ({Path.GetFileName(backupPath)})";
+        Show(ImportExportCategory);
     }
 
     private void ImportWorkspaces(IReadOnlyList<MacroWorkspace> imported)
@@ -442,7 +524,6 @@ public sealed class SettingsController : ISettingsActions
             profileIdMap[sourceId] = profile.Id;
         }
 
-        var firstImportedWorkspaceIndex = -1;
         foreach (var workspace in importedWorkspaces)
         {
             var sourceProfileId = MacroProfile.NormalizeId(workspace.ProfileId);
@@ -458,16 +539,107 @@ public sealed class SettingsController : ISettingsActions
                 workspace.Name);
             ResetImportedTargetHandles(workspace);
 
-            if (firstImportedWorkspaceIndex < 0)
-                firstImportedWorkspaceIndex = _workspaces.Count;
-
             _workspaces.Add(workspace);
         }
 
-        if (firstImportedWorkspaceIndex >= 0)
-            _activateWorkspace(firstImportedWorkspaceIndex, true);
+        var firstImportedProfileId = profileIdMap.Values.FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(firstImportedProfileId))
+            _activateProfile(firstImportedProfileId);
         else
             _scheduleSaveState();
+    }
+
+    private static IReadOnlyList<ImportProfilePreview> CreateProfileImportPreview(
+        IReadOnlyList<MacroProfile> importedProfiles,
+        IReadOnlyList<MacroWorkspace> importedWorkspaces)
+    {
+        var result = new List<ImportProfilePreview>();
+
+        foreach (var profile in importedProfiles)
+        {
+            var profileId = MacroProfile.NormalizeId(profile.Id);
+            if (MacroProfile.IsNoProfile(profileId))
+                continue;
+
+            var macroNames = importedWorkspaces
+                .Where(workspace => string.Equals(
+                    MacroProfile.NormalizeId(workspace.ProfileId),
+                    profileId,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(workspace => workspace.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            result.Add(new ImportProfilePreview(
+                string.IsNullOrWhiteSpace(profile.Name) ? "Profile" : profile.Name,
+                macroNames));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<ImportProfilePreview> CreateEverythingImportPreview(MacroStateSnapshot snapshot)
+    {
+        var result = new List<ImportProfilePreview>();
+
+        var namedProfiles = snapshot.Profiles
+            .Select(profile => new
+            {
+                Id = MacroProfile.NormalizeId(profile.Id),
+                Name = string.IsNullOrWhiteSpace(profile.Name) ? "Profile" : profile.Name
+            })
+            .Where(profile => !MacroProfile.IsNoProfile(profile.Id))
+            .ToList();
+
+        foreach (var profile in namedProfiles)
+        {
+            var macroNames = snapshot.Workspaces
+                .Where(workspace => string.Equals(
+                    MacroProfile.NormalizeId(workspace.ProfileId),
+                    profile.Id,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(workspace => workspace.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            result.Add(new ImportProfilePreview(profile.Name, macroNames));
+        }
+
+        var noProfileMacros = snapshot.Workspaces
+            .Where(workspace => MacroProfile.IsNoProfile(MacroProfile.NormalizeId(workspace.ProfileId)))
+            .Select(workspace => workspace.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToList();
+
+        if (noProfileMacros.Count > 0 || result.Count == 0)
+            result.Insert(0, new ImportProfilePreview(MacroProfile.NoProfileName, noProfileMacros));
+
+        return result;
+    }
+
+    private static ImportSettingsPreview CreateSettingsPreview(MacroStateSnapshot snapshot)
+    {
+        var activeProfileId = MacroProfile.NormalizeId(snapshot.ActiveProfileId);
+        var activeProfileName = MacroProfile.NoProfileName;
+        if (!MacroProfile.IsNoProfile(activeProfileId))
+        {
+            activeProfileName = snapshot.Profiles.FirstOrDefault(profile => string.Equals(
+                    MacroProfile.NormalizeId(profile.Id),
+                    activeProfileId,
+                    StringComparison.OrdinalIgnoreCase))?.Name ?? MacroProfile.NoProfileName;
+        }
+
+        return new ImportSettingsPreview(
+            snapshot.Workspaces.Count,
+            snapshot.Profiles.Count,
+            snapshot.ActiveWorkspaceIndex,
+            activeProfileName,
+            snapshot.ShortcutsEnabled,
+            snapshot.Settings.DefaultTimerMs,
+            snapshot.Settings.DefaultBaseDelayMs,
+            snapshot.Settings.DefaultLoopCount,
+            snapshot.Settings.DefaultLoopMode,
+            snapshot.Settings.ExperimentalFeaturesEnabled);
     }
 
     private void ExportWorkspaces(IReadOnlyList<MacroWorkspace> selectedWorkspaces)

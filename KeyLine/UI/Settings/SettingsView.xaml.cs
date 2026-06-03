@@ -154,6 +154,10 @@ public partial class SettingsView : UserControl
         AddAction("Export Macro", _actions.ExportMacro);
         AddAction("Export Profile", _actions.ExportProfile);
         AddAction("Export EVERYTHING", _actions.ExportEverything);
+        AddAction("Open Backups", _actions.OpenBackups);
+
+        if (!string.IsNullOrWhiteSpace(_actions.ImportExportNotice))
+            AddNotice(_actions.ImportExportNotice);
     }
 
     private void RenderReset()
@@ -345,6 +349,18 @@ public partial class SettingsView : UserControl
             TextWrapping = TextWrapping.Wrap,
             Foreground = DimBrush,
             Margin = new Thickness(0, 0, 0, 8)
+        });
+    }
+
+    private void AddNotice(string text)
+    {
+        SettingsPanel.Children.Add(new TextBlock
+        {
+            Text = text,
+            TextWrapping = TextWrapping.Wrap,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138)),
+            Margin = new Thickness(0, 2, 0, 8)
         });
     }
 

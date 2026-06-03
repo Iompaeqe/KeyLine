@@ -24,6 +24,7 @@ public partial class MainWindow
             createWorkspace: (number, settings) => CreateWorkspace(number, settings),
             captureActiveWorkspaceState: CaptureActiveWorkspaceState,
             activateWorkspace: ActivateWorkspace,
+            activateProfile: ActivateProfile,
             resetProfiles: ResetProfiles,
             setShortcutsEnabled: value =>
             {
