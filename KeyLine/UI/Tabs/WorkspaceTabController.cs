@@ -16,7 +16,6 @@ public sealed class WorkspaceTabController
 {
     private const double DragThreshold = 4;
     private const double WheelScrollAmount = 48;
-    private const string RenameIconTag = "rename";
     private const double GhostOpacity = 0.86;
     private const double GhostScale = 1.04;
     private const double GhostFollowStrength = 0.65;
@@ -31,10 +30,13 @@ public sealed class WorkspaceTabController
     private readonly Dispatcher _dispatcher;
 
     private readonly Func<IReadOnlyList<MacroWorkspace>> _getWorkspaces;
+    private readonly Func<IReadOnlyList<MacroProfile>> _getProfiles;
     private readonly Func<int> _getActiveWorkspaceIndex;
     private readonly Func<MacroWorkspace, bool> _isWorkspaceRunning;
     private readonly Action<int> _activateWorkspace;
     private readonly Action<MacroWorkspace> _deleteWorkspace;
+    private readonly Action<MacroWorkspace> _duplicateWorkspace;
+    private readonly Action<MacroWorkspace, string> _moveWorkspaceToProfile;
     private readonly Action<int, int> _reorderWorkspace;
     private readonly Action<string> _showWarning;
     private readonly Action _scheduleSaveState;
@@ -66,10 +68,13 @@ public sealed class WorkspaceTabController
         UIElement rightEdgeLine,
         Dispatcher dispatcher,
         Func<IReadOnlyList<MacroWorkspace>> getWorkspaces,
+        Func<IReadOnlyList<MacroProfile>> getProfiles,
         Func<int> getActiveWorkspaceIndex,
         Func<MacroWorkspace, bool> isWorkspaceRunning,
         Action<int> activateWorkspace,
         Action<MacroWorkspace> deleteWorkspace,
+        Action<MacroWorkspace> duplicateWorkspace,
+        Action<MacroWorkspace, string> moveWorkspaceToProfile,
         Action<int, int> reorderWorkspace,
         Action<string> showWarning,
         Action scheduleSaveState)
@@ -83,10 +88,13 @@ public sealed class WorkspaceTabController
         _rightEdgeLine = rightEdgeLine;
         _dispatcher = dispatcher;
         _getWorkspaces = getWorkspaces;
+        _getProfiles = getProfiles;
         _getActiveWorkspaceIndex = getActiveWorkspaceIndex;
         _isWorkspaceRunning = isWorkspaceRunning;
         _activateWorkspace = activateWorkspace;
         _deleteWorkspace = deleteWorkspace;
+        _duplicateWorkspace = duplicateWorkspace;
+        _moveWorkspaceToProfile = moveWorkspaceToProfile;
         _reorderWorkspace = reorderWorkspace;
         _showWarning = showWarning;
         _scheduleSaveState = scheduleSaveState;
@@ -166,7 +174,7 @@ public sealed class WorkspaceTabController
         if (IsSourceInsideTextBox(e.OriginalSource as DependencyObject))
             return;
 
-        if (_renamingWorkspace != null || IsSourceInsideRenameIcon(e.OriginalSource as DependencyObject))
+        if (_renamingWorkspace != null)
             return;
 
         _draggedTabWorkspace = TryGetSourceTabWorkspace(e.OriginalSource as DependencyObject);
@@ -261,33 +269,22 @@ public sealed class WorkspaceTabController
             BeginRename(workspace);
             e.Handled = true;
         };
-        button.PreviewMouseRightButtonDown += (_, e) =>
+        button.PreviewMouseDown += (_, e) =>
         {
+            if (e.ChangedButton != MouseButton.Middle)
+                return;
+
             BeginOrConfirmDelete(workspace);
             e.Handled = true;
         };
+        button.ContextMenu = CreateWorkspaceContextMenu(workspace);
 
         grid.Children.Add(button);
 
         if (isPendingDelete)
         {
             button.Padding = new Thickness(10, 0, 10, 1);
-            return grid;
         }
-
-        var editIcon = CreateEditIcon(button, workspace);
-        grid.MouseEnter += (_, _) =>
-        {
-            editIcon.Visibility = Visibility.Visible;
-            button.Padding = new Thickness(10, 0, 20, 1);
-        };
-        grid.MouseLeave += (_, _) =>
-        {
-            editIcon.Visibility = Visibility.Collapsed;
-            button.Padding = new Thickness(10, 0, 10, 1);
-        };
-
-        grid.Children.Add(editIcon);
         return grid;
     }
 
@@ -350,33 +347,65 @@ public sealed class WorkspaceTabController
         };
     }
 
-    private TextBlock CreateEditIcon(Button button, MacroWorkspace workspace)
+    private ContextMenu CreateWorkspaceContextMenu(MacroWorkspace workspace)
     {
-        var editIcon = new TextBlock
+        var contextMenu = new ContextMenu();
+        contextMenu.SetResourceReference(FrameworkElement.StyleProperty, "KeyLineContextMenu");
+
+        var moveToProfileItem = new MenuItem
         {
-            Text = "✎",
-            FontSize = 10,
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 0, 6, 2),
-            Foreground = button.Foreground,
-            Visibility = Visibility.Collapsed,
-            Cursor = Cursors.Hand,
-            IsHitTestVisible = true,
-            Tag = RenameIconTag,
-            ToolTip = TooltipNotes.RenameMacro,
-            Opacity = 0.6
+            Header = "Move to profile"
         };
 
-        editIcon.MouseLeftButtonDown += (_, e) =>
+        foreach (var (profileId, profileName) in GetProfileMenuOptions())
         {
-            BeginRename(workspace);
-            e.Handled = true;
-        };
-        editIcon.MouseEnter += (_, _) => editIcon.Opacity = 1.0;
-        editIcon.MouseLeave += (_, _) => editIcon.Opacity = 0.6;
+            var targetProfileId = profileId;
+            var profileItem = new MenuItem
+            {
+                Header = profileName,
+                IsEnabled = !string.Equals(
+                    MacroProfile.NormalizeId(workspace.ProfileId),
+                    targetProfileId,
+                    StringComparison.OrdinalIgnoreCase)
+            };
+            profileItem.Click += (_, _) => _moveWorkspaceToProfile(workspace, targetProfileId);
+            moveToProfileItem.Items.Add(profileItem);
+        }
 
-        return editIcon;
+        var duplicateItem = new MenuItem
+        {
+            Header = "Duplicate"
+        };
+        duplicateItem.Click += (_, _) => _duplicateWorkspace(workspace);
+
+        var renameItem = new MenuItem
+        {
+            Header = "Rename"
+        };
+        renameItem.Click += (_, _) => BeginRename(workspace);
+
+        var deleteItem = new MenuItem
+        {
+            Header = "Delete"
+        };
+        deleteItem.Click += (_, _) => BeginOrConfirmDelete(workspace);
+
+        contextMenu.Items.Add(moveToProfileItem);
+        contextMenu.Items.Add(new Separator());
+        contextMenu.Items.Add(duplicateItem);
+        contextMenu.Items.Add(new Separator());
+        contextMenu.Items.Add(renameItem);
+        contextMenu.Items.Add(deleteItem);
+
+        return contextMenu;
+    }
+
+    private IEnumerable<(string Id, string Name)> GetProfileMenuOptions()
+    {
+        yield return (MacroProfile.NoProfileId, MacroProfile.NoProfileName);
+
+        foreach (var profile in _getProfiles())
+            yield return (MacroProfile.NormalizeId(profile.Id), profile.Name);
     }
 
     private TextBox CreateRenameTextBox(MacroWorkspace workspace, int index)
@@ -803,19 +832,6 @@ public sealed class WorkspaceTabController
         }
 
         return null;
-    }
-
-    private static bool IsSourceInsideRenameIcon(DependencyObject? source)
-    {
-        while (source != null)
-        {
-            if (source is FrameworkElement { Tag: string tag } && tag == RenameIconTag)
-                return true;
-
-            source = VisualTreeHelper.GetParent(source);
-        }
-
-        return false;
     }
 
     private static int IndexOfWorkspace(IReadOnlyList<MacroWorkspace> workspaces, MacroWorkspace workspace)

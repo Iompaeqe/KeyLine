@@ -22,7 +22,7 @@ public static class TooltipNotes
     public const string StopPlayback = "Stop playback.";
 
     public const string MacroTabRunning = "This macro is currently running.";
-    public const string MacroTabSwitchRenameDelete = "Click to switch macro. Drag to reorder. Double-click to rename. Right-click to delete.";
+    public const string MacroTabSwitchRenameDelete = "Click to switch macro. Drag to reorder. Double-click to rename. Middle-click to delete. Right-click for options.";
     public const string RenameMacro = "Rename macro";
 
     public const string TimelineSectionToggle = "Show or hide timeline settings.";

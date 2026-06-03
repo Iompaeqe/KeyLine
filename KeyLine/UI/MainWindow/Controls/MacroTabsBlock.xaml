@@ -20,12 +20,13 @@
                     MaxWidth="580">
 
             <Grid MaxWidth="360"
-                  Height="24"
+                  Height="32"
                   ClipToBounds="True">
 
                 <ScrollViewer x:Name="MacroTabsScrollViewer"
                               MaxWidth="360"
-                              Height="24"
+                              Height="32"
+                              Background="Transparent"
                               HorizontalScrollBarVisibility="Hidden"
                               VerticalScrollBarVisibility="Disabled"
                               CanContentScroll="False"
@@ -33,7 +34,8 @@
 
                     <StackPanel x:Name="MacroTabsPanel"
                                 Orientation="Horizontal"
-                                VerticalAlignment="Center" />
+                                VerticalAlignment="Center"
+                                Background="Transparent" />
                 </ScrollViewer>
 
                 <Border x:Name="MacroTabsLeftEdgeFade"

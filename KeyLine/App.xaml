@@ -12,6 +12,7 @@
                 <ResourceDictionary Source="UI/Common/Styles/CheckBoxes.xaml" />
                 <ResourceDictionary Source="UI/Common/Styles/ScrollBars.xaml" />
                 <ResourceDictionary Source="UI/Common/Styles/ComboBoxes.xaml" />
+                <ResourceDictionary Source="UI/Common/Styles/ContextMenus.xaml" />
                 <ResourceDictionary Source="UI/Common/Styles/ToolTips.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
