@@ -12,91 +12,111 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border Background="{StaticResource Bg}"
-            Padding="4,0">
-        <StackPanel Orientation="Horizontal"
+        <Grid Height="42"
+              MaxWidth="580"
+              ClipToBounds="False">
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Panel.ZIndex="1">
+
+                <Grid MaxWidth="360"
+                      Height="32"
+                      ClipToBounds="True">
+
+                    <ScrollViewer x:Name="MacroTabsScrollViewer"
+                                  MaxWidth="360"
+                                  Height="32"
+                                  Background="Transparent"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  CanContentScroll="False"
+                                  ClipToBounds="True">
+
+                        <StackPanel x:Name="MacroTabsPanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent" />
+                    </ScrollViewer>
+
+                    <Border x:Name="MacroTabsLeftEdgeFade"
+                            Width="28"
+                            HorizontalAlignment="Left"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#10151D" Offset="0" />
+                                <GradientStop Color="#D910151D" Offset="0.55" />
+                                <GradientStop Color="#0010151D" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Border x:Name="MacroTabsRightEdgeFade"
+                            Width="28"
+                            HorizontalAlignment="Right"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
+                                <GradientStop Color="#10151D" Offset="0" />
+                                <GradientStop Color="#D910151D" Offset="0.55" />
+                                <GradientStop Color="#0010151D" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Border x:Name="MacroTabsLeftEdgeLine"
+                            Width="1"
+                            HorizontalAlignment="Left"
+                            Margin="0,3,0,3"
+                            Background="#38BDF8"
+                            Opacity="0.42"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False" />
+
+                    <Border x:Name="MacroTabsRightEdgeLine"
+                            Width="1"
+                            HorizontalAlignment="Right"
+                            Margin="0,3,0,3"
+                            Background="#38BDF8"
+                            Opacity="0.42"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False" />
+
+                    <Canvas x:Name="MacroTabsDragOverlay"
+                            IsHitTestVisible="False"
+                            ClipToBounds="True" />
+                </Grid>
+
+                <Button x:Name="AddMacroTabButton"
+                        Content="+"
+                        Style="{StaticResource TitleGlyphButton}"
+                        Width="24"
+                        MinWidth="24"
+                        Height="22"
+                        Margin="4,0,0,0" />
+            </StackPanel>
+
+            <Border x:Name="MacroTabReorderNotice"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    MaxWidth="580">
+                    VerticalAlignment="Bottom"
+                    Margin="-30,0,0,-9"
+                    Padding="8,2"
+                    CornerRadius="7"
+                    Background="#2B2207"
+                    BorderBrush="#B45309"
+                    BorderThickness="1"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    Panel.ZIndex="2000">
+                <TextBlock Text="Reorder mode: drag macro tabs to reorder. Click anywhere else to finish."
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Foreground="#FDE68A" />
+            </Border>
 
-            <Grid MaxWidth="360"
-                  Height="32"
-                  ClipToBounds="True">
-
-                <ScrollViewer x:Name="MacroTabsScrollViewer"
-                              MaxWidth="360"
-                              Height="32"
-                              Background="Transparent"
-                              HorizontalScrollBarVisibility="Hidden"
-                              VerticalScrollBarVisibility="Disabled"
-                              CanContentScroll="False"
-                              ClipToBounds="True">
-
-                    <StackPanel x:Name="MacroTabsPanel"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                Background="Transparent" />
-                </ScrollViewer>
-
-                <Border x:Name="MacroTabsLeftEdgeFade"
-                        Width="28"
-                        HorizontalAlignment="Left"
-                        Visibility="Collapsed"
-                        IsHitTestVisible="False">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#10151D" Offset="0" />
-                            <GradientStop Color="#D910151D" Offset="0.55" />
-                            <GradientStop Color="#0010151D" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
-
-                <Border x:Name="MacroTabsRightEdgeFade"
-                        Width="28"
-                        HorizontalAlignment="Right"
-                        Visibility="Collapsed"
-                        IsHitTestVisible="False">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
-                            <GradientStop Color="#10151D" Offset="0" />
-                            <GradientStop Color="#D910151D" Offset="0.55" />
-                            <GradientStop Color="#0010151D" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
-
-                <Border x:Name="MacroTabsLeftEdgeLine"
-                        Width="1"
-                        HorizontalAlignment="Left"
-                        Margin="0,3,0,3"
-                        Background="#38BDF8"
-                        Opacity="0.42"
-                        Visibility="Collapsed"
-                        IsHitTestVisible="False" />
-
-                <Border x:Name="MacroTabsRightEdgeLine"
-                        Width="1"
-                        HorizontalAlignment="Right"
-                        Margin="0,3,0,3"
-                        Background="#38BDF8"
-                        Opacity="0.42"
-                        Visibility="Collapsed"
-                        IsHitTestVisible="False" />
-
-                <Canvas x:Name="MacroTabsDragOverlay"
-                        IsHitTestVisible="False"
-                        ClipToBounds="True" />
-            </Grid>
-
-            <Button x:Name="AddMacroTabButton"
-                    Content="+"
-                    Style="{StaticResource TitleGlyphButton}"
-                    Width="24"
-                    MinWidth="24"
-                    Height="22"
-                    Margin="4,0,0,0" />
-
-        </StackPanel>
-    </Border>
+        </Grid>
 </UserControl>

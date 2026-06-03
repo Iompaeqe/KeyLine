@@ -1,4 +1,5 @@
-﻿using System.Windows.Controls;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace KeyLine.UI.MainWindow.Controls;
 
@@ -20,4 +21,11 @@ public partial class MacroTabsBlock : UserControl
     public Border RightEdgeLine => MacroTabsRightEdgeLine;
 
     public Button AddButton => AddMacroTabButton;
+
+    public void SetReorderNoticeVisible(bool isVisible)
+    {
+        MacroTabReorderNotice.Visibility = isVisible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
 }

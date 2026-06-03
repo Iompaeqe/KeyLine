@@ -74,6 +74,7 @@ public partial class MainWindow : Window
         MacroTabsScrollViewer.MouseLeave += MacroTabsScrollViewer_MouseLeave;
         MacroTabsScrollViewer.ScrollChanged += MacroTabsScrollViewer_ScrollChanged;
         MacroTabsScrollViewer.SizeChanged += MacroTabsScrollViewer_SizeChanged;
+        PreviewMouseDown += Window_PreviewMouseDown;
         
         ToggleRightPanelButton.Click += ToggleRightPanelButton_Click;
         SettingsButton.Click += SettingsButton_Click;

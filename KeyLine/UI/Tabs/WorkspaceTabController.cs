@@ -15,6 +15,8 @@ namespace KeyLine.UI.Tabs;
 public sealed class WorkspaceTabController
 {
     private const double DragThreshold = 4;
+    private const double TabSpacing = 4;
+    private const double ReorderModeTabSpacing = 12;
     private const double WheelScrollAmount = 48;
     private const double GhostOpacity = 0.86;
     private const double GhostScale = 1.04;
@@ -40,12 +42,14 @@ public sealed class WorkspaceTabController
     private readonly Action<int, int> _reorderWorkspace;
     private readonly Action<string> _showWarning;
     private readonly Action _scheduleSaveState;
+    private readonly Action<bool> _setReorderNoticeVisible;
 
     private MacroWorkspace? _pendingDeleteWorkspace;
     private MacroWorkspace? _renamingWorkspace;
 
     private bool _isDraggingTabs;
     private bool _didDragTabs;
+    private bool _isReorderModeEnabled;
     private bool _isReorderingTab;
     private Point _dragStartPoint;
     private double _dragStartOffset;
@@ -77,7 +81,8 @@ public sealed class WorkspaceTabController
         Action<MacroWorkspace, string> moveWorkspaceToProfile,
         Action<int, int> reorderWorkspace,
         Action<string> showWarning,
-        Action scheduleSaveState)
+        Action scheduleSaveState,
+        Action<bool> setReorderNoticeVisible)
     {
         _tabsPanel = tabsPanel;
         _scrollViewer = scrollViewer;
@@ -98,12 +103,27 @@ public sealed class WorkspaceTabController
         _reorderWorkspace = reorderWorkspace;
         _showWarning = showWarning;
         _scheduleSaveState = scheduleSaveState;
+        _setReorderNoticeVisible = setReorderNoticeVisible;
     }
+
+    public bool IsReorderModeEnabled => _isReorderModeEnabled;
 
     public void ClearTransientState()
     {
         _pendingDeleteWorkspace = null;
         _renamingWorkspace = null;
+        DisableReorderMode();
+    }
+
+    public void DisableReorderMode()
+    {
+        if (!_isReorderModeEnabled)
+            return;
+
+        _isReorderModeEnabled = false;
+        _setReorderNoticeVisible(false);
+        EndDrag();
+        Refresh();
     }
 
     public void Refresh()
@@ -180,7 +200,6 @@ public sealed class WorkspaceTabController
         _draggedTabWorkspace = TryGetSourceTabWorkspace(e.OriginalSource as DependencyObject);
         _isDraggingTabs = true;
         _didDragTabs = false;
-        _isReorderingTab = false;
         _dragStartPoint = e.GetPosition(_scrollViewer);
         _dragStartOffset = _scrollViewer.HorizontalOffset;
     }
@@ -207,7 +226,7 @@ public sealed class WorkspaceTabController
         if (!_scrollViewer.IsMouseCaptured)
             _scrollViewer.CaptureMouse();
 
-        if (_draggedTabWorkspace != null)
+        if (_draggedTabWorkspace != null && _isReorderModeEnabled)
         {
             _isReorderingTab = true;
             EnsureDragGhost();
@@ -244,7 +263,7 @@ public sealed class WorkspaceTabController
     {
         var grid = new Grid
         {
-            Margin = new Thickness(index == 0 ? 0 : 4, 0, 0, 0),
+            Margin = new Thickness(index == 0 ? 0 : GetTabSpacing(), 0, 0, 0),
             Opacity = isDragged ? 0.72 : 1.0,
             Tag = workspace
         };
@@ -260,14 +279,6 @@ public sealed class WorkspaceTabController
             }
 
             _activateWorkspace(index);
-        };
-        button.PreviewMouseLeftButtonDown += (_, e) =>
-        {
-            if (e.ClickCount < 2)
-                return;
-
-            BeginRename(workspace);
-            e.Handled = true;
         };
         button.PreviewMouseDown += (_, e) =>
         {
@@ -390,9 +401,18 @@ public sealed class WorkspaceTabController
         };
         deleteItem.Click += (_, _) => BeginOrConfirmDelete(workspace);
 
+        var reorderItem = new MenuItem
+        {
+            Header = "Reorder",
+            IsEnabled = _getWorkspaces().Count > 1
+        };
+        reorderItem.Click += (_, _) => BeginReorderMode();
+
         contextMenu.Items.Add(moveToProfileItem);
         contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(duplicateItem);
+        contextMenu.Items.Add(new Separator());
+        contextMenu.Items.Add(reorderItem);
         contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(renameItem);
         contextMenu.Items.Add(deleteItem);
@@ -418,7 +438,7 @@ public sealed class WorkspaceTabController
             MaxWidth = 128,
             Width = 104,
             Padding = new Thickness(8, 1, 8, 1),
-            Margin = new Thickness(index == 0 ? 0 : 4, 0, 0, 0),
+            Margin = new Thickness(index == 0 ? 0 : GetTabSpacing(), 0, 0, 0),
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
             Background = new SolidColorBrush(Color.FromRgb(10, 52, 84)),
@@ -476,6 +496,18 @@ public sealed class WorkspaceTabController
 
         _pendingDeleteWorkspace = workspace;
         _renamingWorkspace = null;
+        Refresh();
+    }
+
+    private void BeginReorderMode()
+    {
+        if (_getWorkspaces().Count <= 1)
+            return;
+
+        _pendingDeleteWorkspace = null;
+        _renamingWorkspace = null;
+        _isReorderModeEnabled = true;
+        _setReorderNoticeVisible(true);
         Refresh();
     }
 
@@ -806,6 +838,11 @@ public sealed class WorkspaceTabController
         _leftEdgeLine.Visibility = canScrollLeft ? Visibility.Visible : Visibility.Collapsed;
         _rightEdgeFade.Visibility = canScrollRight ? Visibility.Visible : Visibility.Collapsed;
         _rightEdgeLine.Visibility = canScrollRight ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private double GetTabSpacing()
+    {
+        return _isReorderModeEnabled ? ReorderModeTabSpacing : TabSpacing;
     }
 
     private static bool IsSourceInsideTextBox(DependencyObject? source)

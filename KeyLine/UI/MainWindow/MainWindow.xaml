@@ -137,7 +137,11 @@
                 </Grid.RowDefinitions>
 
                 <!-- ── Title bar ───────────────────────────────────── -->
-                <Grid Grid.Row="0" Margin="14,0" Background="Transparent" PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
+                <Grid Grid.Row="0"
+                      Margin="14,0"
+                      Background="Transparent"
+                      Panel.ZIndex="1000"
+                      PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -149,7 +153,11 @@
 
                     <controls:ProfileDropdownBlock x:Name="ProfileDropdownBlock" Grid.Column="1" Margin="10,0,0,0" />
 
-                    <controls:MacroTabsBlock x:Name="MacroTabsBlock" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <controls:MacroTabsBlock x:Name="MacroTabsBlock"
+                                             Grid.Column="2"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center"
+                                             Panel.ZIndex="1001" />
 
                     <controls:TitleCommandButtons x:Name="TitleCommandButtons" Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" />
 

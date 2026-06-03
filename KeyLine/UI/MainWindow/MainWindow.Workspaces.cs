@@ -41,7 +41,8 @@ public partial class MainWindow
                 moveWorkspaceToProfile: MoveWorkspaceToProfile,
                 reorderWorkspace: ReorderWorkspace,
                 showWarning: SetWorkspaceTabWarningStatus,
-                scheduleSaveState: ScheduleSaveState);
+                scheduleSaveState: ScheduleSaveState,
+                setReorderNoticeVisible: MacroTabsBlock.SetReorderNoticeVisible);
         }
 
         private static MacroWorkspace CreateWorkspace(
@@ -339,6 +340,30 @@ public partial class MainWindow
         private void MacroTabsScrollViewer_MouseLeave(object sender, MouseEventArgs e)
         {
             _workspaceTabs?.MouseLeave(e);
+        }
+
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_workspaceTabs?.IsReorderModeEnabled != true)
+                return;
+
+            if (IsSourceInsideMacroTabsScrollArea(e.OriginalSource as DependencyObject))
+                return;
+
+            _workspaceTabs.DisableReorderMode();
+        }
+
+        private bool IsSourceInsideMacroTabsScrollArea(DependencyObject? source)
+        {
+            while (source != null)
+            {
+                if (ReferenceEquals(source, MacroTabsScrollViewer))
+                    return true;
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
         }
 
         private void UpdateMacroTabEdgeIndicators()
