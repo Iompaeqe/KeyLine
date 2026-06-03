@@ -5,6 +5,19 @@ using KeyLine.Domain;
 
 namespace KeyLine.Services.Macro;
 
+public enum MacroFileKind
+{
+    Macros,
+    Profiles
+}
+
+public sealed class MacroFileImportResult
+{
+    public MacroFileKind Kind { get; init; } = MacroFileKind.Macros;
+    public List<MacroWorkspace> Workspaces { get; init; } = new();
+    public List<MacroProfile> Profiles { get; init; } = new();
+}
+
 public static class MacroFileStore
 {
     public const string Extension = ".keyline";
@@ -18,7 +31,31 @@ public static class MacroFileStore
     {
         var file = new MacroFile
         {
+            Kind = MacroFileKind.Macros.ToString(),
             Macros = workspaces.Select(ToPersistedWorkspace).ToList()
+        };
+
+        File.WriteAllText(path, JsonSerializer.Serialize(file, JsonOptions));
+    }
+
+    public static void ExportProfiles(
+        string path,
+        IEnumerable<MacroProfile> profiles,
+        IEnumerable<MacroWorkspace> workspaces)
+    {
+        var profileList = profiles.ToList();
+        var profileIds = profileList
+            .Select(profile => MacroProfile.NormalizeId(profile.Id))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var file = new MacroFile
+        {
+            Kind = MacroFileKind.Profiles.ToString(),
+            Profiles = profileList.Select(ToPersistedProfile).ToList(),
+            Macros = workspaces
+                .Where(workspace => profileIds.Contains(MacroProfile.NormalizeId(workspace.ProfileId)))
+                .Select(ToPersistedWorkspace)
+                .ToList()
         };
 
         File.WriteAllText(path, JsonSerializer.Serialize(file, JsonOptions));
@@ -26,15 +63,35 @@ public static class MacroFileStore
 
     public static List<MacroWorkspace> Import(string path)
     {
+        return ImportPackage(path).Workspaces;
+    }
+
+    public static MacroFileImportResult ImportPackage(string path)
+    {
         var json = File.ReadAllText(path);
         var file = JsonSerializer.Deserialize<MacroFile>(json, JsonOptions);
-        return file?.Macros.Select(ToWorkspace).ToList() ?? new List<MacroWorkspace>();
+        if (file == null)
+            return new MacroFileImportResult();
+
+        var kind = Enum.TryParse<MacroFileKind>(file.Kind, ignoreCase: true, out var parsedKind)
+            ? parsedKind
+            : file.Profiles.Count > 0
+                ? MacroFileKind.Profiles
+                : MacroFileKind.Macros;
+
+        return new MacroFileImportResult
+        {
+            Kind = kind,
+            Profiles = file.Profiles.Select(ToProfile).ToList(),
+            Workspaces = file.Macros.Select(ToWorkspace).ToList()
+        };
     }
 
     private static PersistedWorkspace ToPersistedWorkspace(MacroWorkspace workspace)
     {
         return new PersistedWorkspace
         {
+            ProfileId = MacroProfile.NormalizeId(workspace.ProfileId),
             Name = workspace.Name,
             ActiveTimelineIndex = workspace.Document.ActiveTimelineIndex,
             LoopCount = Math.Max(0, workspace.LoopCount),
@@ -42,8 +99,18 @@ public static class MacroFileStore
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
+            ShortcutsEnabled = workspace.ShortcutsEnabled,
             TargetWindowSearchName = workspace.TargetWindowSearchName,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
+        };
+    }
+
+    private static PersistedProfile ToPersistedProfile(MacroProfile profile)
+    {
+        return new PersistedProfile
+        {
+            Id = MacroProfile.NormalizeId(profile.Id),
+            Name = string.IsNullOrWhiteSpace(profile.Name) ? "Profile" : profile.Name.Trim()
         };
     }
 
@@ -87,12 +154,14 @@ public static class MacroFileStore
     {
         var workspace = new MacroWorkspace
         {
+            ProfileId = MacroProfile.NormalizeId(persisted.ProfileId),
             Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Imported Macro" : persisted.Name,
             LoopCount = Math.Max(0, persisted.LoopCount),
             LoopMode = GetPersistedLoopMode(persisted),
             TimerMs = Math.Max(0, persisted.TimerMs),
             BaseDelayMs = Math.Max(0, persisted.BaseDelayMs),
             ShortcutKeys = persisted.ShortcutKeys,
+            ShortcutsEnabled = persisted.ShortcutsEnabled,
             TargetWindowSearchName = persisted.TargetWindowSearchName
         };
 
@@ -110,6 +179,15 @@ public static class MacroFileStore
             workspace.Document.Timelines.Count - 1));
 
         return workspace;
+    }
+
+    private static MacroProfile ToProfile(PersistedProfile persisted)
+    {
+        return new MacroProfile
+        {
+            Id = MacroProfile.NormalizeId(persisted.Id),
+            Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Profile" : persisted.Name.Trim()
+        };
     }
 
     private static MacroTimeline ToTimeline(PersistedTimeline persisted, int fallbackLoopCount, int fallbackBaseDelayMs)
@@ -162,11 +240,14 @@ public static class MacroFileStore
     private sealed class MacroFile
     {
         public int Version { get; set; } = 1;
+        public string Kind { get; set; } = MacroFileKind.Macros.ToString();
+        public List<PersistedProfile> Profiles { get; set; } = new();
         public List<PersistedWorkspace> Macros { get; set; } = new();
     }
 
     private sealed class PersistedWorkspace
     {
+        public string ProfileId { get; set; } = MacroProfile.NoProfileId;
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
@@ -176,8 +257,15 @@ public static class MacroFileStore
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
+        public bool ShortcutsEnabled { get; set; }
         public string TargetWindowSearchName { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
+    }
+
+    private sealed class PersistedProfile
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 
     private sealed class PersistedTimeline

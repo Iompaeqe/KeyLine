@@ -6,11 +6,10 @@ public interface ISettingsActions
 
     void ApplySettings();
     void SetLaunchOnStartup(bool enabled);
-    void ImportMacroFile();
-    void ImportMultipleMacroFiles();
-    void ExportSelectedMacro();
-    void ExportAllMacros();
-    void OpenMacroStorageFolder();
+    void Import();
+    void ExportMacro();
+    void ExportProfile();
+    void ExportEverything();
     void PreviewPlaybackSound();
     void ResetDefaults();
     void ResetSettings();

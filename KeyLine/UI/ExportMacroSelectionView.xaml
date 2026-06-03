@@ -16,7 +16,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <TextBlock Text="Export macros"
+            <TextBlock x:Name="TitleTextBlock"
+                       Text="Export macros"
                        FontSize="14"
                        FontWeight="Bold"
                        Foreground="#E5EEF8"

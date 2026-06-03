@@ -28,6 +28,7 @@
                 <ResourceDictionary Source="../Common/Styles/CheckBoxes.xaml" />
                 <ResourceDictionary Source="../Common/Styles/ScrollBars.xaml" />
                 <ResourceDictionary Source="../Common/Styles/ComboBoxes.xaml" />
+                <ResourceDictionary Source="../Common/Styles/ContextMenus.xaml" />
                 <ResourceDictionary Source="../Common/Styles/ToolTips.xaml" />
                 <ResourceDictionary Source="../Common/Styles/Options.xaml" />
             </ResourceDictionary.MergedDictionaries>
@@ -137,14 +138,22 @@
 
                 <!-- ── Title bar ───────────────────────────────────── -->
                 <Grid Grid.Row="0" Margin="14,0" Background="Transparent" PreviewMouseLeftButtonDown="TitleBar_PreviewMouseLeftButtonDown">
-                    
-                    <controls:AppTitleBlock />
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                    <controls:MacroTabsBlock x:Name="MacroTabsBlock" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <controls:AppTitleBlock x:Name="AppTitleBlock" Grid.Column="0" />
 
-                    <controls:TitleCommandButtons x:Name="TitleCommandButtons" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                    
-                    <Border Height="1" VerticalAlignment="Bottom" Margin="-14,0" Background="#263244" />
+                    <controls:ProfileDropdownBlock x:Name="ProfileDropdownBlock" Grid.Column="1" Margin="10,0,0,0" />
+
+                    <controls:MacroTabsBlock x:Name="MacroTabsBlock" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                    <controls:TitleCommandButtons x:Name="TitleCommandButtons" Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                    <Border Grid.ColumnSpan="4" Height="1" VerticalAlignment="Bottom" Margin="-14,0" Background="#263244" />
                 </Grid>
 
                 <!-- ── Config strip ────────────────────────────────── -->
@@ -195,7 +204,7 @@
                                    Margin="12,5,12,0">
                             <TextBlock Text="TIMELINES" Style="{StaticResource Cap}"
                                        Margin="0" DockPanel.Dock="Left" />
-                            <TextBlock Text="drag to reorder  ·  right-click to remove"
+                            <TextBlock Text="drag to reorder  ·  right-click to remove  ·  double-click to open inspector"
                                        Style="{StaticResource Dim}" FontSize="10"
                                        HorizontalAlignment="Right" />
                         </DockPanel>
@@ -532,13 +541,17 @@
             </Grid>
         </Border>
 
-    <Grid x:Name="SettingsModalOverlay"
+        <Grid x:Name="SettingsModalOverlay"
               Visibility="Collapsed"
-              Background="#AA020617"
+              Background="Transparent"
               Panel.ZIndex="2000">
-            <ContentControl x:Name="SettingsModalHost"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
+            <Border Margin="8"
+                    CornerRadius="14"
+                    Background="#AA020617">
+                <ContentControl x:Name="SettingsModalHost"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+            </Border>
         </Grid>
     </Grid>
 </Window>

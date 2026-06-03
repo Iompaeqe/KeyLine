@@ -17,7 +17,7 @@ public partial class SettingsView : UserControl
     private Action<string>? _commitShortcut;
     private readonly List<int> _capturedShortcutKeys = new();
 
-    public SettingsView(AppSettings settings, ISettingsActions actions)
+    public SettingsView(AppSettings settings, ISettingsActions actions, string? initialCategory = null)
     {
         _settings = settings;
         _actions = actions;
@@ -39,7 +39,9 @@ public partial class SettingsView : UserControl
         foreach (var category in _renderers.Keys)
             CategoryListBox.Items.Add(category);
 
-        CategoryListBox.SelectedIndex = 0;
+        CategoryListBox.SelectedItem = _renderers.ContainsKey(initialCategory ?? "")
+            ? initialCategory
+            : _renderers.Keys.First();
         Focusable = true;
     }
 
@@ -148,11 +150,10 @@ public partial class SettingsView : UserControl
     private void RenderImportExport()
     {
         BeginSection("Import/Export");
-        AddAction("Import macro file", _actions.ImportMacroFile);
-        AddAction("Import multiple macro files", _actions.ImportMultipleMacroFiles);
-        AddAction("Export selected macros", _actions.ExportSelectedMacro);
-        AddAction("Export all macros", _actions.ExportAllMacros);
-        AddAction("Open macro storage folder", _actions.OpenMacroStorageFolder);
+        AddAction("Import", _actions.Import);
+        AddAction("Export Macro", _actions.ExportMacro);
+        AddAction("Export Profile", _actions.ExportProfile);
+        AddAction("Export EVERYTHING", _actions.ExportEverything);
     }
 
     private void RenderReset()

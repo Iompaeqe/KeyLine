@@ -55,6 +55,11 @@ public partial class MainWindow
             _inspectorDock?.Hide();
         }
 
+        private void CloseInspector()
+        {
+            _inspectorDock?.Close(animate: false);
+        }
+
         private void ShutdownInspector()
         {
             _inspectorDock?.Shutdown();
@@ -323,7 +328,7 @@ public partial class MainWindow
 
         private void ShortcutToggleTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            _shortcutsEnabled = !_shortcutsEnabled;
+            _activeWorkspace.ShortcutsEnabled = !_activeWorkspace.ShortcutsEnabled;
             ApplyShortcutHookState();
             UpdateShortcutToggleText();
             ScheduleSaveState();
@@ -472,17 +477,21 @@ public partial class MainWindow
             {
                 _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(virtualKeys);
 
-                if (!_shortcutsEnabled)
+                if (!_activeWorkspace.ShortcutsEnabled)
                 {
-                    _shortcutsEnabled = true;
+                    _activeWorkspace.ShortcutsEnabled = true;
                     ApplyShortcutHookState();
                     SuppressCurrentlyHeldShortcutKeys(_activeWorkspace.ShortcutKeys);
+                }
+                else
+                {
+                    ApplyShortcutHookState();
                 }
             }
             else
             {
                 _activeWorkspace.ShortcutKeys = "";
-                _shortcutsEnabled = false;
+                _activeWorkspace.ShortcutsEnabled = false;
                 ApplyShortcutHookState();
             }
 
@@ -532,9 +541,9 @@ public partial class MainWindow
             if (ShortcutToggleTextBlock == null)
                 return;
 
-            ShortcutToggleTextBlock.Text = _shortcutsEnabled ? "on" : "off";
+            ShortcutToggleTextBlock.Text = _activeWorkspace.ShortcutsEnabled ? "on" : "off";
 
-            if (_shortcutsEnabled)
+            if (_activeWorkspace.ShortcutsEnabled)
             {
                 ShortcutToggleTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
             }
