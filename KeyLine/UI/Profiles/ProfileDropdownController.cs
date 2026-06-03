@@ -222,6 +222,7 @@ public sealed class ProfileDropdownController
         bool isPendingDelete,
         bool isDragged)
     {
+        
         var grid = new Grid
         {
             Height = 30,
@@ -236,7 +237,7 @@ public sealed class ProfileDropdownController
             if (_renamingProfile != null)
                 return;
 
-            if (ReferenceEquals(_pendingDeleteProfile, profile))
+            if (profile != null && ReferenceEquals(_pendingDeleteProfile, profile))
             {
                 BeginOrConfirmDelete(profile!);
                 e.Handled = true;
@@ -256,17 +257,6 @@ public sealed class ProfileDropdownController
 
         if (profile != null)
         {
-            row.PreviewMouseDown += (_, e) =>
-            {
-                if (e.ChangedButton == MouseButton.Middle)
-                {
-                    BeginOrConfirmDelete(profile);
-                    e.Handled = true;
-                    return;
-                }
-
-            };
-
             row.PreviewMouseLeftButtonDown += (_, e) =>
             {
                 if (e.ClickCount < 2)
