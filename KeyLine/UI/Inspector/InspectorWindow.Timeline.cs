@@ -231,7 +231,7 @@ public partial class InspectorWindow
             textBox.SelectAll();
         };
         textBox.LostFocus += (_, _) => CommitDelayText(entry, currentValue(), commit);
-        textBox.TextChanged += (_, _) => CommitDelayText(entry, currentValue(), commit);
+        //textBox.TextChanged += (_, _) => CommitDelayText(entry, currentValue(), commit);
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
