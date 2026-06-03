@@ -264,6 +264,9 @@ public sealed class ShortcutController : IDisposable
 
         for (var i = 0; i < workspaces.Count; i++)
         {
+            if (!workspaces[i].ShortcutsEnabled)
+                continue;
+
             var shortcutKeys = ShortcutGesture.Parse(workspaces[i].ShortcutKeys);
 
             if (ShortcutGesture.Matches(_globalPressedKeys, shortcutKeys))

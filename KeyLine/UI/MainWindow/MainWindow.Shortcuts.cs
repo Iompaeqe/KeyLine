@@ -14,8 +14,8 @@ public partial class MainWindow
         _shortcutController = new ShortcutController(
             dispatcher: Dispatcher,
             getSettings: () => _settings,
-            getWorkspaces: () => _workspaces,
-            areMacroShortcutsEnabled: () => _shortcutsEnabled,
+            getWorkspaces: GetActiveProfileWorkspaces,
+            areMacroShortcutsEnabled: AnyActiveProfileMacroShortcutEnabled,
             toggleMacroFromShortcut: ToggleMacroFromShortcut,
             emergencyStop: StopAllPlaybackFromGlobalShortcut,
             pauseResumeAll: PauseResumeAllPlaybackFromGlobalShortcut);
@@ -46,17 +46,23 @@ public partial class MainWindow
         _shortcutController?.SuppressCurrentlyHeldShortcutKeys(shortcut);
     }
 
-    private void ToggleMacroFromShortcut(int workspaceIndex)
+    private void ToggleMacroFromShortcut(int profileWorkspaceIndex)
     {
-        if (!_shortcutsEnabled || IsShortcutCaptureActive() || _recorder.IsRecording)
+        if (IsShortcutCaptureActive() || _recorder.IsRecording)
             return;
 
+        var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(profileWorkspaceIndex);
         if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
             return;
 
         CaptureActiveWorkspaceState();
 
         var workspace = _workspaces[workspaceIndex];
+        if (!IsWorkspaceInProfile(workspace, _activeProfileId) ||
+            !HasEnabledMacroShortcut(workspace))
+        {
+            return;
+        }
 
         if (IsWorkspaceRunning(workspace))
         {
@@ -65,6 +71,22 @@ public partial class MainWindow
         }
 
         StartWorkspacePlaybackFromShortcut(workspaceIndex);
+    }
+
+    private bool AnyActiveProfileMacroShortcutEnabled()
+    {
+        return GetActiveProfileWorkspaces().Any(HasEnabledMacroShortcut);
+    }
+
+    private bool AnyMacroShortcutEnabled()
+    {
+        return _workspaces.Any(HasEnabledMacroShortcut);
+    }
+
+    private static bool HasEnabledMacroShortcut(MacroWorkspace workspace)
+    {
+        return workspace.ShortcutsEnabled &&
+               !string.IsNullOrWhiteSpace(workspace.ShortcutKeys);
     }
 
     private void StopPlaybackFromShortcut(MacroWorkspace workspace)
