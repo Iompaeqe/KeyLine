@@ -344,6 +344,12 @@ public partial class MainWindow
 
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (_workspaceTabs?.HasPendingDelete == true &&
+                !_workspaceTabs.IsSourcePendingDeleteTab(e.OriginalSource as DependencyObject))
+            {
+                _workspaceTabs.CancelPendingDelete();
+            }
+
             if (_workspaceTabs?.IsReorderModeEnabled != true)
                 return;
 

@@ -107,6 +107,7 @@ public sealed class WorkspaceTabController
     }
 
     public bool IsReorderModeEnabled => _isReorderModeEnabled;
+    public bool HasPendingDelete => _pendingDeleteWorkspace != null;
 
     public void ClearTransientState()
     {
@@ -124,6 +125,23 @@ public sealed class WorkspaceTabController
         _setReorderNoticeVisible(false);
         EndDrag();
         Refresh();
+    }
+
+    public void CancelPendingDelete()
+    {
+        if (_pendingDeleteWorkspace == null)
+            return;
+
+        _pendingDeleteWorkspace = null;
+        Refresh();
+    }
+
+    public bool IsSourcePendingDeleteTab(DependencyObject? source)
+    {
+        if (_pendingDeleteWorkspace == null)
+            return false;
+
+        return ReferenceEquals(TryGetSourceTabWorkspace(source), _pendingDeleteWorkspace);
     }
 
     public void Refresh()
@@ -278,6 +296,12 @@ public sealed class WorkspaceTabController
                 return;
             }
 
+            if (ReferenceEquals(_pendingDeleteWorkspace, workspace))
+            {
+                BeginOrConfirmDelete(workspace);
+                return;
+            }
+
             _activateWorkspace(index);
         };
         button.PreviewMouseDown += (_, e) =>
@@ -349,7 +373,9 @@ public sealed class WorkspaceTabController
                 ? Color.FromRgb(186, 230, 253)
                 : Color.FromRgb(142, 160, 182)),
             Tag = workspace,
-            ToolTip = hasError
+            ToolTip = isPendingDelete
+                ? "Left-click or middle-click to confirm delete."
+                : hasError
                 ? workspace.ErrorMessage
                 : isRunning
                     ? TooltipNotes.MacroTabRunning

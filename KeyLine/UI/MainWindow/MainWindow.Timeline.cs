@@ -1040,7 +1040,7 @@ public partial class MainWindow
 
                 content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
                 content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(16) });
+                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
 
                 var statusText = new TextBlock
                 {
@@ -1081,13 +1081,16 @@ public partial class MainWindow
 
                 var detailText = new TextBlock
                 {
-                    Text = $"L{FormatTimelineHeaderLoopCount(timeline)} D{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
-                    FontSize = 7.5,
+                    Text = $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
+                    FontSize = 10,
+                    Height = 50,
+                    Width = 45,
+                    Padding = new Thickness(4, 0, 0, 0),
                     FontWeight = FontWeights.SemiBold,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Bottom,
+                    TextAlignment = TextAlignment.Left,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
                     MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
                     Foreground = new SolidColorBrush(Color.FromRgb(120, 136, 149))
                 };
