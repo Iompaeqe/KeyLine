@@ -32,6 +32,8 @@ public static class MacroStateStore
                                                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                                                "KeyLine");
 
+    public static string BackupsDirectory => Path.Combine(StateDirectory, "Backups");
+
     private static string LegacyStateDirectory => StateDirectoryOverride == null
         ? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -164,7 +166,51 @@ public static class MacroStateStore
             Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
         };
 
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
+
         File.WriteAllText(path, JsonSerializer.Serialize(state, JsonOptions));
+    }
+
+    public static string CreateAutoBackupBeforeImport(
+        IReadOnlyList<MacroWorkspace> workspaces,
+        int activeWorkspaceIndex,
+        bool shortcutsEnabled,
+        AppSettings settings,
+        double mainWindowWidth = 0,
+        IReadOnlyList<MacroProfile>? profiles = null,
+        string activeProfileId = MacroProfile.NoProfileId)
+    {
+        Directory.CreateDirectory(BackupsDirectory);
+
+        var path = GetAvailableAutoBackupPath(DateTime.Now);
+        ExportSnapshot(
+            path,
+            workspaces,
+            activeWorkspaceIndex,
+            shortcutsEnabled,
+            settings,
+            mainWindowWidth,
+            profiles,
+            activeProfileId);
+
+        return path;
+    }
+
+    private static string GetAvailableAutoBackupPath(DateTime timestamp)
+    {
+        var baseName = $"AutoBackup_BeforeImport_{timestamp:yyyy-MM-dd}";
+        var path = Path.Combine(BackupsDirectory, baseName + MacroFileStore.Extension);
+        if (!File.Exists(path))
+            return path;
+
+        for (var i = 2;; i++)
+        {
+            path = Path.Combine(BackupsDirectory, $"{baseName}_{i}{MacroFileStore.Extension}");
+            if (!File.Exists(path))
+                return path;
+        }
     }
 
     public static bool IsEverythingExport(string path)

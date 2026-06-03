@@ -73,6 +73,33 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void CreateAutoBackupBeforeImport_WritesEverythingExportToBackups()
+    {
+        var workspace = CreateWorkspace("Backup Source", MacroLoopMode.Chain, profileId: "profile-a");
+
+        var backupPath = MacroStateStore.CreateAutoBackupBeforeImport(
+            new[] { workspace },
+            activeWorkspaceIndex: 0,
+            shortcutsEnabled: true,
+            settings: new AppSettings(),
+            profiles: new[] { new MacroProfile { Id = "profile-a", Name = "Profile A" } },
+            activeProfileId: "profile-a");
+
+        Assert.StartsWith(MacroStateStore.BackupsDirectory, backupPath, StringComparison.OrdinalIgnoreCase);
+        Assert.StartsWith("AutoBackup_BeforeImport_", Path.GetFileName(backupPath));
+        Assert.EndsWith(MacroFileStore.Extension, backupPath);
+        Assert.True(File.Exists(backupPath));
+        Assert.True(MacroStateStore.IsEverythingExport(backupPath));
+
+        var snapshot = MacroStateStore.ImportSnapshot(backupPath);
+        Assert.NotNull(snapshot);
+        Assert.Single(snapshot.Workspaces);
+        Assert.Equal("Backup Source", snapshot.Workspaces[0].Name);
+        Assert.Equal(MacroLoopMode.Chain, snapshot.Workspaces[0].LoopMode);
+        Assert.Single(snapshot.Profiles);
+    }
+
+    [Fact]
     public void Load_AcceptsLegacyLoopTypeFields()
     {
         Directory.CreateDirectory(MacroStateStore.StateDirectory);
