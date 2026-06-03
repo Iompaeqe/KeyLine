@@ -83,6 +83,7 @@ public partial class MainWindow
 
     private void RestoreWorkspaceSnapshot(MacroWorkspace target, MacroWorkspace snapshot)
     {
+        target.ProfileId = snapshot.ProfileId;
         target.Name = snapshot.Name;
         target.Document = MacroCloneService.CloneDocument(snapshot.Document);
         target.LoopCount = snapshot.LoopCount;
@@ -319,7 +320,10 @@ public partial class MainWindow
         foreach (var workspace in workspaces)
         {
             var clone = MacroCloneService.CloneWorkspace(workspace);
-            clone.Name = WorkspaceNameService.GetUniqueName(_workspaces, clone.Name);
+            clone.ProfileId = _activeProfileId;
+            clone.Name = WorkspaceNameService.GetUniqueName(
+                GetWorkspacesForProfile(_activeProfileId),
+                clone.Name);
             _workspaces.Insert(insertIndex++, clone);
         }
 
@@ -353,7 +357,10 @@ public partial class MainWindow
 
         var source = _workspaces[sourceIndex];
         var clone = MacroCloneService.CloneWorkspace(source);
-        clone.Name = WorkspaceNameService.GetUniqueDuplicateName(_workspaces, source.Name);
+        clone.ProfileId = source.ProfileId;
+        clone.Name = WorkspaceNameService.GetUniqueDuplicateName(
+            GetWorkspacesForProfile(source.ProfileId),
+            source.Name);
 
         _workspaces.Insert(sourceIndex + 1, clone);
         ActivateWorkspace(sourceIndex + 1);
