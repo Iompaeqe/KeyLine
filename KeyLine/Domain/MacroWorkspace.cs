@@ -10,6 +10,8 @@ public enum MacroLoopMode
 
 public sealed class MacroWorkspace
 {
+    public string ProfileId { get; set; } = MacroProfile.NoProfileId;
+
     public string Name { get; set; } = "Macro 1";
 
     public MacroDocument Document { get; set; } = new();
@@ -23,6 +25,8 @@ public sealed class MacroWorkspace
     public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
 
     public string ShortcutKeys { get; set; } = "";
+
+    public bool ShortcutsEnabled { get; set; }
 
     public string TargetWindowSearchName { get; set; } = "";
 

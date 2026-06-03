@@ -8,6 +8,7 @@ public static class MacroCloneService
     {
         return new MacroWorkspace
         {
+            ProfileId = source.ProfileId,
             Name = source.Name,
             Document = CloneDocument(source.Document),
             LoopCount = source.LoopCount,
@@ -15,6 +16,7 @@ public static class MacroCloneService
             BaseDelayMs = source.BaseDelayMs,
             LoopMode = source.LoopMode,
             ShortcutKeys = source.ShortcutKeys,
+            ShortcutsEnabled = source.ShortcutsEnabled,
             TargetWindowSearchName = source.TargetWindowSearchName,
             TargetWindowHandle = 0,
             TargetWindowTitle = "",

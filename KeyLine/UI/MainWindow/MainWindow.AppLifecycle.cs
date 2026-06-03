@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -24,6 +25,14 @@ public partial class MainWindow
         private Border MacroTabsRightEdgeLine => MacroTabsBlock.RightEdgeLine;
 
         private Button AddMacroTabButton => MacroTabsBlock.AddButton;
+
+        private Button ProfileSelectorButton => ProfileDropdownBlock.ProfileButton;
+        private TextBlock SelectedProfileTextBlock => ProfileDropdownBlock.SelectedProfileText;
+        private Popup ProfilesPopup => ProfileDropdownBlock.ProfilesPopup;
+        private ScrollViewer ProfileScrollViewer => ProfileDropdownBlock.ProfilesScrollViewer;
+        private StackPanel ProfileRowsPanel => ProfileDropdownBlock.ProfilesPanel;
+        private Canvas ProfileDragOverlay => ProfileDropdownBlock.ProfilesDragOverlay;
+        private Button AddProfileButton => ProfileDropdownBlock.AddProfileButtonControl;
 
 
         private Button ToggleRightPanelButton => TitleCommandButtons.InspectorButton;

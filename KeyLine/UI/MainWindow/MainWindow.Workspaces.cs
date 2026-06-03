@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Input;
 using KeyLine.Domain;
+using KeyLine.Services.Macro;
 using KeyLine.UI.Tabs;
 
 namespace KeyLine;
@@ -25,20 +26,32 @@ public partial class MainWindow
                 leftEdgeLine: MacroTabsLeftEdgeLine,
                 rightEdgeLine: MacroTabsRightEdgeLine,
                 dispatcher: Dispatcher,
-                getWorkspaces: () => _workspaces,
-                getActiveWorkspaceIndex: () => _activeWorkspaceIndex,
+                getWorkspaces: GetActiveProfileWorkspaces,
+                getProfiles: () => _profiles,
+                getActiveWorkspaceIndex: GetActiveProfileWorkspaceIndex,
                 isWorkspaceRunning: IsWorkspaceRunning,
-                activateWorkspace: index => ActivateWorkspace(index),
+                activateWorkspace: index =>
+                {
+                    var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(index);
+                    if (workspaceIndex >= 0)
+                        ActivateWorkspace(workspaceIndex);
+                },
                 deleteWorkspace: DeleteWorkspace,
+                duplicateWorkspace: DuplicateWorkspace,
+                moveWorkspaceToProfile: MoveWorkspaceToProfile,
                 reorderWorkspace: ReorderWorkspace,
                 showWarning: SetWorkspaceTabWarningStatus,
                 scheduleSaveState: ScheduleSaveState);
         }
 
-        private static MacroWorkspace CreateWorkspace(int number, AppSettings? settings = null)
+        private static MacroWorkspace CreateWorkspace(
+            int number,
+            AppSettings? settings = null,
+            string profileId = MacroProfile.NoProfileId)
         {
             var workspace = new MacroWorkspace
             {
+                ProfileId = MacroProfile.NormalizeId(profileId),
                 Name = $"Macro {number}",
                 TimerMs = settings?.DefaultTimerMs ?? 0,
                 LoopCount = settings?.DefaultLoopCount ?? 0,
@@ -62,11 +75,11 @@ public partial class MainWindow
             timeline.BaseDelayMs = Math.Max(0, settings.DefaultBaseDelayMs);
         }
 
-        private int GetNextWorkspaceNumber()
+        private int GetNextWorkspaceNumber(string profileId)
         {
             var usedNumbers = new HashSet<int>();
 
-            foreach (var workspace in _workspaces)
+            foreach (var workspace in GetWorkspacesForProfile(profileId))
             {
                 if (!TryParseDefaultWorkspaceNumber(workspace.Name, out var number))
                     continue;
@@ -96,9 +109,9 @@ public partial class MainWindow
         {
             CaptureActiveWorkspaceState();
 
-            var workspace = CreateWorkspace(GetNextWorkspaceNumber(), _settings);
+            var workspace = CreateWorkspace(GetNextWorkspaceNumber(_activeProfileId), _settings, _activeProfileId);
             _workspaces.Add(workspace);
-            ActivateWorkspace(_workspaces.Count - 1);
+            ActivateWorkspace(_workspaces.IndexOf(workspace));
         }
 
         private void ActivateWorkspace(int index, bool saveCurrent = true)
@@ -120,6 +133,7 @@ public partial class MainWindow
             {
                 _activeWorkspaceIndex = index;
                 _activeWorkspace = _workspaces[_activeWorkspaceIndex];
+                _activeProfileId = MacroProfile.NormalizeId(_activeWorkspace.ProfileId);
                 _document = _activeWorkspace.Document;
 
                 _selection.Clear();
@@ -129,12 +143,14 @@ public partial class MainWindow
                 ApplyMacroOptionsFromWorkspace(_activeWorkspace);
 
                 RefreshMacroTabs();
+                RefreshProfileDropdown();
                 RestoreTargetWindowSelection(_activeWorkspace);
                 if (!HasResolvedTargetSelection() && !string.IsNullOrWhiteSpace(_activeWorkspace.TargetWindowSearchName))
                     TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
                 SelectTimeline(_document.ActiveTimeline);
                 RefreshTimeline();
                 RefreshActiveWorkspacePlaybackUi();
+                ApplyShortcutHookState();
             }
             finally
             {
@@ -166,7 +182,8 @@ public partial class MainWindow
     // From MainWindow.TabEditing.cs
         private void DeleteWorkspace(MacroWorkspace workspace)
         {
-            if (_workspaces.Count <= 1)
+            var profileWorkspaces = GetWorkspacesForProfile(workspace.ProfileId);
+            if (profileWorkspaces.Count <= 1)
                 return;
 
             var index = _workspaces.IndexOf(workspace);
@@ -183,31 +200,93 @@ public partial class MainWindow
             if (_recorder.IsRecording)
                 StopRecording();
 
+            var activeWorkspace = _activeWorkspace;
             _workspaces.RemoveAt(index);
 
-            if (_activeWorkspaceIndex > index)
-                _activeWorkspaceIndex--;
-            else if (_activeWorkspaceIndex >= _workspaces.Count)
-                _activeWorkspaceIndex = _workspaces.Count - 1;
+            var nextWorkspaceIndex = ReferenceEquals(workspace, activeWorkspace)
+                ? IndexOfFirstWorkspaceInProfile(_activeProfileId)
+                : _workspaces.IndexOf(activeWorkspace);
 
-            ActivateWorkspace(_activeWorkspaceIndex, false);
+            if (nextWorkspaceIndex < 0)
+                nextWorkspaceIndex = Math.Clamp(_activeWorkspaceIndex, 0, _workspaces.Count - 1);
+
+            ActivateWorkspace(nextWorkspaceIndex, false);
+            ScheduleSaveState();
+        }
+
+        private void DuplicateWorkspace(MacroWorkspace workspace)
+        {
+            DuplicateWorkspace(_workspaces.IndexOf(workspace));
+        }
+
+        private void MoveWorkspaceToProfile(MacroWorkspace workspace, string profileId)
+        {
+            if (!_workspaces.Contains(workspace))
+                return;
+
+            profileId = MacroProfile.NormalizeId(profileId);
+            if (string.Equals(
+                    MacroProfile.NormalizeId(workspace.ProfileId),
+                    profileId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            CaptureActiveWorkspaceState();
+
+            var sourceProfileId = MacroProfile.NormalizeId(workspace.ProfileId);
+            var wasActiveWorkspace = ReferenceEquals(workspace, _activeWorkspace);
+            workspace.ProfileId = profileId;
+            workspace.Name = WorkspaceNameService.GetUniqueName(
+                GetWorkspacesForProfile(profileId).Where(existing => !ReferenceEquals(existing, workspace)),
+                workspace.Name,
+                "Moved Macro");
+
+            if (GetWorkspacesForProfile(sourceProfileId).Count == 0)
+                _workspaces.Add(CreateWorkspace(GetNextWorkspaceNumber(sourceProfileId), _settings, sourceProfileId));
+
+            if (wasActiveWorkspace)
+            {
+                var nextWorkspaceIndex = IndexOfFirstWorkspaceInProfile(sourceProfileId);
+                if (nextWorkspaceIndex >= 0)
+                    ActivateWorkspace(nextWorkspaceIndex, saveCurrent: false);
+            }
+            else
+            {
+                RefreshMacroTabs();
+                RefreshProfileDropdown();
+            }
+
             ScheduleSaveState();
         }
 
         private void ReorderWorkspace(int sourceIndex, int targetIndex)
         {
-            if (sourceIndex < 0 || sourceIndex >= _workspaces.Count)
+            var profileWorkspaces = GetActiveProfileWorkspaces().ToList();
+
+            if (sourceIndex < 0 || sourceIndex >= profileWorkspaces.Count)
                 return;
 
-            if (targetIndex < 0 || targetIndex >= _workspaces.Count || sourceIndex == targetIndex)
+            if (targetIndex < 0 || targetIndex >= profileWorkspaces.Count || sourceIndex == targetIndex)
                 return;
 
             CaptureActiveWorkspaceState();
 
             var activeWorkspace = _activeWorkspace;
-            var workspace = _workspaces[sourceIndex];
-            _workspaces.RemoveAt(sourceIndex);
-            _workspaces.Insert(targetIndex, workspace);
+            var reorderedProfileWorkspaces = profileWorkspaces;
+            var workspace = reorderedProfileWorkspaces[sourceIndex];
+            reorderedProfileWorkspaces.RemoveAt(sourceIndex);
+            reorderedProfileWorkspaces.Insert(targetIndex, workspace);
+
+            var profileIndex = 0;
+            for (var i = 0; i < _workspaces.Count; i++)
+            {
+                if (!IsWorkspaceInProfile(_workspaces[i], _activeProfileId))
+                    continue;
+
+                _workspaces[i] = reorderedProfileWorkspaces[profileIndex++];
+            }
 
             _activeWorkspaceIndex = _workspaces.IndexOf(activeWorkspace);
             if (_activeWorkspaceIndex < 0)

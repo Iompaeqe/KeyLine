@@ -17,31 +17,49 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     [Fact]
     public void CloneWorkspace_PreservesLoopMode()
     {
-        var source = CreateWorkspace("Source", MacroLoopMode.Sync);
+        var source = CreateWorkspace("Source", MacroLoopMode.Sync, profileId: "profile-a");
 
         var clone = MacroCloneService.CloneWorkspace(source);
 
         Assert.Equal(MacroLoopMode.Sync, clone.LoopMode);
+        Assert.Equal("profile-a", clone.ProfileId);
     }
 
     [Fact]
     public void SaveAndLoad_PreservesLoopMode()
     {
-        var workspace = CreateWorkspace("State Test Macro", MacroLoopMode.Sync);
-        MacroStateStore.Save(new[] { workspace }, 0, shortcutsEnabled: true, new AppSettings(), mainWindowWidth: 1234);
+        var profile = new MacroProfile
+        {
+            Id = "profile-a",
+            Name = "Gaming"
+        };
+        var workspace = CreateWorkspace("State Test Macro", MacroLoopMode.Sync, profile.Id);
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: true,
+            new AppSettings(),
+            mainWindowWidth: 1234,
+            profiles: new[] { profile },
+            activeProfileId: profile.Id);
 
         var snapshot = MacroStateStore.Load();
 
         Assert.NotNull(snapshot);
         Assert.Single(snapshot.Workspaces);
         Assert.Equal(MacroLoopMode.Sync, snapshot.Workspaces[0].LoopMode);
+        Assert.Equal(profile.Id, snapshot.Workspaces[0].ProfileId);
+        Assert.Single(snapshot.Profiles);
+        Assert.Equal(profile.Id, snapshot.Profiles[0].Id);
+        Assert.Equal("Gaming", snapshot.Profiles[0].Name);
+        Assert.Equal(profile.Id, snapshot.ActiveProfileId);
         Assert.Equal(1234, snapshot.MainWindowWidth);
     }
 
     [Fact]
     public void ExportAndImport_PreservesLoopMode()
     {
-        var workspace = CreateWorkspace("Exported", MacroLoopMode.Sync);
+        var workspace = CreateWorkspace("Exported", MacroLoopMode.Sync, profileId: "profile-a");
         var exportPath = Path.Combine(_appDataRoot, "macro.keyline");
         Directory.CreateDirectory(_appDataRoot);
 
@@ -51,6 +69,7 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
 
         Assert.Single(imported);
         Assert.Equal(MacroLoopMode.Sync, imported[0].LoopMode);
+        Assert.Equal("profile-a", imported[0].ProfileId);
     }
 
     [Fact]
@@ -120,10 +139,14 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
             Directory.Delete(_appDataRoot, recursive: true);
     }
 
-    private static MacroWorkspace CreateWorkspace(string name, MacroLoopMode loopMode)
+    private static MacroWorkspace CreateWorkspace(
+        string name,
+        MacroLoopMode loopMode,
+        string profileId = MacroProfile.NoProfileId)
     {
         return new MacroWorkspace
         {
+            ProfileId = profileId,
             Name = name,
             LoopMode = loopMode
         };

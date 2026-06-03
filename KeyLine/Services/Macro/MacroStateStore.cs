@@ -8,7 +8,9 @@ namespace KeyLine.Services.Macro;
 public sealed class MacroStateSnapshot
 {
     public List<MacroWorkspace> Workspaces { get; init; } = new();
+    public List<MacroProfile> Profiles { get; init; } = new();
     public int ActiveWorkspaceIndex { get; init; }
+    public string ActiveProfileId { get; init; } = MacroProfile.NoProfileId;
     public bool ShortcutsEnabled { get; init; }
     public double MainWindowWidth { get; init; }
     public AppSettings Settings { get; init; } = new();
@@ -16,7 +18,8 @@ public sealed class MacroStateSnapshot
 
 public static class MacroStateStore
 {
-    private const int CurrentVersion = 2;
+    private const int CurrentVersion = 3;
+    public const string EverythingExportKind = "Everything";
     public const string StateDirectoryOverrideEnvironmentVariable = "KEYLINE_STATE_DIRECTORY";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -67,6 +70,11 @@ public static class MacroStateStore
             var workspaces = state.Workspaces.Count > 0
                 ? state.Workspaces.Select(ToWorkspace).ToList()
                 : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
+            ApplyLegacyShortcutEnabledState(workspaces, state.ShortcutsEnabled);
+
+            var profiles = GetPersistedProfiles(state.Profiles);
+            NormalizeWorkspaceProfileIds(workspaces, profiles);
+            var activeProfileId = GetPersistedActiveProfileId(state.ActiveProfileId, profiles);
 
             var settings = state.Settings ?? new AppSettings();
             if (state.Version < 2)
@@ -75,7 +83,9 @@ public static class MacroStateStore
             return new MacroStateSnapshot
             {
                 Workspaces = workspaces,
+                Profiles = profiles,
                 ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1),
+                ActiveProfileId = activeProfileId,
                 ShortcutsEnabled = state.ShortcutsEnabled,
                 MainWindowWidth = Math.Max(0, state.MainWindowWidth),
                 Settings = settings
@@ -92,19 +102,24 @@ public static class MacroStateStore
         int activeWorkspaceIndex,
         bool shortcutsEnabled,
         AppSettings settings,
-        double mainWindowWidth = 0)
+        double mainWindowWidth = 0,
+        IReadOnlyList<MacroProfile>? profiles = null,
+        string activeProfileId = MacroProfile.NoProfileId)
     {
         var safeWorkspaces = workspaces.Count > 0
             ? workspaces
             : new List<MacroWorkspace> { new() };
+        var safeProfiles = GetSafePersistedProfiles(profiles ?? Array.Empty<MacroProfile>());
 
         var state = new PersistedState
         {
             Version = CurrentVersion,
             ActiveWorkspaceIndex = Math.Clamp(activeWorkspaceIndex, 0, safeWorkspaces.Count - 1),
+            ActiveProfileId = GetSafeActiveProfileId(activeProfileId, safeProfiles),
             ShortcutsEnabled = shortcutsEnabled,
             MainWindowWidth = Math.Max(0, mainWindowWidth),
             Settings = settings,
+            Profiles = safeProfiles.Select(ToPersistedProfile).ToList(),
             Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
         };
 
@@ -121,10 +136,104 @@ public static class MacroStateStore
             File.Move(tempPath, StatePath);
     }
 
+    public static void ExportSnapshot(
+        string path,
+        IReadOnlyList<MacroWorkspace> workspaces,
+        int activeWorkspaceIndex,
+        bool shortcutsEnabled,
+        AppSettings settings,
+        double mainWindowWidth = 0,
+        IReadOnlyList<MacroProfile>? profiles = null,
+        string activeProfileId = MacroProfile.NoProfileId)
+    {
+        var safeWorkspaces = workspaces.Count > 0
+            ? workspaces
+            : new List<MacroWorkspace> { new() };
+        var safeProfiles = GetSafePersistedProfiles(profiles ?? Array.Empty<MacroProfile>());
+
+        var state = new PersistedState
+        {
+            Kind = EverythingExportKind,
+            Version = CurrentVersion,
+            ActiveWorkspaceIndex = Math.Clamp(activeWorkspaceIndex, 0, safeWorkspaces.Count - 1),
+            ActiveProfileId = GetSafeActiveProfileId(activeProfileId, safeProfiles),
+            ShortcutsEnabled = shortcutsEnabled,
+            MainWindowWidth = Math.Max(0, mainWindowWidth),
+            Settings = settings,
+            Profiles = safeProfiles.Select(ToPersistedProfile).ToList(),
+            Workspaces = safeWorkspaces.Select(ToPersistedWorkspace).ToList()
+        };
+
+        File.WriteAllText(path, JsonSerializer.Serialize(state, JsonOptions));
+    }
+
+    public static bool IsEverythingExport(string path)
+    {
+        try
+        {
+            var json = File.ReadAllText(path);
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            if (root.TryGetProperty(nameof(PersistedState.Kind), out var kind) &&
+                string.Equals(kind.GetString(), EverythingExportKind, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return root.TryGetProperty(nameof(PersistedState.Settings), out _) &&
+                   root.TryGetProperty(nameof(PersistedState.Workspaces), out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static MacroStateSnapshot? ImportSnapshot(string path)
+    {
+        try
+        {
+            var json = File.ReadAllText(path);
+            var state = JsonSerializer.Deserialize<PersistedState>(json, JsonOptions);
+            if (state == null)
+                return null;
+
+            var workspaces = state.Workspaces.Count > 0
+                ? state.Workspaces.Select(ToWorkspace).ToList()
+                : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
+            ApplyLegacyShortcutEnabledState(workspaces, state.ShortcutsEnabled);
+
+            var profiles = GetPersistedProfiles(state.Profiles);
+            NormalizeWorkspaceProfileIds(workspaces, profiles);
+            var activeProfileId = GetPersistedActiveProfileId(state.ActiveProfileId, profiles);
+
+            var settings = state.Settings ?? new AppSettings();
+            if (state.Version < 2)
+                settings.MergeRepeatedDelayNodes = false;
+
+            return new MacroStateSnapshot
+            {
+                Workspaces = workspaces,
+                Profiles = profiles,
+                ActiveWorkspaceIndex = Math.Clamp(state.ActiveWorkspaceIndex, 0, workspaces.Count - 1),
+                ActiveProfileId = activeProfileId,
+                ShortcutsEnabled = state.ShortcutsEnabled,
+                MainWindowWidth = Math.Max(0, state.MainWindowWidth),
+                Settings = settings
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static MacroWorkspace ToWorkspace(PersistedWorkspace persistedWorkspace)
     {
         return new MacroWorkspace
         {
+            ProfileId = MacroProfile.NormalizeId(persistedWorkspace.ProfileId),
             Name = string.IsNullOrWhiteSpace(persistedWorkspace.Name)
                 ? "Macro"
                 : persistedWorkspace.Name,
@@ -138,6 +247,7 @@ public static class MacroStateStore
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
             ShortcutKeys = persistedWorkspace.ShortcutKeys,
+            ShortcutsEnabled = persistedWorkspace.ShortcutsEnabled,
             TargetWindowSearchName = persistedWorkspace.TargetWindowSearchName,
             TargetWindowHandle = Math.Max(0, persistedWorkspace.TargetWindowHandle),
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
@@ -252,6 +362,7 @@ public static class MacroStateStore
     {
         return new PersistedWorkspace
         {
+            ProfileId = MacroProfile.NormalizeId(workspace.ProfileId),
             Name = workspace.Name,
             ActiveTimelineIndex = Math.Clamp(
                 workspace.Document.ActiveTimelineIndex,
@@ -262,6 +373,7 @@ public static class MacroStateStore
             TimerMs = Math.Max(0, workspace.TimerMs),
             BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
+            ShortcutsEnabled = workspace.ShortcutsEnabled,
             TargetWindowSearchName = workspace.TargetWindowSearchName,
             TargetWindowHandle = Math.Max(0, workspace.TargetWindowHandle),
             TargetWindowTitle = workspace.TargetWindowTitle,
@@ -271,12 +383,117 @@ public static class MacroStateStore
         };
     }
 
+    private static List<MacroProfile> GetPersistedProfiles(IReadOnlyList<PersistedProfile> persistedProfiles)
+    {
+        var profiles = persistedProfiles
+            .Select(ToProfile)
+            .Where(profile => !MacroProfile.IsNoProfile(profile.Id))
+            .ToList();
+
+        return GetSafePersistedProfiles(profiles);
+    }
+
+    private static List<MacroProfile> GetSafePersistedProfiles(IReadOnlyList<MacroProfile> profiles)
+    {
+        var safeProfiles = new List<MacroProfile>();
+        var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var profile in profiles)
+        {
+            var id = MacroProfile.NormalizeId(profile.Id);
+            if (MacroProfile.IsNoProfile(id) || !usedIds.Add(id))
+                continue;
+
+            safeProfiles.Add(new MacroProfile
+            {
+                Id = id,
+                Name = string.IsNullOrWhiteSpace(profile.Name)
+                    ? "Profile"
+                    : profile.Name.Trim()
+            });
+        }
+
+        return safeProfiles;
+    }
+
+    private static MacroProfile ToProfile(PersistedProfile persistedProfile)
+    {
+        return new MacroProfile
+        {
+            Id = MacroProfile.NormalizeId(persistedProfile.Id),
+            Name = string.IsNullOrWhiteSpace(persistedProfile.Name)
+                ? "Profile"
+                : persistedProfile.Name.Trim()
+        };
+    }
+
+    private static PersistedProfile ToPersistedProfile(MacroProfile profile)
+    {
+        return new PersistedProfile
+        {
+            Id = MacroProfile.NormalizeId(profile.Id),
+            Name = profile.Name
+        };
+    }
+
+    private static void NormalizeWorkspaceProfileIds(
+        IEnumerable<MacroWorkspace> workspaces,
+        IReadOnlyList<MacroProfile> profiles)
+    {
+        var profileIds = profiles
+            .Select(profile => profile.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var workspace in workspaces)
+        {
+            var profileId = MacroProfile.NormalizeId(workspace.ProfileId);
+            workspace.ProfileId = MacroProfile.IsNoProfile(profileId) || profileIds.Contains(profileId)
+                ? profileId
+                : MacroProfile.NoProfileId;
+        }
+    }
+
+    private static string GetPersistedActiveProfileId(
+        string activeProfileId,
+        IReadOnlyList<MacroProfile> profiles)
+    {
+        return GetSafeActiveProfileId(activeProfileId, profiles);
+    }
+
+    private static string GetSafeActiveProfileId(
+        string activeProfileId,
+        IReadOnlyList<MacroProfile> profiles)
+    {
+        var normalizedId = MacroProfile.NormalizeId(activeProfileId);
+        if (MacroProfile.IsNoProfile(normalizedId))
+            return MacroProfile.NoProfileId;
+
+        return profiles.Any(profile => string.Equals(profile.Id, normalizedId, StringComparison.OrdinalIgnoreCase))
+            ? normalizedId
+            : MacroProfile.NoProfileId;
+    }
+
     private static int GetPersistedTimerMs(PersistedWorkspace persistedWorkspace)
     {
         if (persistedWorkspace.TimerMs > 0)
             return Math.Max(0, persistedWorkspace.TimerMs);
 
         return Math.Max(0, persistedWorkspace.TimerMinutes * 60_000);
+    }
+
+    private static void ApplyLegacyShortcutEnabledState(
+        IEnumerable<MacroWorkspace> workspaces,
+        bool legacyShortcutsEnabled)
+    {
+        if (!legacyShortcutsEnabled)
+            return;
+
+        foreach (var workspace in workspaces.Where(workspace =>
+                     !workspace.ShortcutsEnabled &&
+                     !string.IsNullOrWhiteSpace(workspace.ShortcutKeys)))
+        {
+            workspace.ShortcutsEnabled = true;
+        }
     }
 
     private static MacroLoopMode GetPersistedLoopMode(PersistedWorkspace persistedWorkspace)
@@ -305,11 +522,14 @@ public static class MacroStateStore
 
     private sealed class PersistedState
     {
+        public string Kind { get; set; } = "";
         public int Version { get; set; }
         public int ActiveWorkspaceIndex { get; set; }
+        public string ActiveProfileId { get; set; } = MacroProfile.NoProfileId;
         public bool ShortcutsEnabled { get; set; }
         public double MainWindowWidth { get; set; }
         public AppSettings? Settings { get; set; }
+        public List<PersistedProfile> Profiles { get; set; } = new();
         public List<PersistedWorkspace> Workspaces { get; set; } = new();
 
         // Legacy single-workspace state from v1.
@@ -322,6 +542,7 @@ public static class MacroStateStore
 
     private sealed class PersistedWorkspace
     {
+        public string ProfileId { get; set; } = MacroProfile.NoProfileId;
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
         public int LoopCount { get; set; }
@@ -332,12 +553,19 @@ public static class MacroStateStore
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
+        public bool ShortcutsEnabled { get; set; }
         public string TargetWindowSearchName { get; set; } = "";
         public long TargetWindowHandle { get; set; }
         public string TargetWindowTitle { get; set; } = "";
         public long TargetChildWindowHandle { get; set; }
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
+    }
+
+    private sealed class PersistedProfile
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 
     private sealed class PersistedTimeline

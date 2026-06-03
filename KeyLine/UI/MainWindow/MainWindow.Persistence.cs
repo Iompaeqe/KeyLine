@@ -39,9 +39,11 @@ public partial class MainWindow
         MacroStateStore.Save(
             _workspaces,
             _activeWorkspaceIndex,
-            _shortcutsEnabled,
+            AnyMacroShortcutEnabled(),
             _settings,
-            GetPersistedMainWindowWidth());
+            GetPersistedMainWindowWidth(),
+            _profiles,
+            _activeProfileId);
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
