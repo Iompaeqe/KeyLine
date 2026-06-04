@@ -127,6 +127,16 @@
             <XamlRuntime>Wpf</XamlRuntime>
             <SubType>Designer</SubType>
         </Page>
+        <Page Update="UI\ImportExport\ImportConfirmationView.xaml">
+          <Generator>MSBuild:Compile</Generator>
+          <XamlRuntime>Wpf</XamlRuntime>
+          <SubType>Designer</SubType>
+        </Page>
+        <Page Update="UI\ImportExport\ExportMacroSelectionView.xaml">
+          <Generator>MSBuild:Compile</Generator>
+          <XamlRuntime>Wpf</XamlRuntime>
+          <SubType>Designer</SubType>
+        </Page>
     </ItemGroup>
 
     <ItemGroup>
