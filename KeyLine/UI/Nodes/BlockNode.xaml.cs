@@ -6,6 +6,8 @@ namespace KeyLine.UI.Nodes;
 
 public partial class BlockNode : BlockNodeBase
 {
+    public const double BoundaryNodeWidth = 18;
+
     public BlockNode()
     {
         InitializeComponent();
@@ -17,7 +19,7 @@ public partial class BlockNode : BlockNodeBase
         if (step == null)
             return;
 
-        RootBorder.Width = IsBlockStart ? 10 : 8;
+        RootBorder.Width = BoundaryNodeWidth;
         RootBorder.ToolTip = GetTooltip(step);
 
         var lineColor = IsSelected

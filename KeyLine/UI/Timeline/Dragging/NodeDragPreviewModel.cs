@@ -148,14 +148,16 @@ public sealed class NodeDragPreviewModel
 
         UpdateSlotPositions(_slots, firstItemLeft, itemGap);
 
-        var draggedSlotIndex = FindDraggedDisplaySlotIndex(_slots);
-        if (draggedSlotIndex < 0)
+        var firstDraggedSlotIndex = FindFirstDraggedDisplaySlotIndex(_slots);
+        if (firstDraggedSlotIndex < 0)
             return false;
 
-        if (ShouldMoveDraggedSlotLeft(_slots, draggedSlotIndex, mouseX))
+        var lastDraggedSlotIndex = FindLastDraggedDisplaySlotIndex(_slots);
+
+        if (ShouldMoveDraggedSlotLeft(_slots, firstDraggedSlotIndex, mouseX))
             return MoveDraggedSlotsLeft(firstItemLeft, itemGap);
 
-        if (ShouldMoveDraggedSlotRight(_slots, draggedSlotIndex, mouseX))
+        if (ShouldMoveDraggedSlotRight(_slots, lastDraggedSlotIndex, mouseX))
             return MoveDraggedSlotsRight(firstItemLeft, itemGap);
 
         return false;
@@ -181,9 +183,20 @@ public sealed class NodeDragPreviewModel
         return draggedSlotIndex < slots.Count - 1 && mouseX > slots[draggedSlotIndex + 1].CenterX;
     }
 
-    private int FindDraggedDisplaySlotIndex(IReadOnlyList<NodePreviewSlot> slots)
+    private static int FindFirstDraggedDisplaySlotIndex(IReadOnlyList<NodePreviewSlot> slots)
     {
         for (var i = 0; i < slots.Count; i++)
+        {
+            if (slots[i].IsDraggedSlot)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static int FindLastDraggedDisplaySlotIndex(IReadOnlyList<NodePreviewSlot> slots)
+    {
+        for (var i = slots.Count - 1; i >= 0; i--)
         {
             if (slots[i].IsDraggedSlot)
                 return i;

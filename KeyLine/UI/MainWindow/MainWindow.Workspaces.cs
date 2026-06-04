@@ -356,6 +356,13 @@ public partial class MainWindow
                 _profileDropdown.CancelPendingDelete();
             }
 
+            if (_pendingDeleteTimeline != null &&
+                !IsSourcePendingDeleteTimelineHeader(e.OriginalSource as DependencyObject))
+            {
+                if (ResetTimelineDeleteConfirmation())
+                    RefreshTimeline();
+            }
+
             if (_workspaceTabs?.IsReorderModeEnabled != true)
                 return;
 

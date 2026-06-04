@@ -657,10 +657,19 @@ public partial class MainWindow
         if (_timelineRowRenderStates.TryGetValue(timeline, out var state) &&
             state.VisualItemsByAnimationKey.TryGetValue(animationKey, out var item))
         {
-            return Math.Max(1, item.Width);
+            return GetStableNodePreviewWidth(node, item.Width);
         }
 
-        return Math.Max(1, MeasureTimelineItem(CreateNode(timeline, node)).Width);
+        return GetStableNodePreviewWidth(node, MeasureTimelineItem(CreateNode(timeline, node)).Width);
+    }
+
+    private static double GetStableNodePreviewWidth(MacroNode node, double measuredWidth)
+    {
+        var minimumWidth = TimelineBlockService.IsBlockBoundary(node)
+            ? BlockNode.BoundaryNodeWidth
+            : 1;
+
+        return Math.Max(minimumWidth, measuredWidth);
     }
 
     private void AddBlockBackgrounds(
@@ -1226,6 +1235,7 @@ public partial class MainWindow
         };
 
         border.Child = CreateTimelineHeaderContent(timeline, isActive, isPendingDelete);
+        border.ContextMenu = CreateTimelineHeaderContextMenu(timeline);
 
         AttachTimelineHeaderMouseHandlers(border, timeline);
         return border;
@@ -1240,7 +1250,7 @@ public partial class MainWindow
             {
                 Margin = new Thickness(2, 4, 2, 4),
                 ToolTip =
-                    $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}"
+                    $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
             };
 
             content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
@@ -1311,6 +1321,7 @@ public partial class MainWindow
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Left-click or middle-click to confirm delete.",
             Children =
             {
                 new TextBlock
@@ -1331,6 +1342,44 @@ public partial class MainWindow
                 }
             }
         };
+    }
+
+    private ContextMenu CreateTimelineHeaderContextMenu(MacroTimeline timeline)
+    {
+        var contextMenu = new ContextMenu();
+        contextMenu.SetResourceReference(FrameworkElement.StyleProperty, "KeyLineContextMenu");
+
+        var duplicateItem = new MenuItem
+        {
+            Header = "Duplicate",
+            IsEnabled = _isTimelineEditingEnabled
+        };
+        duplicateItem.Click += (_, _) =>
+        {
+            ResetTimelineDeleteConfirmation();
+            DuplicateTimeline(timeline);
+        };
+
+        var renameItem = new MenuItem
+        {
+            Header = "Rename",
+            IsEnabled = _isTimelineEditingEnabled
+        };
+        renameItem.Click += (_, _) => BeginTimelineHeaderRename(timeline);
+
+        var deleteItem = new MenuItem
+        {
+            Header = "Delete",
+            IsEnabled = _isTimelineEditingEnabled && _document.Timelines.Count > 1
+        };
+        deleteItem.Click += (_, _) => BeginTimelineDeleteConfirmation(timeline);
+
+        contextMenu.Items.Add(duplicateItem);
+        contextMenu.Items.Add(new Separator());
+        contextMenu.Items.Add(renameItem);
+        contextMenu.Items.Add(deleteItem);
+
+        return contextMenu;
     }
 
     private void RefreshTimelineHeaderStatuses()
@@ -1574,7 +1623,6 @@ public partial class MainWindow
 
         control.DelayCommitted += (_, _) =>
         {
-            RefreshTimeline();
             RefreshInspector();
             ScheduleSaveState();
         };
@@ -1710,6 +1758,14 @@ public partial class MainWindow
         element.PreviewMouseLeftButtonDown += (_, e) =>
         {
             EnsureTimelineDragGlobalHandlers();
+
+            if (ReferenceEquals(_pendingDeleteTimeline, timeline))
+            {
+                ConfirmTimelineDelete(timeline);
+                e.Handled = true;
+                return;
+            }
+
             ResetTimelineDeleteConfirmation();
 
             SelectTimeline(timeline);
@@ -1735,6 +1791,30 @@ public partial class MainWindow
                 _document.Timelines.IndexOf(timeline));
 
             element.CaptureMouse();
+
+            e.Handled = true;
+        };
+
+        element.PreviewMouseDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Middle)
+                return;
+
+            CancelTimelineDragState();
+
+            if (!_isTimelineEditingEnabled)
+            {
+                SelectTimeline(timeline);
+                _selection.SelectTimeline(timeline);
+                RefreshInspector();
+                e.Handled = true;
+                return;
+            }
+
+            if (ReferenceEquals(_pendingDeleteTimeline, timeline))
+                ConfirmTimelineDelete(timeline);
+            else
+                BeginTimelineDeleteConfirmation(timeline);
 
             e.Handled = true;
         };
@@ -1783,18 +1863,15 @@ public partial class MainWindow
         element.PreviewMouseRightButtonDown += (_, e) =>
         {
             CancelTimelineDragState();
+            var clearedPendingDelete = ResetTimelineDeleteConfirmation();
 
-            if (!_isTimelineEditingEnabled)
-            {
-                SelectTimeline(timeline);
-                _selection.SelectTimeline(timeline);
+            SelectTimeline(timeline);
+            _selection.SelectTimeline(timeline);
+
+            if (clearedPendingDelete)
+                RefreshTimeline();
+            else
                 RefreshInspector();
-                e.Handled = true;
-                return;
-            }
-
-            BeginOrConfirmTimelineDelete(timeline);
-            e.Handled = true;
         };
     }
 
@@ -1827,7 +1904,19 @@ public partial class MainWindow
             element.ReleaseMouseCapture();
     }
 
-    private void BeginOrConfirmTimelineDelete(MacroTimeline timeline)
+    private void BeginTimelineHeaderRename(MacroTimeline timeline)
+    {
+        if (!_isTimelineEditingEnabled)
+            return;
+
+        ResetTimelineDeleteConfirmation();
+        SelectTimeline(timeline);
+        _selection.SelectTimeline(timeline);
+        RefreshTimeline();
+        BeginTimelineNameEditFromHeader(timeline);
+    }
+
+    private void BeginTimelineDeleteConfirmation(MacroTimeline timeline)
     {
         if (_document.Timelines.Count <= 1)
             return;
@@ -1836,21 +1925,44 @@ public partial class MainWindow
         _selection.SelectTimeline(timeline);
         RefreshInspector();
 
-        if (ReferenceEquals(_pendingDeleteTimeline, timeline))
-        {
-            DeleteSelectedTimeline(timeline);
-            return;
-        }
-
         _pendingDeleteTimeline = timeline;
         RefreshTimeline();
     }
 
-    private void ResetTimelineDeleteConfirmation()
+    private void ConfirmTimelineDelete(MacroTimeline timeline)
     {
-        if (_pendingDeleteTimeline == null)
+        if (!ReferenceEquals(_pendingDeleteTimeline, timeline))
             return;
 
         _pendingDeleteTimeline = null;
+        DeleteSelectedTimeline(timeline);
+    }
+
+    private bool ResetTimelineDeleteConfirmation()
+    {
+        if (_pendingDeleteTimeline == null)
+            return false;
+
+        _pendingDeleteTimeline = null;
+        return true;
+    }
+
+    private bool IsSourcePendingDeleteTimelineHeader(DependencyObject? source)
+    {
+        if (_pendingDeleteTimeline == null)
+            return false;
+
+        while (source != null)
+        {
+            if (source is FrameworkElement element &&
+                ReferenceEquals(element.Tag, _pendingDeleteTimeline))
+            {
+                return true;
+            }
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return false;
     }
 }
