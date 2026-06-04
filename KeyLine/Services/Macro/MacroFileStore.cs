@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KeyLine.Domain;
+using KeyLine.Services.Input;
 
 namespace KeyLine.Services.Macro;
 
@@ -148,7 +149,21 @@ public static class MacroFileStore
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
             IsRecordedDelay = node.IsRecordedDelay,
             RepeatBlockId = node.RepeatBlockId,
-            RepeatCount = Math.Max(0, node.RepeatCount)
+            RepeatCount = Math.Max(0, node.RepeatCount),
+            ConditionBlockId = node.ConditionBlockId,
+            ConditionType = node.ConditionType,
+            ConditionKeyName = node.ConditionKeyName,
+            ConditionVirtualKey = Math.Max(0, node.ConditionVirtualKey),
+            ConditionShortcutKeys = ConditionInputGesture.GetGesture(node),
+            ConditionPixelX = Math.Max(0, node.ConditionPixelX),
+            ConditionPixelY = Math.Max(0, node.ConditionPixelY),
+            ConditionPixelRed = Math.Clamp(node.ConditionPixelRed, 0, 255),
+            ConditionPixelGreen = Math.Clamp(node.ConditionPixelGreen, 0, 255),
+            ConditionPixelBlue = Math.Clamp(node.ConditionPixelBlue, 0, 255),
+            ConditionPixelTolerance = Math.Clamp(node.ConditionPixelTolerance, 0, 255),
+            ConditionChancePercent = Math.Clamp(node.ConditionChancePercent, 0, 100),
+            ConditionLoopMode = node.ConditionLoopMode,
+            ConditionLoopInterval = Math.Max(1, node.ConditionLoopInterval)
         };
     }
 
@@ -237,9 +252,29 @@ public static class MacroFileStore
             MouseButton = Math.Clamp(persisted.MouseButton <= 0 ? 1 : persisted.MouseButton, 1, 5),
             IsRecordedDelay = persisted.IsRecordedDelay,
             RepeatBlockId = persisted.RepeatBlockId,
-            RepeatCount = Math.Max(0, persisted.RepeatCount)
+            RepeatCount = Math.Max(0, persisted.RepeatCount),
+            ConditionBlockId = persisted.ConditionBlockId,
+            ConditionType = GetPersistedConditionType(persisted.ConditionType),
+            ConditionKeyName = persisted.ConditionKeyName,
+            ConditionVirtualKey = Math.Max(0, persisted.ConditionVirtualKey),
+            ConditionShortcutKeys = persisted.ConditionShortcutKeys,
+            ConditionPixelX = Math.Max(0, persisted.ConditionPixelX),
+            ConditionPixelY = Math.Max(0, persisted.ConditionPixelY),
+            ConditionPixelRed = Math.Clamp(persisted.ConditionPixelRed, 0, 255),
+            ConditionPixelGreen = Math.Clamp(persisted.ConditionPixelGreen, 0, 255),
+            ConditionPixelBlue = Math.Clamp(persisted.ConditionPixelBlue, 0, 255),
+            ConditionPixelTolerance = Math.Clamp(persisted.ConditionPixelTolerance, 0, 255),
+            ConditionChancePercent = Math.Clamp(persisted.ConditionChancePercent, 0, 100),
+            ConditionLoopMode = GetPersistedConditionLoopMode(persisted.ConditionLoopMode),
+            ConditionLoopInterval = Math.Max(1, persisted.ConditionLoopInterval)
         };
     }
+
+    private static MacroConditionType GetPersistedConditionType(MacroConditionType type) =>
+        Enum.IsDefined(type) ? type : MacroConditionType.KeyState;
+
+    private static MacroConditionLoopMode GetPersistedConditionLoopMode(MacroConditionLoopMode mode) =>
+        Enum.IsDefined(mode) ? mode : MacroConditionLoopMode.FirstLoop;
 
     private sealed class MacroFile
     {
@@ -299,6 +334,20 @@ public static class MacroFileStore
         public bool IsRecordedDelay { get; set; }
         public string RepeatBlockId { get; set; } = "";
         public int RepeatCount { get; set; } = 2;
+        public string ConditionBlockId { get; set; } = "";
+        public MacroConditionType ConditionType { get; set; } = MacroConditionType.KeyState;
+        public string ConditionKeyName { get; set; } = "Shift";
+        public int ConditionVirtualKey { get; set; } = 0x10;
+        public string ConditionShortcutKeys { get; set; } = "";
+        public int ConditionPixelX { get; set; }
+        public int ConditionPixelY { get; set; }
+        public int ConditionPixelRed { get; set; } = 255;
+        public int ConditionPixelGreen { get; set; } = 255;
+        public int ConditionPixelBlue { get; set; } = 255;
+        public int ConditionPixelTolerance { get; set; }
+        public int ConditionChancePercent { get; set; } = 30;
+        public MacroConditionLoopMode ConditionLoopMode { get; set; } = MacroConditionLoopMode.FirstLoop;
+        public int ConditionLoopInterval { get; set; } = 2;
     }
 }
 

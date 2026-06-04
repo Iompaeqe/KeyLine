@@ -11,6 +11,7 @@ public sealed class NodeInspectorPolicy
     public bool CanPickMousePosition { get; init; }
     public bool CanEditMouseButton { get; init; }
     public bool CanEditRepeatCount { get; init; }
+    public bool CanEditCondition { get; init; }
 
     public static NodeInspectorPolicy For(MacroTimeline timeline, MacroNode node)
     {
@@ -75,6 +76,13 @@ public sealed class NodeInspectorPolicy
             },
 
             MacroNodeType.RepeatEnd => new NodeInspectorPolicy(),
+
+            MacroNodeType.ConditionStart => new NodeInspectorPolicy
+            {
+                CanEditCondition = true
+            },
+
+            MacroNodeType.ConditionEnd => new NodeInspectorPolicy(),
 
             _ => new NodeInspectorPolicy
             {

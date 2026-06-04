@@ -15,7 +15,27 @@ public enum MacroNodeType
     BackgroundMouseUp,
     BackgroundMouseClick,
     RepeatStart,
-    RepeatEnd
+    RepeatEnd,
+    ConditionStart,
+    ConditionEnd
+}
+
+public enum MacroConditionType
+{
+    KeyState,
+    PixelColor,
+    RandomChance,
+    LoopContext
+}
+
+public enum MacroConditionLoopMode
+{
+    FirstLoop,
+    LastLoop,
+    EveryNLoops,
+    FirstRepeat,
+    LastRepeat,
+    EveryNRepeats
 }
 
 public sealed class MacroNode
@@ -48,4 +68,32 @@ public sealed class MacroNode
     public string RepeatBlockId { get; set; } = "";
 
     public int RepeatCount { get; set; } = 2;
+
+    public string ConditionBlockId { get; set; } = "";
+
+    public MacroConditionType ConditionType { get; set; } = MacroConditionType.KeyState;
+
+    public string ConditionKeyName { get; set; } = "Shift";
+
+    public int ConditionVirtualKey { get; set; } = 0x10;
+
+    public string ConditionShortcutKeys { get; set; } = "";
+
+    public int ConditionPixelX { get; set; }
+
+    public int ConditionPixelY { get; set; }
+
+    public int ConditionPixelRed { get; set; } = 255;
+
+    public int ConditionPixelGreen { get; set; } = 255;
+
+    public int ConditionPixelBlue { get; set; } = 255;
+
+    public int ConditionPixelTolerance { get; set; }
+
+    public int ConditionChancePercent { get; set; } = 30;
+
+    public MacroConditionLoopMode ConditionLoopMode { get; set; } = MacroConditionLoopMode.FirstLoop;
+
+    public int ConditionLoopInterval { get; set; } = 2;
 }

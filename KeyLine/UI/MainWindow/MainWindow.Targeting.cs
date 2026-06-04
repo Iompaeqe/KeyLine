@@ -156,4 +156,37 @@ public partial class MainWindow
             ScheduleSaveState();
         }
 
+        private async Task PickConditionPixelForNodeAsync(MacroNode node)
+        {
+            var target = GetTargetHandle();
+            if (target == null || target.Handle == 0)
+            {
+                StatusText.Text = "Select a target window before picking a pixel";
+                return;
+            }
+
+            var previousStatus = StatusText.Text;
+            StatusText.Text = "Click a target-window pixel to capture position and color";
+
+            var picked = await _mouseCoordinatePicker.PickPixelAsync(this, target.Handle);
+
+            if (picked == null)
+            {
+                StatusText.Text = previousStatus;
+                return;
+            }
+
+            node.ConditionPixelX = Math.Max(0, (int)picked.ClientPoint.X);
+            node.ConditionPixelY = Math.Max(0, (int)picked.ClientPoint.Y);
+            node.ConditionPixelRed = picked.Color.Red;
+            node.ConditionPixelGreen = picked.Color.Green;
+            node.ConditionPixelBlue = picked.Color.Blue;
+
+            StatusText.Text =
+                $"Captured pixel ({node.ConditionPixelX}, {node.ConditionPixelY}) RGB({picked.Color.Red}, {picked.Color.Green}, {picked.Color.Blue})";
+
+            RefreshTimeline();
+            ScheduleSaveState();
+        }
+
 }

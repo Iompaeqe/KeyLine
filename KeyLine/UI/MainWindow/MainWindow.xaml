@@ -507,6 +507,15 @@
                                             Foreground="#E9D5FF"
                                             Click="RepeatBlockMenuButton_Click" />
 
+                                    <Button x:Name="ConditionBlockMenuButton"
+                                            Content="Condition block"
+                                            Height="30"
+                                            Margin="0,0,0,5"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
+                                            Click="ConditionBlockMenuButton_Click" />
+
                                     <Button x:Name="CursorMoveMenuButton"
                                             Content="Cursor move"
                                             Height="30"

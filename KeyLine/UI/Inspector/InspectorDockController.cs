@@ -19,6 +19,7 @@ public sealed class InspectorDockController
     private readonly Action _scheduleSaveState;
     private readonly Action<MacroTimeline> _selectTimeline;
     private readonly Func<MacroNode, Task> _pickMouseCoordinatesForNodeAsync;
+    private readonly Func<MacroNode, Task> _pickConditionPixelAsync;
 
     private InspectorWindow? _window;
     private InspectorController? _controller;
@@ -35,7 +36,8 @@ public sealed class InspectorDockController
         Action refreshTimeline,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
-        Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync)
+        Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
+        Func<MacroNode, Task> pickConditionPixelAsync)
     {
         _owner = owner;
         _selection = selection;
@@ -46,6 +48,7 @@ public sealed class InspectorDockController
         _scheduleSaveState = scheduleSaveState;
         _selectTimeline = selectTimeline;
         _pickMouseCoordinatesForNodeAsync = pickMouseCoordinatesForNodeAsync;
+        _pickConditionPixelAsync = pickConditionPixelAsync;
 
         _owner.Activated += Owner_Activated;
         _owner.LocationChanged += Owner_LocationChanged;
@@ -176,7 +179,8 @@ public sealed class InspectorDockController
             refreshTimeline: _refreshTimeline,
             scheduleSaveState: _scheduleSaveState,
             selectTimeline: _selectTimeline,
-            pickMouseCoordinatesForNodeAsync: _pickMouseCoordinatesForNodeAsync);
+            pickMouseCoordinatesForNodeAsync: _pickMouseCoordinatesForNodeAsync,
+            pickConditionPixelAsync: _pickConditionPixelAsync);
 
         Refresh();
     }

@@ -1,4 +1,5 @@
 using KeyLine.Domain;
+using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.Timeline;
 
@@ -48,6 +49,8 @@ public sealed class MacroRunner
                     executionSteps,
                     safeBaseDelayMs,
                     minimumDelayMs,
+                    currentLoop,
+                    loopCount,
                     heldModifierKeys,
                     useTextInputMode,
                     token);
@@ -158,12 +161,15 @@ public sealed class MacroRunner
         IReadOnlyList<MacroNode> executionSteps,
         int safeBaseDelayMs,
         int minimumDelayMs,
+        int currentLoop,
+        int loopCount,
         ISet<int> heldModifierKeys,
         bool useTextInputMode,
         CancellationToken token)
     {
         var didDelayThisPass = false;
         var repeatPairs = TimelineBlockService.BuildRepeatPairMap(executionSteps);
+        var conditionPairs = TimelineBlockService.BuildConditionPairMap(executionSteps);
         var repeatStack = new Stack<RepeatContext>();
 
         for (var i = 0; i < executionSteps.Count; i++)
@@ -184,7 +190,7 @@ public sealed class MacroRunner
                     continue;
                 }
 
-                repeatStack.Push(new RepeatContext(i + 1, endIndex, repeatCount));
+                repeatStack.Push(new RepeatContext(i + 1, endIndex, repeatCount, repeatCount));
                 continue;
             }
 
@@ -204,6 +210,20 @@ public sealed class MacroRunner
 
                 continue;
             }
+
+            if (step.Type == MacroNodeType.ConditionStart)
+            {
+                if (!conditionPairs.TryGetValue(i, out var endIndex))
+                    continue;
+
+                if (!EvaluateCondition(step, targetHwnd, currentLoop, loopCount, repeatStack))
+                    i = endIndex;
+
+                continue;
+            }
+
+            if (step.Type == MacroNodeType.ConditionEnd)
+                continue;
 
             await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
 
@@ -242,6 +262,91 @@ public sealed class MacroRunner
 
     private static bool IsDelayNode(MacroNode node) =>
         node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
+
+    private static bool EvaluateCondition(
+        MacroNode node,
+        nint targetHwnd,
+        int currentLoop,
+        int loopCount,
+        Stack<RepeatContext> repeatStack)
+    {
+        return node.ConditionType switch
+        {
+            MacroConditionType.KeyState => IsInputCombinationDown(node),
+            MacroConditionType.PixelColor => IsPixelMatch(node, targetHwnd),
+            MacroConditionType.RandomChance => IsRandomChanceHit(node.ConditionChancePercent),
+            MacroConditionType.LoopContext => IsLoopContextMatch(node, currentLoop, loopCount, repeatStack),
+            _ => true
+        };
+    }
+
+    private static bool IsInputCombinationDown(MacroNode node)
+    {
+        var keys = ConditionInputGesture.GetVirtualKeys(node);
+        return keys.Length > 0 && keys.All(IsVirtualKeyDown);
+    }
+
+    private static bool IsVirtualKeyDown(int virtualKey)
+    {
+        if (virtualKey <= 0)
+            return false;
+
+        return (NativeMethods.GetAsyncKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
+    }
+
+    private static bool IsPixelMatch(MacroNode node, nint targetHwnd)
+    {
+        if (!ScreenPixelReader.TryReadClientPixel(
+                targetHwnd,
+                node.ConditionPixelX,
+                node.ConditionPixelY,
+                out var actualColor))
+        {
+            return false;
+        }
+
+        var expectedRed = Math.Clamp(node.ConditionPixelRed, 0, 255);
+        var expectedGreen = Math.Clamp(node.ConditionPixelGreen, 0, 255);
+        var expectedBlue = Math.Clamp(node.ConditionPixelBlue, 0, 255);
+        var tolerance = Math.Clamp(node.ConditionPixelTolerance, 0, 255);
+
+        return Math.Abs(actualColor.Red - expectedRed) <= tolerance &&
+               Math.Abs(actualColor.Green - expectedGreen) <= tolerance &&
+               Math.Abs(actualColor.Blue - expectedBlue) <= tolerance;
+    }
+
+    private static bool IsRandomChanceHit(int chancePercent)
+    {
+        var chance = Math.Clamp(chancePercent, 0, 100);
+        if (chance <= 0)
+            return false;
+
+        if (chance >= 100)
+            return true;
+
+        return Random.Shared.Next(100) < chance;
+    }
+
+    private static bool IsLoopContextMatch(
+        MacroNode node,
+        int currentLoop,
+        int loopCount,
+        Stack<RepeatContext> repeatStack)
+    {
+        var loopNumber = currentLoop + 1;
+        var interval = Math.Max(1, node.ConditionLoopInterval);
+
+        return node.ConditionLoopMode switch
+        {
+            MacroConditionLoopMode.FirstLoop => currentLoop == 0,
+            MacroConditionLoopMode.LastLoop => loopCount > 0 && currentLoop == loopCount - 1,
+            MacroConditionLoopMode.EveryNLoops => loopNumber % interval == 0,
+            MacroConditionLoopMode.FirstRepeat => repeatStack.Count > 0 && repeatStack.Peek().CurrentIteration == 1,
+            MacroConditionLoopMode.LastRepeat => repeatStack.Count > 0 && repeatStack.Peek().RemainingIterations == 1,
+            MacroConditionLoopMode.EveryNRepeats => repeatStack.Count > 0 && repeatStack.Peek().CurrentIteration % interval == 0,
+            _ => false
+        };
+    }
 
     private async Task ExecuteStep(
         nint hwnd,
@@ -343,15 +448,18 @@ public sealed class MacroRunner
 
     private sealed class RepeatContext
     {
-        public RepeatContext(int bodyStartIndex, int endIndex, int remainingIterations)
+        public RepeatContext(int bodyStartIndex, int endIndex, int remainingIterations, int totalIterations)
         {
             BodyStartIndex = bodyStartIndex;
             EndIndex = endIndex;
             RemainingIterations = remainingIterations;
+            TotalIterations = totalIterations;
         }
 
         public int BodyStartIndex { get; }
         public int EndIndex { get; }
+        public int TotalIterations { get; }
         public int RemainingIterations { get; set; }
+        public int CurrentIteration => TotalIterations - RemainingIterations + 1;
     }
 }

@@ -104,7 +104,7 @@ public static class TimelineNodeMutationService
 
     public static List<MacroNode> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroNode node)
     {
-        if (TimelineBlockService.TryGetRepeatBlockRange(timeline, node, out var blockRange))
+        if (TimelineBlockService.TryGetBlockRange(timeline, node, out var blockRange))
             return blockRange;
 
         if (node.IsSyntheticDisplayNode)

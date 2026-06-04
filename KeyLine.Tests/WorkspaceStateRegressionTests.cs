@@ -1,4 +1,5 @@
 using KeyLine.Domain;
+using KeyLine.Services.Input;
 using KeyLine.Services.Macro;
 using KeyLine.Services.Timeline;
 
@@ -71,6 +72,50 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Single(imported);
         Assert.Equal(MacroLoopMode.Sync, imported[0].LoopMode);
         Assert.Equal("profile-a", imported[0].ProfileId);
+    }
+
+    [Fact]
+    public void ExportAndImport_PreservesConditionBlockNodes()
+    {
+        var workspace = CreateWorkspace("Condition Export", MacroLoopMode.Async);
+        var timeline = workspace.Document.ActiveTimeline;
+        var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
+        conditionStart.ConditionType = MacroConditionType.PixelColor;
+        conditionStart.ConditionPixelX = 24;
+        conditionStart.ConditionPixelY = 48;
+        conditionStart.ConditionPixelRed = 12;
+        conditionStart.ConditionPixelGreen = 34;
+        conditionStart.ConditionPixelBlue = 56;
+        conditionStart.ConditionPixelTolerance = 5;
+        conditionStart.ConditionShortcutKeys = ConditionInputGesture.Serialize(new[]
+        {
+            0x11,
+            0x12,
+            0x51
+        });
+        var exportPath = Path.Combine(_appDataRoot, "condition.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+
+        timeline.Nodes.Add(conditionStart);
+        timeline.Nodes.Add(conditionEnd);
+
+        MacroFileStore.Export(exportPath, new[] { workspace });
+
+        var imported = MacroFileStore.Import(exportPath);
+
+        Assert.Single(imported);
+        var loadedNodes = imported[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(MacroNodeType.ConditionStart, loadedNodes[0].Type);
+        Assert.Equal(MacroNodeType.ConditionEnd, loadedNodes[1].Type);
+        Assert.Equal(MacroConditionType.PixelColor, loadedNodes[0].ConditionType);
+        Assert.Equal(24, loadedNodes[0].ConditionPixelX);
+        Assert.Equal(48, loadedNodes[0].ConditionPixelY);
+        Assert.Equal(12, loadedNodes[0].ConditionPixelRed);
+        Assert.Equal(34, loadedNodes[0].ConditionPixelGreen);
+        Assert.Equal(56, loadedNodes[0].ConditionPixelBlue);
+        Assert.Equal(5, loadedNodes[0].ConditionPixelTolerance);
+        Assert.Equal(conditionStart.ConditionShortcutKeys, loadedNodes[0].ConditionShortcutKeys);
+        Assert.Equal(loadedNodes[0].ConditionBlockId, loadedNodes[1].ConditionBlockId);
     }
 
     [Fact]
@@ -218,6 +263,91 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal(MacroNodeType.RepeatEnd, loadedNodes[2].Type);
         Assert.Equal(5, loadedNodes[0].RepeatCount);
         Assert.Equal(loadedNodes[0].RepeatBlockId, loadedNodes[2].RepeatBlockId);
+    }
+
+    [Fact]
+    public void ConditionBlockSelectionRange_IncludesEndpointsAndContents()
+    {
+        var timeline = new MacroTimeline();
+        var before = new MacroNode { Type = MacroNodeType.Text, Text = "before" };
+        var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
+        var inside = new MacroNode { Type = MacroNodeType.Text, Text = "inside" };
+        var after = new MacroNode { Type = MacroNodeType.Text, Text = "after" };
+
+        timeline.Nodes.Add(before);
+        timeline.Nodes.Add(conditionStart);
+        timeline.Nodes.Add(inside);
+        timeline.Nodes.Add(conditionEnd);
+        timeline.Nodes.Add(after);
+
+        var selection = TimelineBlockService.GetSelectionNodesForStep(timeline, conditionEnd);
+
+        Assert.Equal(new[] { conditionStart, inside, conditionEnd }, selection);
+    }
+
+    [Fact]
+    public void CloneStepsForPaste_RemapsConditionBlockIds()
+    {
+        var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
+        conditionStart.ConditionType = MacroConditionType.RandomChance;
+        conditionStart.ConditionChancePercent = 30;
+        conditionStart.ConditionShortcutKeys = ConditionInputGesture.Serialize(new[]
+        {
+            0x11,
+            0x12,
+            0x51
+        });
+
+        var clones = MacroCloneService.CloneStepsForPaste(new[] { conditionStart, conditionEnd });
+
+        Assert.Equal(2, clones.Count);
+        Assert.Equal(MacroNodeType.ConditionStart, clones[0].Type);
+        Assert.Equal(MacroNodeType.ConditionEnd, clones[1].Type);
+        Assert.Equal(MacroConditionType.RandomChance, clones[0].ConditionType);
+        Assert.Equal(30, clones[0].ConditionChancePercent);
+        Assert.Equal(conditionStart.ConditionShortcutKeys, clones[0].ConditionShortcutKeys);
+        Assert.NotEqual(conditionStart.ConditionBlockId, clones[0].ConditionBlockId);
+        Assert.Equal(clones[0].ConditionBlockId, clones[1].ConditionBlockId);
+    }
+
+    [Fact]
+    public void SaveAndLoad_PreservesConditionBlockNodes()
+    {
+        var workspace = CreateWorkspace("Condition State", MacroLoopMode.Async);
+        var timeline = workspace.Document.ActiveTimeline;
+        var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
+        conditionStart.ConditionType = MacroConditionType.LoopContext;
+        conditionStart.ConditionLoopMode = MacroConditionLoopMode.EveryNRepeats;
+        conditionStart.ConditionLoopInterval = 3;
+        conditionStart.ConditionShortcutKeys = ConditionInputGesture.Serialize(new[]
+        {
+            0x11,
+            0x12,
+            0x51
+        });
+
+        timeline.Nodes.Add(conditionStart);
+        timeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "inside" });
+        timeline.Nodes.Add(conditionEnd);
+
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(3, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.ConditionStart, loadedNodes[0].Type);
+        Assert.Equal(MacroNodeType.ConditionEnd, loadedNodes[2].Type);
+        Assert.Equal(MacroConditionType.LoopContext, loadedNodes[0].ConditionType);
+        Assert.Equal(MacroConditionLoopMode.EveryNRepeats, loadedNodes[0].ConditionLoopMode);
+        Assert.Equal(3, loadedNodes[0].ConditionLoopInterval);
+        Assert.Equal(conditionStart.ConditionShortcutKeys, loadedNodes[0].ConditionShortcutKeys);
+        Assert.Equal(loadedNodes[0].ConditionBlockId, loadedNodes[2].ConditionBlockId);
     }
 
     public void Dispose()

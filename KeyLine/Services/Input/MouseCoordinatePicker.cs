@@ -31,6 +31,25 @@ public sealed class MouseCoordinatePicker
         }
     }
 
+    public async Task<PickedPixel?> PickPixelAsync(Window owner, nint targetHwnd)
+    {
+        if (targetHwnd == 0)
+            return null;
+
+        ShowMouseTargetIndicator(owner, targetHwnd);
+
+        try
+        {
+            NativeMethods.SetForegroundWindow(targetHwnd);
+            return await CaptureNextPixelAsync(targetHwnd);
+        }
+        finally
+        {
+            CloseMouseTargetIndicator();
+            BringOwnerToFront(owner);
+        }
+    }
+
     private void ShowMouseTargetIndicator(Window owner, nint targetHwnd)
     {
         CloseMouseTargetIndicator();
@@ -131,4 +150,67 @@ public sealed class MouseCoordinatePicker
             _mousePickProc = null;
         }
     }
+
+    private async Task<PickedPixel?> CaptureNextPixelAsync(nint targetHwnd)
+    {
+        var completion = new TaskCompletionSource<PickedPixel?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var moduleHandle = NativeMethods.GetModuleHandle(null);
+
+        _mousePickProc = (code, wParam, lParam) =>
+        {
+            if (code >= 0 && wParam == (IntPtr)NativeMethods.WM_LBUTTONDOWN)
+            {
+                var hookData = Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
+                var screenPoint = hookData.pt;
+                var clientPoint = screenPoint;
+
+                if (!NativeMethods.ScreenToClient(targetHwnd, ref clientPoint) ||
+                    !ScreenPixelReader.TryReadScreenPixel(screenPoint.X, screenPoint.Y, out var color))
+                {
+                    completion.TrySetResult(null);
+                }
+                else
+                {
+                    completion.TrySetResult(new PickedPixel(
+                        new Point(clientPoint.X, clientPoint.Y),
+                        color));
+                }
+            }
+
+            return NativeMethods.CallNextHookEx(_mousePickHook, code, wParam, lParam);
+        };
+
+        _mousePickHook = NativeMethods.SetWindowsHookEx(
+            NativeMethods.WH_MOUSE_LL,
+            _mousePickProc,
+            moduleHandle,
+            0);
+
+        if (_mousePickHook == IntPtr.Zero)
+        {
+            _mousePickProc = null;
+            return null;
+        }
+
+        try
+        {
+            var completedTask = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+
+            return completedTask == completion.Task
+                ? await completion.Task
+                : null;
+        }
+        finally
+        {
+            if (_mousePickHook != IntPtr.Zero)
+            {
+                NativeMethods.UnhookWindowsHookEx(_mousePickHook);
+                _mousePickHook = IntPtr.Zero;
+            }
+
+            _mousePickProc = null;
+        }
+    }
 }
+
+public sealed record PickedPixel(Point ClientPoint, ScreenPixelColor Color);

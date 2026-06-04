@@ -75,6 +75,8 @@ public static class ShortcutGesture
             NativeMethods.VK_CONTROL => "Ctrl",
             NativeMethods.VK_SHIFT => "Shift",
             NativeMethods.VK_MENU => "Alt",
+            NativeMethods.VK_XBUTTON1 => "Mouse4",
+            NativeMethods.VK_XBUTTON2 => "Mouse5",
             _ => KeyNameDisplayRules.GetName(KeyInterop.KeyFromVirtualKey(virtualKey))
         };
     }

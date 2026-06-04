@@ -189,6 +189,23 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
+    private void ConditionBlockMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddPopup.IsOpen = false;
+
+        SaveUndoSnapshot();
+        var timeline = GetPopupTimeline();
+        var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
+
+        InsertPopupSteps(timeline, new[] { conditionStart, conditionEnd });
+
+        SelectTimeline(timeline, refreshInspector: false);
+        _selection.SelectNodes(timeline, new[] { conditionStart, conditionEnd }, conditionStart);
+        RefreshTimeline();
+        RefreshInspector();
+        ScheduleSaveState();
+    }
+
     private void CursorMoveMenuButton_Click(object sender, RoutedEventArgs e)
     {
         AddPopup.IsOpen = false;

@@ -46,6 +46,15 @@ public static class TooltipNotes
     public const string TextNodeEdit = "Text sent by this node.";
     public const string PickMouseCoordinates = "Pick the mouse coordinates in the target window.";
     public const string RepeatCount = "How many times the nodes inside this Repeat block run.";
+    public const string ConditionType = "Choose the simple condition that gates the nodes inside this block.";
+    public const string ConditionKeyState = "The block runs only while this key or mouse button is held.";
+    public const string ConditionPixelPosition = "Target-window pixel position to compare before running the block.";
+    public const string ConditionPixelColor = "Expected pixel color channel value.";
+    public const string ConditionPixelTolerance = "Allowed color difference per RGB channel.";
+    public const string ConditionPixelPick = "Pick a target-window pixel and capture its current color.";
+    public const string ConditionChance = "Chance that the block runs when execution reaches it.";
+    public const string ConditionLoopContext = "Timeline or repeat iteration rule used by this condition.";
+    public const string ConditionLoopInterval = "Run on every Nth loop or repeat iteration.";
 
     public const string StandardDelayRequiresEnable = "Enable standard delay to edit this setting.";
 }

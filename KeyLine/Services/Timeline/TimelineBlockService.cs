@@ -1,6 +1,20 @@
 using KeyLine.Domain;
+using KeyLine.Services.Input;
 
 namespace KeyLine.Services.Timeline;
+
+public enum TimelineBlockKind
+{
+    Repeat,
+    Condition
+}
+
+public sealed record TimelineBlockRange(
+    TimelineBlockKind Kind,
+    int StartIndex,
+    int EndIndex,
+    MacroNode Start,
+    MacroNode End);
 
 public static class TimelineBlockService
 {
@@ -24,15 +38,45 @@ public static class TimelineBlockService
         return (start, end);
     }
 
+    public static (MacroNode Start, MacroNode End) CreateConditionBlock()
+    {
+        var blockId = Guid.NewGuid().ToString("N");
+        var start = new MacroNode
+        {
+            Type = MacroNodeType.ConditionStart,
+            ConditionBlockId = blockId,
+            ConditionType = MacroConditionType.KeyState,
+            ConditionKeyName = "Shift",
+            ConditionVirtualKey = 0x10,
+            ConditionShortcutKeys = ConditionInputGesture.Serialize(new[] { 0x10 })
+        };
+        var end = new MacroNode
+        {
+            Type = MacroNodeType.ConditionEnd,
+            ConditionBlockId = blockId
+        };
+
+        return (start, end);
+    }
+
     public static bool IsRepeatBoundary(MacroNode node) =>
         node.Type is MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd;
 
+    public static bool IsConditionBoundary(MacroNode node) =>
+        node.Type is MacroNodeType.ConditionStart or MacroNodeType.ConditionEnd;
+
+    public static bool IsBlockBoundary(MacroNode node) =>
+        IsRepeatBoundary(node) || IsConditionBoundary(node);
+
+    public static bool IsBlockEnd(MacroNode node) =>
+        node.Type is MacroNodeType.RepeatEnd or MacroNodeType.ConditionEnd;
+
     public static bool IsControlNode(MacroNode node) =>
-        IsRepeatBoundary(node);
+        IsBlockBoundary(node);
 
     public static List<MacroNode> GetSelectionNodesForStep(MacroTimeline timeline, MacroNode node)
     {
-        return TryGetRepeatBlockRange(timeline, node, out var range)
+        return TryGetBlockRange(timeline, node, out var range)
             ? range
             : new List<MacroNode> { node };
     }
@@ -45,7 +89,7 @@ public static class TimelineBlockService
 
         foreach (var node in selectedNodes)
         {
-            if (TryGetRepeatBlockRange(timeline, node, out var range))
+            if (TryGetBlockRange(timeline, node, out var range))
             {
                 selectedSet.UnionWith(range);
                 continue;
@@ -57,14 +101,100 @@ public static class TimelineBlockService
         return OrderByTimeline(timeline, selectedSet);
     }
 
+    public static bool TryGetBlockRange(
+        MacroTimeline timeline,
+        MacroNode boundary,
+        out List<MacroNode> range)
+    {
+        if (TryGetRepeatBlockRange(timeline, boundary, out range))
+            return true;
+
+        return TryGetConditionBlockRange(timeline, boundary, out range);
+    }
+
     public static bool TryGetRepeatBlockRange(
         MacroTimeline timeline,
         MacroNode boundary,
         out List<MacroNode> range)
     {
+        return TryGetBlockRange(
+            timeline,
+            boundary,
+            IsRepeatBoundary,
+            BuildRepeatPairMap,
+            out range);
+    }
+
+    public static bool TryGetConditionBlockRange(
+        MacroTimeline timeline,
+        MacroNode boundary,
+        out List<MacroNode> range)
+    {
+        return TryGetBlockRange(
+            timeline,
+            boundary,
+            IsConditionBoundary,
+            BuildConditionPairMap,
+            out range);
+    }
+
+    public static Dictionary<int, int> BuildRepeatPairMap(IReadOnlyList<MacroNode> nodes)
+    {
+        return BuildPairMap(
+            nodes,
+            MacroNodeType.RepeatStart,
+            MacroNodeType.RepeatEnd,
+            node => node.RepeatBlockId);
+    }
+
+    public static Dictionary<int, int> BuildConditionPairMap(IReadOnlyList<MacroNode> nodes)
+    {
+        return BuildPairMap(
+            nodes,
+            MacroNodeType.ConditionStart,
+            MacroNodeType.ConditionEnd,
+            node => node.ConditionBlockId);
+    }
+
+    public static List<TimelineBlockRange> BuildBlockRanges(IReadOnlyList<MacroNode> nodes)
+    {
+        var ranges = new List<TimelineBlockRange>();
+
+        AddRanges(TimelineBlockKind.Repeat, BuildRepeatPairMap(nodes));
+        AddRanges(TimelineBlockKind.Condition, BuildConditionPairMap(nodes));
+
+        return ranges
+            .OrderBy(range => range.StartIndex)
+            .ThenByDescending(range => range.EndIndex)
+            .ToList();
+
+        void AddRanges(TimelineBlockKind kind, Dictionary<int, int> pairMap)
+        {
+            foreach (var pair in pairMap)
+            {
+                if (pair.Key >= pair.Value)
+                    continue;
+
+                ranges.Add(new TimelineBlockRange(
+                    kind,
+                    pair.Key,
+                    pair.Value,
+                    nodes[pair.Key],
+                    nodes[pair.Value]));
+            }
+        }
+    }
+
+    private static bool TryGetBlockRange(
+        MacroTimeline timeline,
+        MacroNode boundary,
+        Func<MacroNode, bool> isBoundary,
+        Func<IReadOnlyList<MacroNode>, Dictionary<int, int>> buildPairMap,
+        out List<MacroNode> range)
+    {
         range = new List<MacroNode>();
 
-        if (!IsRepeatBoundary(boundary))
+        if (!isBoundary(boundary))
             return false;
 
         var nodes = timeline.Nodes.ToList();
@@ -72,7 +202,7 @@ public static class TimelineBlockService
         if (boundaryIndex < 0)
             return false;
 
-        var pairMap = BuildRepeatPairMap(nodes);
+        var pairMap = buildPairMap(nodes);
         if (!pairMap.TryGetValue(boundaryIndex, out var pairIndex))
             return false;
 
@@ -86,7 +216,11 @@ public static class TimelineBlockService
         return range.Count > 0;
     }
 
-    public static Dictionary<int, int> BuildRepeatPairMap(IReadOnlyList<MacroNode> nodes)
+    private static Dictionary<int, int> BuildPairMap(
+        IReadOnlyList<MacroNode> nodes,
+        MacroNodeType startType,
+        MacroNodeType endType,
+        Func<MacroNode, string> getBlockId)
     {
         var pairMap = new Dictionary<int, int>();
         var keyedStartIndexes = new Dictionary<string, Stack<int>>(StringComparer.Ordinal);
@@ -97,8 +231,8 @@ public static class TimelineBlockService
             var node = nodes[i];
             switch (node.Type)
             {
-                case MacroNodeType.RepeatStart:
-                    var startBlockId = NormalizeBlockId(node.RepeatBlockId);
+                case var type when type == startType:
+                    var startBlockId = NormalizeBlockId(getBlockId(node));
                     if (startBlockId.Length == 0)
                     {
                         anonymousStartIndexes.Push(i);
@@ -115,8 +249,8 @@ public static class TimelineBlockService
                     }
                     break;
 
-                case MacroNodeType.RepeatEnd:
-                    var endBlockId = NormalizeBlockId(node.RepeatBlockId);
+                case var type when type == endType:
+                    var endBlockId = NormalizeBlockId(getBlockId(node));
                     if (endBlockId.Length == 0)
                     {
                         PairWithStart(anonymousStartIndexes, i);

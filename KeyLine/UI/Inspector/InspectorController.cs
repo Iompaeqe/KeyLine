@@ -27,7 +27,8 @@ public sealed class InspectorController
         Action refreshTimeline,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
-        Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync)
+        Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
+        Func<MacroNode, Task> pickConditionPixelAsync)
     {
         _window = window;
         _selection = selection;
@@ -50,7 +51,8 @@ public sealed class InspectorController
             saveUndoSnapshot: saveUndoSnapshot,
             commitNodeChange: _commitService.CommitNodeChange,
             refreshInspector: Refresh,
-            pickMouseCoordinatesForNodeAsync: pickMouseCoordinatesForNodeAsync);
+            pickMouseCoordinatesForNodeAsync: pickMouseCoordinatesForNodeAsync,
+            pickConditionPixelAsync: pickConditionPixelAsync);
 
         WireWindowEvents();
     }

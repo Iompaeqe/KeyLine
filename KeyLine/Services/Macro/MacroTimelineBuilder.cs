@@ -53,7 +53,9 @@ public static class MacroTimelineBuilder
                 or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick
                 or MacroNodeType.RepeatStart
-                or MacroNodeType.RepeatEnd)
+                or MacroNodeType.RepeatEnd
+                or MacroNodeType.ConditionStart
+                or MacroNodeType.ConditionEnd)
             {
                 FlushCombo();
                 result.Add(step);

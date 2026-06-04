@@ -27,7 +27,8 @@ public partial class MainWindow
                 refreshTimeline: () => RefreshTimeline(),
                 scheduleSaveState: ScheduleSaveState,
                 selectTimeline: timeline => SelectTimeline(timeline),
-                pickMouseCoordinatesForNodeAsync: PickMouseCoordinatesForNodeAsync);
+                pickMouseCoordinatesForNodeAsync: PickMouseCoordinatesForNodeAsync,
+                pickConditionPixelAsync: PickConditionPixelForNodeAsync);
         }
 
         private void ToggleRightPanelButton_Click(object sender, RoutedEventArgs e)

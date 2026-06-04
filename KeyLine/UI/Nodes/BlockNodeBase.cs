@@ -4,7 +4,7 @@ namespace KeyLine.UI.Nodes;
 
 public abstract class BlockNodeBase : NodeBase
 {
-    protected bool IsBlockStart => Node?.Type == MacroNodeType.RepeatStart;
+    protected bool IsBlockStart => Node?.Type is MacroNodeType.RepeatStart or MacroNodeType.ConditionStart;
 
-    protected bool IsBlockEnd => Node?.Type == MacroNodeType.RepeatEnd;
+    protected bool IsBlockEnd => Node?.Type is MacroNodeType.RepeatEnd or MacroNodeType.ConditionEnd;
 }

@@ -69,7 +69,7 @@ public static class MacroCloneService
 
     public static MacroNode CloneStep(MacroNode source)
     {
-        return CloneStep(source, repeatBlockIdMap: null);
+        return CloneStep(source, repeatBlockIdMap: null, conditionBlockIdMap: null);
     }
 
     private static List<MacroNode> CloneSteps(IEnumerable<MacroNode> source, bool remapRepeatBlockIds)
@@ -77,13 +77,19 @@ public static class MacroCloneService
         var repeatBlockIdMap = remapRepeatBlockIds
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             : null;
+        var conditionBlockIdMap = remapRepeatBlockIds
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : null;
 
         return source
-            .Select(step => CloneStep(step, repeatBlockIdMap))
+            .Select(step => CloneStep(step, repeatBlockIdMap, conditionBlockIdMap))
             .ToList();
     }
 
-    private static MacroNode CloneStep(MacroNode source, Dictionary<string, string>? repeatBlockIdMap)
+    private static MacroNode CloneStep(
+        MacroNode source,
+        Dictionary<string, string>? repeatBlockIdMap,
+        Dictionary<string, string>? conditionBlockIdMap)
     {
         return new MacroNode
         {
@@ -99,7 +105,21 @@ public static class MacroCloneService
             MouseButton = source.MouseButton,
             IsRecordedDelay = source.IsRecordedDelay,
             RepeatBlockId = GetClonedRepeatBlockId(source.RepeatBlockId, repeatBlockIdMap),
-            RepeatCount = source.RepeatCount
+            RepeatCount = source.RepeatCount,
+            ConditionBlockId = GetClonedRepeatBlockId(source.ConditionBlockId, conditionBlockIdMap),
+            ConditionType = source.ConditionType,
+            ConditionKeyName = source.ConditionKeyName,
+            ConditionVirtualKey = source.ConditionVirtualKey,
+            ConditionShortcutKeys = source.ConditionShortcutKeys,
+            ConditionPixelX = source.ConditionPixelX,
+            ConditionPixelY = source.ConditionPixelY,
+            ConditionPixelRed = source.ConditionPixelRed,
+            ConditionPixelGreen = source.ConditionPixelGreen,
+            ConditionPixelBlue = source.ConditionPixelBlue,
+            ConditionPixelTolerance = source.ConditionPixelTolerance,
+            ConditionChancePercent = source.ConditionChancePercent,
+            ConditionLoopMode = source.ConditionLoopMode,
+            ConditionLoopInterval = source.ConditionLoopInterval
         };
     }
 

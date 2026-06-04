@@ -40,6 +40,8 @@ internal static class NativeMethods
     public const int VK_SHIFT = 0x10;
     public const int VK_CONTROL = 0x11;
     public const int VK_MENU = 0x12;
+    public const int VK_XBUTTON1 = 0x05;
+    public const int VK_XBUTTON2 = 0x06;
     public const int VK_LSHIFT = 0xA0;
     public const int VK_RSHIFT = 0xA1;
     public const int VK_LCONTROL = 0xA2;
@@ -68,6 +70,18 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll")]
+    public static extern uint GetPixel(IntPtr hdc, int x, int y);
     
     public delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
 
