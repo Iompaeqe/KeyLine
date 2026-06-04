@@ -1,7 +1,7 @@
 ﻿
 # Known Bugs
 
-- [ ] 
+- [ ] when there are nested blocks, dragging distances mess up.
 
 # Feedbacks
 
@@ -10,13 +10,8 @@
 # To Do
 
 ### 1. BlockNodes
-- [ ] Add new block nodes logic that consists of start and end
-- [ ] Current goals: Repeat Block and Conditional Block
-
-
-
-
-
+- [X] Add new block nodes logic that consists of start and end
+- [X] Current goals: Repeat Block and Conditional Block
 
 
 ### notes
