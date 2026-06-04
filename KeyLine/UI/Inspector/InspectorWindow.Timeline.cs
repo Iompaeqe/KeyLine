@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using KeyLine.Services.Timeline;
 using KeyLine.UI.Common.EntryBlocks;
 
 namespace KeyLine.UI.Inspector;
@@ -21,8 +22,8 @@ public partial class InspectorWindow
         _isSettingTimelineState = true;
         _isEditingEnabled = state.IsEditingEnabled;
         _loopCount = Math.Max(0, state.LoopCount);
-        _loopDelayMs = Math.Max(0, state.LoopDelayMs);
-        _standardDelayMs = Math.Max(0, state.StandardDelayMs);
+        _loopDelayMs = DelayFormatter.ClampMilliseconds(state.LoopDelayMs);
+        _standardDelayMs = DelayFormatter.ClampMilliseconds(state.StandardDelayMs);
 
         ApplyTimelineCollapsedState(state.IsCollapsed);
         ApplyTimelineNameState(state.TimelineName, state.IsNameEditing);
@@ -85,12 +86,20 @@ public partial class InspectorWindow
         WireDelayTextBox(
             TimelineLoopDelayEntry,
             () => _loopDelayMs,
-            value => TimelineLoopDelayCommitted?.Invoke(value));
+            value =>
+            {
+                _loopDelayMs = value;
+                TimelineLoopDelayCommitted?.Invoke(value);
+            });
 
         WireDelayTextBox(
             TimelineStandardDelayEntry,
             () => _standardDelayMs,
-            value => TimelineStandardDelayCommitted?.Invoke(value));
+            value =>
+            {
+                _standardDelayMs = value;
+                TimelineStandardDelayCommitted?.Invoke(value);
+            });
 
         InputTypePager.PageRequested += (_, _) => RequestInputTypeChange();
 
@@ -222,22 +231,64 @@ public partial class InspectorWindow
     private void WireDelayTextBox(TimeEntryBlock entry, Func<int> currentValue, Action<int> commit)
     {
         var textBox = entry.TextBox;
+        var isEditing = false;
+        var isSettingText = false;
+
+        void SetEditText(int value)
+        {
+            isSettingText = true;
+            try
+            {
+                textBox.Text = DelayFormatter.ClampMilliseconds(value).ToString();
+                entry.UnitText.Text = "ms";
+            }
+            finally
+            {
+                isSettingText = false;
+            }
+        }
+
+        void SetDisplayText(int value)
+        {
+            isSettingText = true;
+            try
+            {
+                entry.SetDisplay(DelayFormatter.ClampMilliseconds(value));
+            }
+            finally
+            {
+                isSettingText = false;
+            }
+        }
 
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
         textBox.GotKeyboardFocus += (_, _) =>
         {
-            textBox.Text = currentValue().ToString();
-            entry.UnitText.Text = "ms";
+            isEditing = true;
+            SetEditText(currentValue());
             textBox.SelectAll();
         };
-        textBox.LostFocus += (_, _) => CommitDelayText(entry, currentValue(), commit);
-        //textBox.TextChanged += (_, _) => CommitDelayText(entry, currentValue(), commit);
+        textBox.LostFocus += (_, _) =>
+        {
+            CommitDelayText(entry, currentValue(), commit);
+            isEditing = false;
+            SetDisplayText(currentValue());
+        };
+        textBox.TextChanged += (_, _) =>
+        {
+            if (!isEditing || isSettingText)
+                return;
+
+            CommitDelayText(entry, currentValue(), commit);
+        };
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
                 return;
 
             CommitDelayText(entry, currentValue(), commit);
+            isEditing = false;
+            SetDisplayText(currentValue());
             Keyboard.ClearFocus();
             e.Handled = true;
         };
@@ -264,17 +315,12 @@ public partial class InspectorWindow
             return;
 
         var textBox = entry.TextBox;
-        if (!int.TryParse(textBox.Text, out var value))
-            value = 0;
+        if (!long.TryParse(textBox.Text, out var value))
+            value = string.IsNullOrWhiteSpace(textBox.Text) ? 0 : DelayFormatter.MaxMilliseconds;
 
-        value = Math.Max(0, value);
-        if (value != originalValue)
-        {
-            commit(value);
-            return;
-        }
-
-        entry.SetDisplay(value);
+        var clampedValue = DelayFormatter.ClampMilliseconds(value);
+        if (clampedValue != originalValue)
+            commit(clampedValue);
     }
 
     private void RequestInputTypeChange()

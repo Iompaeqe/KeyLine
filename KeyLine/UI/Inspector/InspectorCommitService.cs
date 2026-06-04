@@ -1,5 +1,6 @@
 ﻿using System.Windows.Controls;
 using KeyLine.Domain;
+using KeyLine.Services.Timeline;
 using KeyLine.State;
 using KeyLine.UI.Common.EntryBlocks;
 
@@ -11,6 +12,7 @@ public sealed class InspectorCommitService
     private readonly Func<bool> _canEdit;
     private readonly Action _saveUndoSnapshot;
     private readonly Action _refreshTimeline;
+    private readonly Action _refreshTimelineWithoutInspector;
     private readonly Action _refreshInspector;
     private readonly Action _scheduleSaveState;
     private readonly Action<MacroTimeline> _selectTimeline;
@@ -22,6 +24,7 @@ public sealed class InspectorCommitService
         Func<bool> canEdit,
         Action saveUndoSnapshot,
         Action refreshTimeline,
+        Action refreshTimelineWithoutInspector,
         Action refreshInspector,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline)
@@ -30,6 +33,7 @@ public sealed class InspectorCommitService
         _canEdit = canEdit;
         _saveUndoSnapshot = saveUndoSnapshot;
         _refreshTimeline = refreshTimeline;
+        _refreshTimelineWithoutInspector = refreshTimelineWithoutInspector;
         _refreshInspector = refreshInspector;
         _scheduleSaveState = scheduleSaveState;
         _selectTimeline = selectTimeline;
@@ -47,6 +51,17 @@ public sealed class InspectorCommitService
         _scheduleSaveState();
     }
 
+    public void CommitNodeValueChange(Action change)
+    {
+        if (!_canEdit())
+            return;
+
+        _saveUndoSnapshot();
+        change();
+        _refreshTimelineWithoutInspector();
+        _scheduleSaveState();
+    }
+
     public void CommitTimelineChange(MacroTimeline timeline, Action change)
     {
         if (!_canEdit())
@@ -56,6 +71,18 @@ public sealed class InspectorCommitService
         change();
         _selectTimeline(timeline);
         _refreshTimeline();
+        _scheduleSaveState();
+    }
+
+    public void CommitTimelineValueChange(MacroTimeline timeline, Action change)
+    {
+        if (!_canEdit())
+            return;
+
+        _saveUndoSnapshot();
+        change();
+        _selection.SelectTimeline(timeline);
+        _refreshTimelineWithoutInspector();
         _scheduleSaveState();
     }
 
@@ -109,16 +136,11 @@ public sealed class InspectorCommitService
     public static void CommitDelayText(TimeEntryBlock entry, int originalValue, Action<int> commit)
     {
         var textBox = entry.TextBox;
-        if (!int.TryParse(textBox.Text, out var value))
-            value = 0;
+        if (!long.TryParse(textBox.Text, out var value))
+            value = string.IsNullOrWhiteSpace(textBox.Text) ? 0 : DelayFormatter.MaxMilliseconds;
 
-        value = Math.Max(0, value);
-        if (value != originalValue)
-        {
-            commit(value);
-            return;
-        }
-
-        entry.SetDisplay(value);
+        var clampedValue = DelayFormatter.ClampMilliseconds(value);
+        if (clampedValue != originalValue)
+            commit(clampedValue);
     }
 }

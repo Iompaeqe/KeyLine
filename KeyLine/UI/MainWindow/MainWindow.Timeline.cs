@@ -63,6 +63,16 @@ public partial class MainWindow
 
     private void RefreshTimeline(object? sender = null, RoutedEventArgs? e = null)
     {
+        RefreshTimelineCore(refreshInspector: true);
+    }
+
+    private void RefreshTimelineWithoutInspector()
+    {
+        RefreshTimelineCore(refreshInspector: false);
+    }
+
+    private void RefreshTimelineCore(bool refreshInspector)
+    {
         if (TimelineRowsPanel == null)
             return;
 
@@ -81,7 +91,8 @@ public partial class MainWindow
         }
 
         HideEmptyTimelineState();
-        SyncOptionsFromActiveTimeline();
+        if (refreshInspector)
+            SyncOptionsFromActiveTimeline();
 
         TimelineRowsPanel.Margin = TimelineLayoutCalculator.GetRowsPanelMargin(TimelineHeaderTopExtra);
 

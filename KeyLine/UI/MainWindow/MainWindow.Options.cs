@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using KeyLine.Domain;
+using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.Timeline;
 using KeyLine.UI.Inspector;
@@ -25,6 +26,7 @@ public partial class MainWindow
                 canEdit: () => _isTimelineEditingEnabled,
                 saveUndoSnapshot: SaveUndoSnapshot,
                 refreshTimeline: () => RefreshTimeline(),
+                refreshTimelineWithoutInspector: RefreshTimelineWithoutInspector,
                 scheduleSaveState: ScheduleSaveState,
                 selectTimeline: timeline => SelectTimeline(timeline),
                 pickMouseCoordinatesForNodeAsync: PickMouseCoordinatesForNodeAsync,
@@ -39,6 +41,11 @@ public partial class MainWindow
         private void OpenInspectorFromSelection()
         {
             _inspectorDock?.OpenFromSelection();
+        }
+
+        private void BeginTimelineNameEditFromHeader(MacroTimeline timeline)
+        {
+            _inspectorDock?.BeginTimelineNameEdit(timeline);
         }
 
         private void RefreshInspector()
@@ -80,6 +87,7 @@ public partial class MainWindow
             LoopModeChainText
         ];
         private bool _isUpdatingLoopModeSelection;
+        private bool _isUpdatingTimerInput;
 
         private void InitializeMacroOptions()
         {
@@ -87,6 +95,8 @@ public partial class MainWindow
             ShortcutPill.MouseLeftButtonDown += ShortcutTextBlock_MouseLeftButtonDown;
             ShortcutPill.PreviewKeyDown += ShortcutTextBlock_PreviewKeyDown;
             ShortcutPill.PreviewKeyUp += ShortcutTextBlock_PreviewKeyUp;
+            ShortcutPill.PreviewMouseDown += ShortcutTextBlock_PreviewMouseDown;
+            ShortcutPill.PreviewMouseUp += ShortcutTextBlock_PreviewMouseUp;
             ShortcutPill.LostKeyboardFocus += ShortcutTextBlock_LostKeyboardFocus;
             ShortcutTogglePill.MouseLeftButtonDown += ShortcutToggleTextBlock_MouseLeftButtonDown;
 
@@ -102,7 +112,7 @@ public partial class MainWindow
 
         private void ApplyMacroOptionsFromWorkspace(MacroWorkspace workspace)
         {
-            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, Math.Max(0, workspace.TimerMs));
+            SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, DelayFormatter.ClampMilliseconds(workspace.TimerMs));
 
             SetLoopModeSelection(workspace.LoopMode);
 
@@ -193,8 +203,11 @@ public partial class MainWindow
 
         private void TimerMinutesTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!_isUpdatingPlaybackCounters)
-                ScheduleSaveState();
+            if (_isUpdatingPlaybackCounters || _isUpdatingTimerInput || AnyPlaybackRunning())
+                return;
+
+            _activeWorkspace.TimerMs = GetTimerMs();
+            ScheduleSaveState();
         }
 
         private void DelayInputTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -209,9 +222,7 @@ public partial class MainWindow
 
             if (ReferenceEquals(sender, TimerMinutesTextBox))
             {
-                var timerMs = GetTimerMs();
-                TimerUnitTextBlock.Text = "ms";
-                TimerMinutesTextBox.Text = timerMs.ToString();
+                SetRawDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, DelayFormatter.ClampMilliseconds(_activeWorkspace.TimerMs));
             }
 
             if (sender is TextBox textBox)
@@ -228,6 +239,9 @@ public partial class MainWindow
             if (e.Key != Key.Enter)
                 return;
 
+            if (ReferenceEquals(sender, TimerMinutesTextBox))
+                _activeWorkspace.TimerMs = GetTimerMs();
+
             FormatDelayInputTextBox(sender);
             Keyboard.ClearFocus();
             e.Handled = true;
@@ -239,14 +253,32 @@ public partial class MainWindow
                 return;
 
             if (ReferenceEquals(sender, TimerMinutesTextBox))
-                SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, GetTimerMs());
+                SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, DelayFormatter.ClampMilliseconds(_activeWorkspace.TimerMs));
         }
 
-        private static void SetFormattedDelayInput(TextBox textBox, TextBlock unitTextBlock, int milliseconds)
+        private void SetFormattedDelayInput(TextBox textBox, TextBlock unitTextBlock, int milliseconds)
         {
             var (value, unit) = DelayFormatter.Split(milliseconds);
-            textBox.Text = value;
-            unitTextBlock.Text = unit;
+            SetDelayInputText(textBox, unitTextBlock, value, unit);
+        }
+
+        private void SetRawDelayInput(TextBox textBox, TextBlock unitTextBlock, int milliseconds)
+        {
+            SetDelayInputText(textBox, unitTextBlock, DelayFormatter.ClampMilliseconds(milliseconds).ToString(), "ms");
+        }
+
+        private void SetDelayInputText(TextBox textBox, TextBlock unitTextBlock, string value, string unit)
+        {
+            _isUpdatingTimerInput = true;
+            try
+            {
+                unitTextBlock.Text = unit;
+                textBox.Text = value;
+            }
+            finally
+            {
+                _isUpdatingTimerInput = false;
+            }
         }
 
         private int GetTimerMs()
@@ -257,7 +289,7 @@ public partial class MainWindow
         private static int ParseDelayInput(string valueText, string unitText)
         {
             if (!double.TryParse(valueText, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value))
-                return 0;
+                return string.IsNullOrWhiteSpace(valueText) ? 0 : DelayFormatter.MaxMilliseconds;
 
             var normalizedUnit = unitText.Trim().ToLowerInvariant();
             var multiplier = normalizedUnit switch
@@ -268,7 +300,11 @@ public partial class MainWindow
                 _ => 1
             };
 
-            return Math.Max(0, (int)Math.Round(value * multiplier));
+            var milliseconds = Math.Round(value * multiplier);
+            if (milliseconds >= DelayFormatter.MaxMilliseconds)
+                return DelayFormatter.MaxMilliseconds;
+
+            return DelayFormatter.ClampMilliseconds((long)milliseconds);
         }
 
         private void TargetWindowSearchPill_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -338,6 +374,13 @@ public partial class MainWindow
 
         private void ShortcutTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsShortcutCaptureActive())
+            {
+                FinishShortcutCaptureWithoutMouseButton();
+                e.Handled = true;
+                return;
+            }
+
             if (_isShortcutClearConfirmationActive)
             {
                 CommitShortcutCapture(Array.Empty<int>());
@@ -352,6 +395,13 @@ public partial class MainWindow
 
         private void ShortcutBorder_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsShortcutCaptureActive())
+            {
+                FinishShortcutCaptureWithoutMouseButton();
+                e.Handled = true;
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(_activeWorkspace.ShortcutKeys))
                 return;
 
@@ -442,6 +492,50 @@ public partial class MainWindow
                 CommitShortcutCapture(_capturedShortcutKeys);
         }
 
+        private void ShortcutTextBlock_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!IsShortcutCaptureActive())
+                return;
+
+            if (IsShortcutCaptureStopMouseButton(e.ChangedButton))
+            {
+                FinishShortcutCaptureWithoutMouseButton();
+                e.Handled = true;
+                return;
+            }
+
+            var virtualKey = GetVirtualKeyFromMouseButton(e.ChangedButton);
+            if (virtualKey <= 0)
+                return;
+
+            e.Handled = true;
+            _shortcutCaptureDownKeys.Add(virtualKey);
+
+            if (!_capturedShortcutKeys.Contains(virtualKey) &&
+                _capturedShortcutKeys.Count < ShortcutGesture.MaxKeyCount)
+            {
+                _capturedShortcutKeys.Add(virtualKey);
+            }
+
+            UpdateShortcutCaptureText();
+        }
+
+        private void ShortcutTextBlock_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!IsShortcutCaptureActive())
+                return;
+
+            var virtualKey = GetVirtualKeyFromMouseButton(e.ChangedButton);
+            if (virtualKey <= 0)
+                return;
+
+            e.Handled = true;
+            _shortcutCaptureDownKeys.Remove(virtualKey);
+
+            if (_capturedShortcutKeys.Count > 0 && _shortcutCaptureDownKeys.Count == 0)
+                CommitShortcutCapture(_capturedShortcutKeys);
+        }
+
         private void ShortcutTextBlock_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
             if (_isShortcutClearConfirmationActive)
@@ -470,6 +564,7 @@ public partial class MainWindow
             ShortcutTextBlock.Text = "press shortcut";
             ShortcutTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
             ShortcutPill.Focus();
+            Mouse.Capture(ShortcutPill);
         }
 
         private void CommitShortcutCapture(IEnumerable<int> virtualKeys)
@@ -499,6 +594,8 @@ public partial class MainWindow
             SetShortcutCaptureActive(false);
             _capturedShortcutKeys.Clear();
             _shortcutCaptureDownKeys.Clear();
+            if (ReferenceEquals(Mouse.Captured, ShortcutPill))
+                Mouse.Capture(null);
 
             UpdateShortcutText();
             Keyboard.ClearFocus();
@@ -510,9 +607,19 @@ public partial class MainWindow
             SetShortcutCaptureActive(false);
             _capturedShortcutKeys.Clear();
             _shortcutCaptureDownKeys.Clear();
+            if (ReferenceEquals(Mouse.Captured, ShortcutPill))
+                Mouse.Capture(null);
 
             UpdateShortcutText();
             Keyboard.ClearFocus();
+        }
+
+        private void FinishShortcutCaptureWithoutMouseButton()
+        {
+            if (_capturedShortcutKeys.Count > 0)
+                CommitShortcutCapture(_capturedShortcutKeys);
+            else
+                CancelShortcutCapture();
         }
 
         private void ResetShortcutOptionState()
@@ -566,6 +673,19 @@ public partial class MainWindow
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
             return ShortcutGesture.NormalizeVirtualKey(KeyInterop.VirtualKeyFromKey(key));
         }
+
+        private static int GetVirtualKeyFromMouseButton(MouseButton button)
+        {
+            return button switch
+            {
+                MouseButton.XButton1 => NativeMethods.VK_XBUTTON1,
+                MouseButton.XButton2 => NativeMethods.VK_XBUTTON2,
+                _ => 0
+            };
+        }
+
+        private static bool IsShortcutCaptureStopMouseButton(MouseButton button) =>
+            button is MouseButton.Left or MouseButton.Right or MouseButton.Middle;
 
     // From MainWindow.TimelineOptions.cs
         private void SelectTimeline(MacroTimeline timeline, bool refreshInspector = true)

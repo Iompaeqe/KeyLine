@@ -25,6 +25,7 @@ public sealed class InspectorController
         Func<bool> canEdit,
         Action saveUndoSnapshot,
         Action refreshTimeline,
+        Action refreshTimelineWithoutInspector,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
@@ -40,6 +41,7 @@ public sealed class InspectorController
             canEdit: canEdit,
             saveUndoSnapshot: saveUndoSnapshot,
             refreshTimeline: refreshTimeline,
+            refreshTimelineWithoutInspector: refreshTimelineWithoutInspector,
             refreshInspector: Refresh,
             scheduleSaveState: scheduleSaveState,
             selectTimeline: selectTimeline);
@@ -50,6 +52,7 @@ public sealed class InspectorController
             isRefreshing: () => _isRefreshing,
             saveUndoSnapshot: saveUndoSnapshot,
             commitNodeChange: _commitService.CommitNodeChange,
+            commitNodeValueChange: _commitService.CommitNodeValueChange,
             refreshInspector: Refresh,
             pickMouseCoordinatesForNodeAsync: pickMouseCoordinatesForNodeAsync,
             pickConditionPixelAsync: pickConditionPixelAsync);
@@ -83,6 +86,16 @@ public sealed class InspectorController
         {
             _isRefreshing = false;
         }
+    }
+
+    public void BeginTimelineNameEdit(MacroTimeline timeline)
+    {
+        if (!_canEdit())
+            return;
+
+        _selection.SelectTimeline(timeline);
+        _editingTimelineName = timeline;
+        Refresh();
     }
 
     private void WireWindowEvents()
@@ -141,8 +154,7 @@ public sealed class InspectorController
     private void CommitLoopDelay(int value)
     {
         var timeline = _getCurrentTimeline();
-        _commitService.CommitTimelineChange(timeline, () => timeline.BaseDelayMs = value);
-        Refresh();
+        _commitService.CommitTimelineValueChange(timeline, () => timeline.BaseDelayMs = value);
     }
 
     private void ToggleInputType()
@@ -167,8 +179,7 @@ public sealed class InspectorController
     private void CommitStandardDelay(int value)
     {
         var timeline = _getCurrentTimeline();
-        _commitService.CommitTimelineChange(timeline, () => timeline.StandardDelayMs = value);
-        Refresh();
+        _commitService.CommitTimelineValueChange(timeline, () => timeline.StandardDelayMs = value);
     }
 
     private void SetShowKeyUpDown(bool value)

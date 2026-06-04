@@ -37,6 +37,7 @@ public sealed class NodeInspectorBuilder
     private readonly Func<bool> _isRefreshing;
     private readonly Action _saveUndoSnapshot;
     private readonly Action<Action> _commitNodeChange;
+    private readonly Action<Action> _commitNodeValueChange;
     private readonly Action _refreshInspector;
     private readonly Func<MacroNode, Task> _pickMouseCoordinatesForNodeAsync;
     private readonly Func<MacroNode, Task> _pickConditionPixelAsync;
@@ -47,6 +48,7 @@ public sealed class NodeInspectorBuilder
         Func<bool> isRefreshing,
         Action saveUndoSnapshot,
         Action<Action> commitNodeChange,
+        Action<Action> commitNodeValueChange,
         Action refreshInspector,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
         Func<MacroNode, Task> pickConditionPixelAsync)
@@ -56,6 +58,7 @@ public sealed class NodeInspectorBuilder
         _isRefreshing = isRefreshing;
         _saveUndoSnapshot = saveUndoSnapshot;
         _commitNodeChange = commitNodeChange;
+        _commitNodeValueChange = commitNodeValueChange;
         _refreshInspector = refreshInspector;
         _pickMouseCoordinatesForNodeAsync = pickMouseCoordinatesForNodeAsync;
         _pickConditionPixelAsync = pickConditionPixelAsync;
@@ -98,8 +101,8 @@ public sealed class NodeInspectorBuilder
             case MacroNodeType.Delay:
                 section.Children.Add(CreateDelayRow(
                     "Delay",
-                    node.DelayMs,
-                    value => _commitNodeChange(() => node.DelayMs = value),
+                    () => node.DelayMs,
+                    value => _commitNodeValueChange(() => node.DelayMs = value),
                     TooltipNotes.DelayNodeValue,
                     policy.CanEditDelay));
                 break;
@@ -107,25 +110,19 @@ public sealed class NodeInspectorBuilder
             case MacroNodeType.RandomDelay:
                 section.Children.Add(CreateDelayRow(
                     "Min",
-                    node.RandomDelayMinMs,
-                    value => _commitNodeChange(() =>
-                    {
-                        node.RandomDelayMinMs = value;
-                        NormalizeRandomDelay(node);
-                    }),
+                    () => node.RandomDelayMinMs,
+                    value => _commitNodeValueChange(() => node.RandomDelayMinMs = value),
                     TooltipNotes.RandomDelayMinimum,
-                    policy.CanEditRandomDelay));
+                    policy.CanEditRandomDelay,
+                    () => NormalizeRandomDelayAfterEdit(node)));
 
                 section.Children.Add(CreateDelayRow(
                     "Max",
-                    node.RandomDelayMaxMs,
-                    value => _commitNodeChange(() =>
-                    {
-                        node.RandomDelayMaxMs = value;
-                        NormalizeRandomDelay(node);
-                    }),
+                    () => node.RandomDelayMaxMs,
+                    value => _commitNodeValueChange(() => node.RandomDelayMaxMs = value),
                     TooltipNotes.RandomDelayMaximum,
-                    policy.CanEditRandomDelay));
+                    policy.CanEditRandomDelay,
+                    () => NormalizeRandomDelayAfterEdit(node)));
                 break;
 
             case MacroNodeType.Text:
@@ -147,7 +144,7 @@ public sealed class NodeInspectorBuilder
                 break;
 
             case MacroNodeType.ConditionStart:
-                section.Children.Add(CreateConditionSummaryRow(node));
+                section.Children.Add(CreateReadonlyRow("Runs when", NodeDisplayFormatter.GetConditionSummary(node)));
                 AddConditionConfigurationRows(section, node, policy.CanEditCondition);
                 break;
 
@@ -219,16 +216,57 @@ public sealed class NodeInspectorBuilder
     {
         var section = CreateSection();
 
-        section.Children.Add(CreateReadonlyRow("Type", "Condition Block"));
-        section.Children.Add(CreateConditionSummaryRow(conditionStart));
+        section.Children.Add(CreateConditionOverviewRow(conditionStart, blockNodeCount));
         AddConditionConfigurationRows(section, conditionStart, isEnabled: true);
-        section.Children.Add(CreateReadonlyRow("Inside", Math.Max(0, blockNodeCount - 2).ToString()));
 
         return section;
     }
 
-    private UIElement CreateConditionSummaryRow(MacroNode conditionStart) =>
-        CreateReadonlyRow("Summary", NodeDisplayFormatter.GetConditionSummary(conditionStart));
+    private UIElement CreateConditionOverviewRow(MacroNode conditionStart, int blockNodeCount)
+    {
+        var grid = CreateInspectorRowGrid();
+        grid.MinHeight = 28;
+        grid.Margin = new Thickness(0, 0, 0, 6);
+        grid.ToolTip = NodeDisplayFormatter.GetConditionSummary(conditionStart);
+
+        grid.Children.Add(new TextBlock
+        {
+            Text = "Condition",
+            Foreground = new SolidColorBrush(Color.FromRgb(203, 213, 225)),
+            FontSize = 12,
+            FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 10, 0)
+        });
+
+        var detailHost = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        Grid.SetColumn(detailHost, 1);
+
+        detailHost.Children.Add(new TextBlock
+        {
+            Text = GetConditionTypeLabel(conditionStart.ConditionType),
+            Foreground = new SolidColorBrush(Color.FromRgb(125, 211, 252)),
+            FontSize = 11,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Right
+        });
+
+        detailHost.Children.Add(new TextBlock
+        {
+            Text = $"{Math.Max(0, blockNodeCount - 2)} inside",
+            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Right
+        });
+
+        grid.Children.Add(detailHost);
+        return grid;
+    }
 
     private void AddConditionConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
     {
@@ -251,46 +289,21 @@ public sealed class NodeInspectorBuilder
                 break;
 
             case MacroConditionType.PixelColor:
-                section.Children.Add(CreateReadonlyRow(
-                    "Picked",
-                    $"{Math.Max(0, node.ConditionPixelX)}, {Math.Max(0, node.ConditionPixelY)}"));
-                section.Children.Add(CreateReadonlyRow(
+                section.Children.Add(CreateMultiValueRow(
+                    "Position",
+                    TooltipNotes.ConditionPixelPosition,
+                    isEnabled,
+                    new MultiValueEntryField("X", Math.Max(0, node.ConditionPixelX), value => _commitNodeChange(() => node.ConditionPixelX = Math.Max(0, value))),
+                    new MultiValueEntryField("Y", Math.Max(0, node.ConditionPixelY), value => _commitNodeChange(() => node.ConditionPixelY = Math.Max(0, value)))));
+
+                section.Children.Add(CreateMultiValueRow(
                     "Color",
-                    $"RGB {Math.Clamp(node.ConditionPixelRed, 0, 255)}, {Math.Clamp(node.ConditionPixelGreen, 0, 255)}, {Math.Clamp(node.ConditionPixelBlue, 0, 255)}"));
-                section.Children.Add(CreatePickPixelButton(node, isEnabled));
-                section.Children.Add(CreateNumberRow(
-                    "X",
-                    Math.Max(0, node.ConditionPixelX),
-                    value => _commitNodeChange(() => node.ConditionPixelX = Math.Max(0, value)),
-                    tooltip: TooltipNotes.ConditionPixelPosition,
-                    isEnabled: isEnabled));
-                section.Children.Add(CreateNumberRow(
-                    "Y",
-                    Math.Max(0, node.ConditionPixelY),
-                    value => _commitNodeChange(() => node.ConditionPixelY = Math.Max(0, value)),
-                    tooltip: TooltipNotes.ConditionPixelPosition,
-                    isEnabled: isEnabled));
-                section.Children.Add(CreateNumberRow(
-                    "R",
-                    Math.Clamp(node.ConditionPixelRed, 0, 255),
-                    value => _commitNodeChange(() => node.ConditionPixelRed = Math.Clamp(value, 0, 255)),
-                    max: 255,
-                    tooltip: TooltipNotes.ConditionPixelColor,
-                    isEnabled: isEnabled));
-                section.Children.Add(CreateNumberRow(
-                    "G",
-                    Math.Clamp(node.ConditionPixelGreen, 0, 255),
-                    value => _commitNodeChange(() => node.ConditionPixelGreen = Math.Clamp(value, 0, 255)),
-                    max: 255,
-                    tooltip: TooltipNotes.ConditionPixelColor,
-                    isEnabled: isEnabled));
-                section.Children.Add(CreateNumberRow(
-                    "B",
-                    Math.Clamp(node.ConditionPixelBlue, 0, 255),
-                    value => _commitNodeChange(() => node.ConditionPixelBlue = Math.Clamp(value, 0, 255)),
-                    max: 255,
-                    tooltip: TooltipNotes.ConditionPixelColor,
-                    isEnabled: isEnabled));
+                    TooltipNotes.ConditionPixelColor,
+                    isEnabled,
+                    new MultiValueEntryField("R", Math.Clamp(node.ConditionPixelRed, 0, 255), value => _commitNodeChange(() => node.ConditionPixelRed = Math.Clamp(value, 0, 255)), Max: 255),
+                    new MultiValueEntryField("G", Math.Clamp(node.ConditionPixelGreen, 0, 255), value => _commitNodeChange(() => node.ConditionPixelGreen = Math.Clamp(value, 0, 255)), Max: 255),
+                    new MultiValueEntryField("B", Math.Clamp(node.ConditionPixelBlue, 0, 255), value => _commitNodeChange(() => node.ConditionPixelBlue = Math.Clamp(value, 0, 255)), Max: 255)));
+
                 section.Children.Add(CreateNumberRow(
                     "Tolerance",
                     Math.Clamp(node.ConditionPixelTolerance, 0, 255),
@@ -298,6 +311,7 @@ public sealed class NodeInspectorBuilder
                     max: 255,
                     tooltip: TooltipNotes.ConditionPixelTolerance,
                     isEnabled: isEnabled));
+                section.Children.Add(CreatePickPixelButton(node, isEnabled));
                 break;
 
             case MacroConditionType.RandomChance:
@@ -499,11 +513,11 @@ public sealed class NodeInspectorBuilder
         {
             Text = ConditionInputGesture.Format(node),
             PlaceholderText = "press input",
-            Width = 138,
-            InputWidth = 138,
+            HorizontalAlignment = HorizontalAlignment.Right,
             IsEnabled = canEdit,
             ToolTip = rowTooltip
         };
+        StyleConditionInputPill(pill);
 
         var capturedKeys = new List<int>();
         var downKeys = new HashSet<int>();
@@ -568,6 +582,13 @@ public sealed class NodeInspectorBuilder
             if (!isCapturing)
                 return;
 
+            if (IsShortcutCaptureStopMouseButton(e.ChangedButton))
+            {
+                e.Handled = true;
+                FinishCaptureWithoutMouseButton();
+                return;
+            }
+
             var virtualKey = GetVirtualKeyFromMouseButton(e.ChangedButton);
             if (virtualKey <= 0)
                 return;
@@ -615,7 +636,7 @@ public sealed class NodeInspectorBuilder
             downKeys.Clear();
             pill.Text = "press input";
             pill.TextElement.Foreground = new SolidColorBrush(Color.FromRgb(125, 211, 252));
-            pill.Focus();
+            pill.FocusInput();
             Mouse.Capture(pill);
         }
 
@@ -664,15 +685,48 @@ public sealed class NodeInspectorBuilder
             Keyboard.ClearFocus();
         }
 
+        void FinishCaptureWithoutMouseButton()
+        {
+            if (capturedKeys.Count > 0)
+                CommitCapture(capturedKeys);
+            else
+                CancelCapture();
+        }
+
         void EndCapture()
         {
             isCapturing = false;
             capturedKeys.Clear();
             downKeys.Clear();
-            pill.TextElement.ClearValue(TextBlock.ForegroundProperty);
+            pill.TextElement.Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240));
             if (ReferenceEquals(Mouse.Captured, pill))
                 Mouse.Capture(null);
         }
+    }
+
+    private UIElement CreateMultiValueRow(
+        string label,
+        string tooltip,
+        bool isEnabled,
+        params MultiValueEntryField[] fields)
+    {
+        var grid = CreateInspectorRowGrid();
+
+        grid.ToolTip = tooltip;
+        grid.Children.Add(CreateInspectorLabel(label, tooltip));
+
+        var entry = new MultiValueEntryBlock
+        {
+            HorizontalAlignment = HorizontalAlignment.Right,
+            ToolTip = tooltip,
+            IsEnabled = CanEditOption(isEnabled)
+        };
+
+        entry.SetFields(fields, _isRefreshing, CanEditOption(isEnabled), tooltip);
+
+        Grid.SetColumn(entry, 1);
+        grid.Children.Add(entry);
+        return grid;
     }
 
     private UIElement CreateNumberRow(
@@ -744,10 +798,11 @@ public sealed class NodeInspectorBuilder
 
     private UIElement CreateDelayRow(
         string label,
-        int value,
+        Func<int> currentValue,
         Action<int> commit,
         string tooltip,
-        bool isEnabled = true)
+        bool isEnabled = true,
+        Action? normalizeAfterEdit = null)
     {
         var grid = CreateInspectorRowGrid();
         var canEdit = CanEditOption(isEnabled);
@@ -762,26 +817,72 @@ public sealed class NodeInspectorBuilder
             IsEnabled = canEdit
         };
 
-        entry.SetDisplay(value);
+        entry.SetDisplay(DelayFormatter.ClampMilliseconds(currentValue()));
         entry.TextBox.IsEnabled = canEdit;
 
         Grid.SetColumn(entry, 1);
 
         var textBox = entry.TextBox;
+        var isEditing = false;
+        var isSettingText = false;
+
+        void SetEditText(int editValue)
+        {
+            isSettingText = true;
+            try
+            {
+                textBox.Text = DelayFormatter.ClampMilliseconds(editValue).ToString();
+                entry.UnitText.Text = "ms";
+            }
+            finally
+            {
+                isSettingText = false;
+            }
+        }
+
+        void SetDisplayText(int displayValue)
+        {
+            isSettingText = true;
+            try
+            {
+                entry.SetDisplay(DelayFormatter.ClampMilliseconds(displayValue));
+            }
+            finally
+            {
+                isSettingText = false;
+            }
+        }
+
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
         textBox.GotKeyboardFocus += (_, _) =>
         {
-            textBox.Text = value.ToString();
-            entry.UnitText.Text = "ms";
+            isEditing = true;
+            SetEditText(currentValue());
             textBox.SelectAll();
         };
-        textBox.LostFocus += (_, _) => InspectorCommitService.CommitDelayText(entry, value, commit);
+        textBox.LostFocus += (_, _) =>
+        {
+            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
+            isEditing = false;
+            normalizeAfterEdit?.Invoke();
+            SetDisplayText(currentValue());
+        };
+        textBox.TextChanged += (_, _) =>
+        {
+            if (!isEditing || isSettingText || _isRefreshing())
+                return;
+
+            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
+        };
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
                 return;
 
-            InspectorCommitService.CommitDelayText(entry, value, commit);
+            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
+            isEditing = false;
+            normalizeAfterEdit?.Invoke();
+            SetDisplayText(currentValue());
             Keyboard.ClearFocus();
             e.Handled = true;
         };
@@ -897,6 +998,23 @@ public sealed class NodeInspectorBuilder
         return grid;
     }
 
+    private static void StyleConditionInputPill(OptionsPillBlock pill)
+    {
+        pill.BorderElement.Margin = new Thickness(0);
+        pill.BorderElement.Background = new SolidColorBrush(Color.FromRgb(21, 34, 53));
+        pill.BorderElement.BorderBrush = new SolidColorBrush(Color.FromRgb(51, 65, 85));
+        pill.BorderElement.BorderThickness = new Thickness(1);
+        pill.BorderElement.CornerRadius = new CornerRadius(6);
+
+        pill.TextElement.Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240));
+        pill.TextElement.FontSize = 11;
+        pill.TextElement.FontWeight = FontWeights.SemiBold;
+        pill.TextElement.Padding = new Thickness(7, 1, 7, 2);
+        pill.TextElement.TextAlignment = TextAlignment.Right;
+        pill.TextElement.TextTrimming = TextTrimming.CharacterEllipsis;
+        pill.TextElement.VerticalAlignment = VerticalAlignment.Center;
+    }
+
     private static TextBlock CreateInspectorLabel(string label, string? tooltip = null)
     {
         return new TextBlock
@@ -911,10 +1029,28 @@ public sealed class NodeInspectorBuilder
         };
     }
 
+    private static string GetConditionTypeLabel(MacroConditionType type) =>
+        type switch
+        {
+            MacroConditionType.KeyState => "Key held",
+            MacroConditionType.PixelColor => "Pixel color",
+            MacroConditionType.RandomChance => "Random chance",
+            MacroConditionType.LoopContext => "Loop rule",
+            _ => "Condition"
+        };
+
     private static void NormalizeRandomDelay(MacroNode node)
     {
         if (node.RandomDelayMaxMs < node.RandomDelayMinMs)
             (node.RandomDelayMinMs, node.RandomDelayMaxMs) = (node.RandomDelayMaxMs, node.RandomDelayMinMs);
+    }
+
+    private void NormalizeRandomDelayAfterEdit(MacroNode node)
+    {
+        if (node.RandomDelayMaxMs >= node.RandomDelayMinMs)
+            return;
+
+        _commitNodeChange(() => NormalizeRandomDelay(node));
     }
 
     private static void NormalizeConditionDefaults(MacroNode node)
@@ -954,6 +1090,9 @@ public sealed class NodeInspectorBuilder
             _ => 0
         };
     }
+
+    private static bool IsShortcutCaptureStopMouseButton(MouseButton button) =>
+        button is MouseButton.Left or MouseButton.Right or MouseButton.Middle;
 
     private bool CanEditOption(bool optionEnabled)
     {

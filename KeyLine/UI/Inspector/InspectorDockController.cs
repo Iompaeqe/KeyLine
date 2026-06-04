@@ -16,6 +16,7 @@ public sealed class InspectorDockController
     private readonly Func<bool> _canEdit;
     private readonly Action _saveUndoSnapshot;
     private readonly Action _refreshTimeline;
+    private readonly Action _refreshTimelineWithoutInspector;
     private readonly Action _scheduleSaveState;
     private readonly Action<MacroTimeline> _selectTimeline;
     private readonly Func<MacroNode, Task> _pickMouseCoordinatesForNodeAsync;
@@ -34,6 +35,7 @@ public sealed class InspectorDockController
         Func<bool> canEdit,
         Action saveUndoSnapshot,
         Action refreshTimeline,
+        Action refreshTimelineWithoutInspector,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
@@ -45,6 +47,7 @@ public sealed class InspectorDockController
         _canEdit = canEdit;
         _saveUndoSnapshot = saveUndoSnapshot;
         _refreshTimeline = refreshTimeline;
+        _refreshTimelineWithoutInspector = refreshTimelineWithoutInspector;
         _scheduleSaveState = scheduleSaveState;
         _selectTimeline = selectTimeline;
         _pickMouseCoordinatesForNodeAsync = pickMouseCoordinatesForNodeAsync;
@@ -82,6 +85,19 @@ public sealed class InspectorDockController
         }
 
         Open();
+    }
+
+    public void BeginTimelineNameEdit(MacroTimeline timeline)
+    {
+        EnsureWindow();
+
+        if (!_window!.IsVisible)
+            Open();
+        else
+            OpenFromSelection();
+
+        _controller?.BeginTimelineNameEdit(timeline);
+        UpdatePosition();
     }
 
     public void Open()
@@ -177,6 +193,7 @@ public sealed class InspectorDockController
             canEdit: _canEdit,
             saveUndoSnapshot: _saveUndoSnapshot,
             refreshTimeline: _refreshTimeline,
+            refreshTimelineWithoutInspector: _refreshTimelineWithoutInspector,
             scheduleSaveState: _scheduleSaveState,
             selectTimeline: _selectTimeline,
             pickMouseCoordinatesForNodeAsync: _pickMouseCoordinatesForNodeAsync,
