@@ -502,9 +502,9 @@
                                             Content="Repeat block"
                                             Height="30"
                                             Margin="0,0,0,5"
-                                            Background="#2B1D08"
-                                            BorderBrush="#B45309"
-                                            Foreground="#FDE68A"
+                                            Background="#221936"
+                                            BorderBrush="#5B3A88"
+                                            Foreground="#E9D5FF"
                                             Click="RepeatBlockMenuButton_Click" />
 
                                     <Button x:Name="CursorMoveMenuButton"
@@ -527,26 +527,26 @@
                                             Content="BG mouse down"
                                             Height="30"
                                                     Margin="0,0,0,5"
-                                            Background="#221936"
-                                            BorderBrush="#5B3A88"
-                                            Foreground="#E9D5FF"
+                                            Background="#3A0A25"
+                                            BorderBrush="#BE185D"
+                                            Foreground="#FCE7F3"
                                             Click="MouseDownMenuButton_Click" />
 
                                     <Button x:Name="MouseUpMenuButton"
                                             Content="BG mouse up"
                                             Height="30"
                                             Margin="0,0,0,5"
-                                            Background="#221936"
-                                            BorderBrush="#5B3A88"
-                                            Foreground="#E9D5FF"
+                                            Background="#3A0A25"
+                                            BorderBrush="#BE185D"
+                                            Foreground="#FCE7F3"
                                             Click="MouseUpMenuButton_Click" />
 
                                     <Button x:Name="MouseClickMenuButton"
                                             Content="BG mouse click"
                                             Height="30"
-                                            Background="#221936"
-                                            BorderBrush="#5B3A88"
-                                            Foreground="#E9D5FF"
+                                            Background="#3A0A25"
+                                            BorderBrush="#BE185D"
+                                            Foreground="#FCE7F3"
                                             Click="MouseClickMenuButton_Click" />
                                         </StackPanel>
                                     </Expander>

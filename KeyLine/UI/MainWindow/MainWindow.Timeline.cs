@@ -691,8 +691,8 @@ public partial class MainWindow
                     Height = height,
                     CornerRadius = new CornerRadius(13),
                     BorderThickness = new Thickness(1),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 217, 119, 6)),
-                    Background = new SolidColorBrush(Color.FromArgb(32, 217, 119, 6)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 168, 85, 247)),
+                    Background = new SolidColorBrush(Color.FromArgb(34, 86, 66, 120)),
                     IsHitTestVisible = false
                 };
 

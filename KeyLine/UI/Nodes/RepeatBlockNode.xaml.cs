@@ -55,23 +55,17 @@ public partial class RepeatBlockNode : BlockNodeBase
         if (!_isEditing)
             CountTextBox.Text = Math.Max(0, step.RepeatCount).ToString();
 
-        var background = isStart
-            ? Color.FromRgb(58, 38, 10)
-            : Color.FromRgb(31, 41, 55);
-        var border = isStart
-            ? Color.FromRgb(217, 119, 6)
-            : Color.FromRgb(148, 163, 184);
-        var foreground = isStart
-            ? Color.FromRgb(254, 243, 199)
-            : Color.FromRgb(226, 232, 240);
-        var detail = isStart
-            ? Color.FromRgb(253, 230, 138)
-            : Color.FromRgb(148, 163, 184);
+        var background = Color.FromRgb(30, 25, 46);
+        var border = Color.FromRgb(86, 66, 120);
+        var foreground = Color.FromRgb(233, 213, 255);
+        var detail = Color.FromRgb(196, 181, 253);
 
         if (IsSelected)
         {
-            border = Color.FromRgb(250, 204, 21);
-            foreground = Color.FromRgb(255, 251, 235);
+            background = Color.FromRgb(48, 34, 84);
+            border = Color.FromRgb(168, 85, 247);
+            foreground = Color.FromRgb(243, 232, 255);
+            detail = Color.FromRgb(216, 180, 254);
         }
 
         RootBorder.Background = new SolidColorBrush(background);

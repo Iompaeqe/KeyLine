@@ -32,22 +32,56 @@ public partial class BackgroundMouseNode : NodeBase
 
         CoordinateTextBlock.Text = $"{step.MouseX}, {step.MouseY}";
 
+        var palette = step.Type == MacroNodeType.CursorMove
+            ? MousePalette
+            : ExperimentalPalette;
+
         RootBorder.Background = new SolidColorBrush(IsSelected
-            ? Color.FromRgb(48, 34, 84)
-            : Color.FromRgb(30, 25, 46));
+            ? palette.BackgroundSelected
+            : palette.Background);
         RootBorder.BorderBrush = new SolidColorBrush(IsSelected
-            ? Color.FromRgb(168, 85, 247)
-            : Color.FromRgb(86, 66, 120));
+            ? palette.BorderSelected
+            : palette.Border);
         RootBorder.BorderThickness = IsSelected ? new Thickness(2) : new Thickness(1);
         ActionTextBlock.Foreground = new SolidColorBrush(IsSelected
-            ? Color.FromRgb(243, 232, 255)
-            : Color.FromRgb(216, 180, 254));
+            ? palette.ActionSelected
+            : palette.Action);
         CoordinateTextBlock.Foreground = new SolidColorBrush(IsSelected
-            ? Color.FromRgb(233, 213, 255)
-            : Color.FromRgb(196, 181, 253));
+            ? palette.DetailSelected
+            : palette.Detail);
     }
 
     protected virtual void OnCoordinateCommitted() => CoordinateCommitted?.Invoke(this, EventArgs.Empty);
 
     protected virtual void OnTargetPickRequested() => TargetPickRequested?.Invoke(this, EventArgs.Empty);
+
+    private static readonly NodePalette MousePalette = new(
+        Color.FromRgb(22, 47, 50),
+        Color.FromRgb(37, 70, 72),
+        Color.FromRgb(20, 130, 118),
+        Color.FromRgb(45, 212, 191),
+        Color.FromRgb(153, 246, 228),
+        Color.FromRgb(204, 251, 241),
+        Color.FromRgb(94, 234, 212),
+        Color.FromRgb(204, 251, 241));
+
+    private static readonly NodePalette ExperimentalPalette = new(
+        Color.FromRgb(58, 10, 37),
+        Color.FromRgb(87, 18, 56),
+        Color.FromRgb(190, 24, 93),
+        Color.FromRgb(244, 114, 182),
+        Color.FromRgb(251, 207, 232),
+        Color.FromRgb(252, 231, 243),
+        Color.FromRgb(249, 168, 212),
+        Color.FromRgb(252, 231, 243));
+
+    private sealed record NodePalette(
+        Color Background,
+        Color BackgroundSelected,
+        Color Border,
+        Color BorderSelected,
+        Color Action,
+        Color ActionSelected,
+        Color Detail,
+        Color DetailSelected);
 }
