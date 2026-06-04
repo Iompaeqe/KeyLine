@@ -181,7 +181,8 @@ public partial class SettingsView : UserControl
         BeginSection("About");
         AddDescription("KeyLine");
         AddDescription($"Version: {_actions.CurrentVersionText}");
-        AddDescription("License: MIT");
+        AddLicenseLink();
+        AddDescription("Copyright © 2026 Iompaeqe(Iompa). All rights reserved.");
         AddDescription("A compact window-targeted macro recorder with keyboard, mouse, timeline, and shortcut support.");
 
         AddUpdateCheckButton();
@@ -397,6 +398,44 @@ public partial class SettingsView : UserControl
         });
         SettingsPanel.Children.Add(panel);
         return panel;
+    }
+    
+    private void AddLicenseLink()
+    {
+        var textBlock = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = DimBrush,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+
+        var link = new Hyperlink(new Run("License: Proprietary Freeware"))
+        {
+            Foreground = new SolidColorBrush(Color.FromRgb(147, 197, 253))
+        };
+
+        link.Click += (_, _) => ShowLicenseWindow();
+
+        textBlock.Inlines.Add(link);
+        SettingsPanel.Children.Add(textBlock);
+    }
+    
+    private void ShowLicenseWindow()
+    {
+        var window = new Window
+        {
+            Content = new LicenseView(),
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStyle = WindowStyle.None,
+            AllowsTransparency = true,
+            ResizeMode = ResizeMode.NoResize,
+            Background = Brushes.Transparent,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            ShowInTaskbar = false
+        };
+
+        window.ShowDialog();
     }
     
     private void AddUpdateCheckButton()

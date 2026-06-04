@@ -1,0 +1,135 @@
+﻿<UserControl x:Class="KeyLine.LicenseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+
+    <Border Width="620"
+            Height="500"
+            CornerRadius="12"
+            Background="#121A27"
+            BorderBrush="#2A3B55"
+            BorderThickness="1"
+            Padding="14">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0"
+                  Margin="0,0,0,12"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="KeyLine License"
+                               FontSize="15"
+                               FontWeight="Bold"
+                               Foreground="#E5EEF8" />
+
+                    <TextBlock Text="Proprietary Freeware"
+                               FontSize="12"
+                               Foreground="#8EA0B6"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="×"
+                        Width="28"
+                        Height="24"
+                        FontSize="15"
+                        FontWeight="Bold"
+                        Background="#1E293B"
+                        BorderBrush="#334155"
+                        Foreground="#E5EEF8"
+                        Click="CloseButton_Click" />
+            </Grid>
+
+            <!-- Summary -->
+            <Border Grid.Row="1"
+                    CornerRadius="8"
+                    Background="#0B1220"
+                    BorderBrush="#2A3B55"
+                    BorderThickness="1"
+                    Padding="10,8"
+                    Margin="0,0,0,10">
+
+                <TextBlock Text="You may download and use official KeyLine releases for personal use. Redistribution, modification, repackaging, selling, or reverse engineering is not allowed."
+                           TextWrapping="Wrap"
+                           Foreground="#BAE6FD"
+                           FontWeight="SemiBold" />
+            </Border>
+
+            <!-- Full license -->
+            <Border Grid.Row="2"
+                    CornerRadius="8"
+                    Background="#0B1220"
+                    BorderBrush="#2A3B55"
+                    BorderThickness="1">
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="12">
+
+                    <TextBlock x:Name="LicenseTextBlock"
+                               Foreground="#C8D6E5"
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               LineHeight="18"
+                               xml:space="preserve"><![CDATA[KeyLine Proprietary Freeware License
+
+Copyright © 2026 Metehan Göksel Kurtulan. All rights reserved.
+
+KeyLine is proprietary software created and published by Iompa.
+
+Permission is granted to download and use official KeyLine release builds for personal use.
+
+You may not:
+
+- copy, modify, or create derivative works of KeyLine;
+- redistribute, sell, rent, sublicense, or repackage KeyLine;
+- reverse engineer, decompile, or attempt to extract the source code;
+- remove copyright, license, or attribution notices;
+- claim ownership of KeyLine or any part of it.
+
+KeyLine is provided "as is", without warranty of any kind.
+
+The author is not liable for any damages, data loss, software issues, account issues, hardware issues, or other problems caused directly or indirectly by use of the software.
+
+Third-party libraries used by KeyLine remain under their own licenses.]]></TextBlock>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,12,0,0">
+
+                <Button x:Name="CopyButton"
+                        Content="Copy License"
+                        Width="110"
+                        Height="28"
+                        Margin="0,0,8,0"
+                        Click="CopyButton_Click" />
+
+                <Button Content="Close"
+                        Width="82"
+                        Height="28"
+                        Background="#123A5A"
+                        BorderBrush="#256D9D"
+                        Foreground="#BAE6FD"
+                        Click="CloseButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

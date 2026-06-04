@@ -1,0 +1,19 @@
+KeyLine Proprietary Freeware License
+
+Copyright © 2026 Metehan Göksel Kurtulan. All rights reserved.
+
+KeyLine is proprietary software.
+
+Permission is granted to download and use official KeyLine release builds for personal use.
+
+You may not:
+
+* copy, modify, or create derivative works of KeyLine;
+* redistribute, sell, rent, sublicense, or repackage KeyLine;
+* reverse engineer, decompile, or attempt to extract the source code;
+* remove copyright, license, or attribution notices;
+* claim ownership of KeyLine or any part of it.
+
+KeyLine is provided "as is", without warranty of any kind. The author is not liable for any damages, data loss, software issues, account issues, hardware issues, or other problems caused directly or indirectly by use of the software.
+
+Third-party libraries used by KeyLine remain under their own licenses.
