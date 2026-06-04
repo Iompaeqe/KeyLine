@@ -100,6 +100,20 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateTextEditRow(node, policy.CanEditText));
                 break;
 
+            case MacroNodeType.RepeatStart:
+                section.Children.Add(CreateNumberRow(
+                    "Count",
+                    Math.Max(0, node.RepeatCount),
+                    value => _commitNodeChange(() => node.RepeatCount = Math.Max(1, value)),
+                    min: 1,
+                    tooltip: TooltipNotes.RepeatCount,
+                    isEnabled: policy.CanEditRepeatCount));
+                break;
+
+            case MacroNodeType.RepeatEnd:
+                section.Children.Add(CreateReadonlyRow("Block", GetBlockLabel(node)));
+                break;
+
             case MacroNodeType.CursorMove:
             case MacroNodeType.BackgroundMouseDown:
             case MacroNodeType.BackgroundMouseUp:
@@ -141,6 +155,13 @@ public sealed class NodeInspectorBuilder
         }
 
         return section;
+    }
+
+    private static string GetBlockLabel(MacroNode node)
+    {
+        return string.IsNullOrWhiteSpace(node.RepeatBlockId)
+            ? "-"
+            : node.RepeatBlockId[..Math.Min(8, node.RepeatBlockId.Length)];
     }
 
     private static StackPanel CreateSection()

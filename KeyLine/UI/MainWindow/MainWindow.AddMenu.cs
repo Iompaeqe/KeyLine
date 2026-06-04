@@ -1,11 +1,18 @@
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using KeyLine.Domain;
+using KeyLine.Services.Timeline;
 
 namespace KeyLine;
 
 public partial class MainWindow
 {
+    private sealed class AddNodeContext
+    {
+        public required MacroTimeline Timeline { get; init; }
+        public MacroNode? RawInsertAnchor { get; init; }
+    }
+
     private void AddTimelineButton_Click(object sender, RoutedEventArgs e)
     {
         SaveUndoSnapshot();
@@ -21,7 +28,9 @@ public partial class MainWindow
         if (AnyPlaybackRunning())
             return;
 
-        _popupTimeline = ResolveTimelineFromSender(sender) ?? _document.ActiveTimeline;
+        var context = ResolveAddNodeContextFromSender(sender);
+        _popupTimeline = context?.Timeline ?? ResolveTimelineFromSender(sender) ?? _document.ActiveTimeline;
+        _popupRawInsertAnchor = context?.RawInsertAnchor;
 
         if (sender is UIElement placementTarget)
             AddPopup.PlacementTarget = placementTarget;
@@ -47,15 +56,47 @@ public partial class MainWindow
         return null;
     }
 
+    private AddNodeContext? ResolveAddNodeContextFromSender(object sender)
+    {
+        return sender is FrameworkElement { Tag: AddNodeContext context }
+            ? context
+            : null;
+    }
+
     private MacroTimeline GetPopupTimeline()
     {
         return _popupTimeline ?? _document.ActiveTimeline;
     }
 
+    private MacroNode? GetPopupRawInsertAnchor()
+    {
+        var timeline = GetPopupTimeline();
+        return _popupRawInsertAnchor != null && timeline.Nodes.Contains(_popupRawInsertAnchor)
+            ? _popupRawInsertAnchor
+            : null;
+    }
+
+    private int GetPopupInsertIndex(MacroTimeline timeline)
+    {
+        var anchor = GetPopupRawInsertAnchor();
+        if (anchor == null)
+            return timeline.Nodes.Count;
+
+        var anchorIndex = timeline.Nodes.IndexOf(anchor);
+        return anchorIndex >= 0 ? anchorIndex : timeline.Nodes.Count;
+    }
+
+    private void InsertPopupSteps(MacroTimeline timeline, IReadOnlyList<MacroNode> steps)
+    {
+        var insertIndex = GetPopupInsertIndex(timeline);
+        for (var i = 0; i < steps.Count; i++)
+            timeline.Nodes.Insert(insertIndex + i, steps[i]);
+    }
+
     private void RecordMenuButton_Click(object sender, RoutedEventArgs e)
     {
         AddPopup.IsOpen = false;
-        StartRecording(GetPopupTimeline());
+        StartRecording(GetPopupTimeline(), GetPopupRawInsertAnchor());
     }
 
     private void DelayMenuButton_Click(object sender, RoutedEventArgs e)
@@ -64,11 +105,14 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Nodes.Add(new MacroNode
+        InsertPopupSteps(timeline, new[]
         {
-            Type = MacroNodeType.Delay,
-            DelayMs = 100,
-            IsRecordedDelay = false
+            new MacroNode
+            {
+                Type = MacroNodeType.Delay,
+                DelayMs = 100,
+                IsRecordedDelay = false
+            }
         });
 
         timeline.UseStandardDelay = false;
@@ -84,12 +128,15 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Nodes.Add(new MacroNode
+        InsertPopupSteps(timeline, new[]
         {
-            Type = MacroNodeType.RandomDelay,
-            RandomDelayMinMs = 50,
-            RandomDelayMaxMs = 150,
-            IsRecordedDelay = false
+            new MacroNode
+            {
+                Type = MacroNodeType.RandomDelay,
+                RandomDelayMinMs = 50,
+                RandomDelayMaxMs = 150,
+                IsRecordedDelay = false
+            }
         });
 
         timeline.UseStandardDelay = false;
@@ -110,15 +157,35 @@ public partial class MainWindow
             return;
 
         SaveUndoSnapshot();
-        timeline.Nodes.Add(new MacroNode
+        InsertPopupSteps(timeline, new[]
         {
-            Type = MacroNodeType.Text,
-            Text = dialog.ResultText
+            new MacroNode
+            {
+                Type = MacroNodeType.Text,
+                Text = dialog.ResultText
+            }
         });
 
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private void RepeatBlockMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddPopup.IsOpen = false;
+
+        SaveUndoSnapshot();
+        var timeline = GetPopupTimeline();
+        var (repeatStart, repeatEnd) = TimelineBlockService.CreateRepeatBlock();
+
+        InsertPopupSteps(timeline, new[] { repeatStart, repeatEnd });
+
+        SelectTimeline(timeline, refreshInspector: false);
+        _selection.SelectNodes(timeline, new[] { repeatStart, repeatEnd }, repeatStart);
+        RefreshTimeline();
+        RefreshInspector();
         ScheduleSaveState();
     }
 
@@ -135,7 +202,7 @@ public partial class MainWindow
             MouseY = 0
         };
 
-        timeline.Nodes.Add(step);
+        InsertPopupSteps(timeline, new[] { step });
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
@@ -157,11 +224,14 @@ public partial class MainWindow
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
-        timeline.Nodes.Add(new MacroNode
+        InsertPopupSteps(timeline, new[]
         {
-            Type = type,
-            MouseX = 0,
-            MouseY = 0
+            new MacroNode
+            {
+                Type = type,
+                MouseX = 0,
+                MouseY = 0
+            }
         });
 
         MergeAdjacentDelayNodesIfEnabled(timeline);

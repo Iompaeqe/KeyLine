@@ -58,6 +58,8 @@ public static class NodeDisplayFormatter
             MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
             MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
             MacroNodeType.BackgroundMouseClick => "BG Mouse Click",
+            MacroNodeType.RepeatStart => "Repeat Start",
+            MacroNodeType.RepeatEnd => "Repeat End",
             _ => node.Type.ToString()
         };
     }

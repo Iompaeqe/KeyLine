@@ -108,7 +108,7 @@ public partial class MainWindow
         if (_selection.HasNodeSelection && _selection.SelectedTimeline != null)
         {
             var rawSteps = GetSelectedRawSteps(_selection.SelectedTimeline);
-            _editClipboard.SetSteps(rawSteps.Select(MacroCloneService.CloneStep).ToList());
+            _editClipboard.SetSteps(MacroCloneService.CloneSteps(rawSteps));
             return;
         }
 
@@ -146,7 +146,7 @@ public partial class MainWindow
             }
         }
 
-        _selection.SelectNode(timeline, node);
+        SelectStepOrBlock(timeline, node);
         UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
         RefreshInspectorDeferred();
     }
@@ -168,7 +168,10 @@ public partial class MainWindow
         }
 
         SelectTimeline(timeline, refreshInspector: false);
-        _selection.SelectNodes(timeline, visibleSteps, visibleSteps[^1]);
+        _selection.SelectNodes(
+            timeline,
+            TimelineBlockService.ExpandSelectionToFullBlocks(timeline, visibleSteps),
+            visibleSteps[^1]);
         UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
         RefreshInspectorDeferred();
     }
@@ -196,7 +199,10 @@ public partial class MainWindow
             .Distinct()
             .ToList();
 
-        _selection.SelectNodes(timeline, mergedSelection, node);
+        _selection.SelectNodes(
+            timeline,
+            TimelineBlockService.ExpandSelectionToFullBlocks(timeline, mergedSelection),
+            node);
         return true;
     }
 
@@ -204,21 +210,36 @@ public partial class MainWindow
     {
         if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
         {
-            _selection.SelectNode(timeline, node);
+            SelectStepOrBlock(timeline, node);
             return;
         }
 
         var selectedSteps = _selection.SelectedNodes.ToList();
-        var existing = selectedSteps.FirstOrDefault(selectedStep => IsSameSelectedStep(node, selectedStep));
-        if (existing != null)
-            selectedSteps.Remove(existing);
+        var toggleSteps = TimelineBlockService.GetSelectionNodesForStep(timeline, node);
+        var isFullySelected = toggleSteps.All(toggleStep =>
+            selectedSteps.Any(selectedStep => IsSameSelectedStep(toggleStep, selectedStep)));
+
+        if (isFullySelected)
+        {
+            selectedSteps.RemoveAll(selectedStep =>
+                toggleSteps.Any(toggleStep => IsSameSelectedStep(toggleStep, selectedStep)));
+        }
         else
-            selectedSteps.Add(node);
+        {
+            foreach (var toggleStep in toggleSteps)
+            {
+                if (!selectedSteps.Any(selectedStep => IsSameSelectedStep(toggleStep, selectedStep)))
+                    selectedSteps.Add(toggleStep);
+            }
+        }
 
         if (selectedSteps.Count == 0)
             _selection.Clear();
         else
-            _selection.SelectNodes(timeline, selectedSteps, node);
+            _selection.SelectNodes(
+                timeline,
+                TimelineBlockService.ExpandSelectionToFullBlocks(timeline, selectedSteps),
+                node);
     }
 
     private void PasteSelection()
@@ -280,13 +301,21 @@ public partial class MainWindow
                 insertIndex = timeline.Nodes.IndexOf(selectedRawSteps[^1]) + 1;
         }
 
-        var clones = steps.Select(MacroCloneService.CloneStep).ToList();
+        var clones = MacroCloneService.CloneStepsForPaste(steps);
         for (var i = 0; i < clones.Count; i++)
             timeline.Nodes.Insert(insertIndex + i, clones[i]);
 
         _selection.SelectNodes(timeline, clones);
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
+    }
+
+    private void SelectStepOrBlock(MacroTimeline timeline, MacroNode node)
+    {
+        _selection.SelectNodes(
+            timeline,
+            TimelineBlockService.GetSelectionNodesForStep(timeline, node),
+            node);
     }
 
     private void PasteTimelines(IReadOnlyList<MacroTimeline> timelines)

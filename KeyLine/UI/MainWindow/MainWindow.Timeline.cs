@@ -238,6 +238,12 @@ public partial class MainWindow
                     return;
                 }
 
+                if (state.VisualItems.Any(item => IsBlockAddAnimationKey(item.AnimationKey)))
+                {
+                    RefreshTimelineRow(timeline);
+                    return;
+                }
+
                 var previewSlots = GetTimelineRenderPreviewSlots(timeline);
 
                 // Re-calculate positions for all items including the placeholder.
@@ -423,6 +429,8 @@ public partial class MainWindow
 
             row.Children.Add(canvas);
 
+            AddBlockBackgrounds(canvas, timeline, visualItems);
+
             var connector = CreateTimelineConnector(visualItems);
             if (connector != null)
                 canvas.Children.Add(connector);
@@ -461,51 +469,27 @@ public partial class MainWindow
                         continue;
                     }
 
-                    var block = CreateNode(timeline, slot.DisplayNode);
+                    if (ShouldShowBlockAddButton(timeline, slot.DisplayNode))
+                        AddBlockAddVisualItem(visualItems, ref currentLeft, timeline, slot.DisplayNode);
 
-                    if (block is FrameworkElement element)
-                        element.Tag = slot.DisplayNode;
-
-                    var size = MeasureTimelineItem(block);
-
-                    visualItems.Add(new TimelineVisualItem
-                    {
-                        Element = block,
-                        Left = currentLeft,
-                        Size = size,
-                        AnimationKey = GetTimelineAnimationKey(timeline, slot.DisplayNode)
-                    });
-
-                    currentLeft += size.Width + TimelineItemGap;
+                    AddNodeVisualItem(visualItems, ref currentLeft, timeline, slot.DisplayNode);
                 }
             }
             else
             {
                 foreach (var step in visibleSteps)
                 {
-                    var block = CreateNode(timeline, step);
+                    if (ShouldShowBlockAddButton(timeline, step))
+                        AddBlockAddVisualItem(visualItems, ref currentLeft, timeline, step);
 
-                    if (block is FrameworkElement element)
-                        element.Tag = step;
-
-                    var size = MeasureTimelineItem(block);
-
-                    visualItems.Add(new TimelineVisualItem
-                    {
-                        Element = block,
-                        Left = currentLeft,
-                        Size = size,
-                        AnimationKey = GetTimelineAnimationKey(timeline, step)
-                    });
-
-                    currentLeft += size.Width + TimelineItemGap;
+                    AddNodeVisualItem(visualItems, ref currentLeft, timeline, step);
                 }
             }
 
             if (isDraggingThisTimeline && placeholderCount == 0)
                 AddPlaceholderVisualItem(visualItems, ref currentLeft, timeline, _drag.DraggedNode!);
 
-                        var addBlock = CreateAddNode(timeline);
+            var addBlock = CreateAddNode(timeline);
             var addSize = MeasureTimelineItem(addBlock);
 
             visualItems.Add(new TimelineVisualItem
@@ -519,9 +503,65 @@ public partial class MainWindow
             return visualItems;
         }
 
+        private void AddNodeVisualItem(
+            List<TimelineVisualItem> visualItems,
+            ref double currentLeft,
+            MacroTimeline timeline,
+            MacroNode step)
+        {
+            var block = CreateNode(timeline, step);
+
+            if (block is FrameworkElement element)
+                element.Tag = step;
+
+            var size = MeasureTimelineItem(block);
+
+            visualItems.Add(new TimelineVisualItem
+            {
+                Node = step,
+                Element = block,
+                Left = currentLeft,
+                Size = size,
+                AnimationKey = GetTimelineAnimationKey(timeline, step)
+            });
+
+            currentLeft += size.Width + TimelineItemGap;
+        }
+
+        private void AddBlockAddVisualItem(
+            List<TimelineVisualItem> visualItems,
+            ref double currentLeft,
+            MacroTimeline timeline,
+            MacroNode rawInsertAnchor)
+        {
+            var addBlock = CreateAddNode(timeline, rawInsertAnchor);
+            var addSize = MeasureTimelineItem(addBlock);
+
+            visualItems.Add(new TimelineVisualItem
+            {
+                Element = addBlock,
+                Left = currentLeft,
+                Size = addSize,
+                AnimationKey = GetBlockAddAnimationKey(timeline, rawInsertAnchor)
+            });
+
+            currentLeft += addSize.Width + TimelineItemGap;
+        }
+
+        private static bool ShouldShowBlockAddButton(MacroTimeline timeline, MacroNode node)
+        {
+            return node.Type == MacroNodeType.RepeatEnd &&
+                   TimelineBlockService.TryGetRepeatBlockRange(timeline, node, out _);
+        }
+
         private object GetDropPlaceholderAnimationKey(MacroTimeline timeline, MacroNode node)
         {
             return (timeline, "drop-placeholder", GetTimelineAnimationKey(timeline, node));
+        }
+
+        private object GetBlockAddAnimationKey(MacroTimeline timeline, MacroNode rawInsertAnchor)
+        {
+            return (timeline, "block-add", rawInsertAnchor);
         }
 
         private void RemoveDropPlaceholderAnimationKeys(MacroTimeline timeline)
@@ -607,6 +647,60 @@ public partial class MainWindow
             }
 
             return Math.Max(1, MeasureTimelineItem(CreateNode(timeline, node)).Width);
+        }
+
+        private void AddBlockBackgrounds(Canvas canvas, MacroTimeline timeline, IReadOnlyList<TimelineVisualItem> visualItems)
+        {
+            var itemsByNode = visualItems
+                .Where(item => item.Node != null)
+                .ToDictionary(item => item.Node!, item => item);
+
+            if (itemsByNode.Count == 0)
+                return;
+
+            var pairMap = TimelineBlockService.BuildRepeatPairMap(timeline.Nodes);
+            var ranges = pairMap
+                .Where(pair => pair.Key < pair.Value)
+                .Select(pair => new
+                {
+                    StartIndex = pair.Key,
+                    EndIndex = pair.Value,
+                    Start = timeline.Nodes[pair.Key],
+                    End = timeline.Nodes[pair.Value]
+                })
+                .Where(range => itemsByNode.ContainsKey(range.Start) && itemsByNode.ContainsKey(range.End))
+                .OrderBy(range => range.StartIndex)
+                .ToList();
+
+            foreach (var range in ranges)
+            {
+                var startItem = itemsByNode[range.Start];
+                var endItem = itemsByNode[range.End];
+                var depth = ranges.Count(other =>
+                    other.StartIndex < range.StartIndex &&
+                    other.EndIndex > range.EndIndex);
+
+                var left = startItem.Left - 2;
+                var right = endItem.Left + endItem.Width + 2;
+                var top = 5 + (depth * 4);
+                var height = Math.Max(36, TimelineRowHeight - 10 - (depth * 8));
+
+                var background = new Border
+                {
+                    Width = Math.Max(1, right - left),
+                    Height = height,
+                    CornerRadius = new CornerRadius(13),
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 217, 119, 6)),
+                    Background = new SolidColorBrush(Color.FromArgb(32, 217, 119, 6)),
+                    IsHitTestVisible = false
+                };
+
+                Canvas.SetLeft(background, left);
+                Canvas.SetTop(background, top);
+                Panel.SetZIndex(background, -30 - depth);
+                canvas.Children.Add(background);
+            }
         }
 
         private static Border? CreateTimelineConnector(IReadOnlyList<TimelineVisualItem> visualItems)
@@ -778,6 +872,7 @@ public partial class MainWindow
 
                 var item = new TimelineVisualItem
                 {
+                    Node = step,
                     Element = block,
                     Left = currentLeft,
                     Size = size,
@@ -1303,6 +1398,14 @@ public partial class MainWindow
                    marker == "drop-placeholder";
         }
 
+        private static bool IsBlockAddAnimationKey(object? animationKey)
+        {
+            return animationKey is ITuple tuple &&
+                   tuple.Length >= 2 &&
+                   tuple[1] is string marker &&
+                   marker == "block-add";
+        }
+
     // From MainWindow.TimelineNodes.cs
         private UIElement CreateNode(MacroTimeline timeline, MacroNode node)
         {
@@ -1314,6 +1417,7 @@ public partial class MainWindow
                 MacroNodeType.MouseClick => CreateForegroundMouseNode(timeline, node),
                 MacroNodeType.CursorMove or MacroNodeType.BackgroundMouseDown or MacroNodeType.BackgroundMouseUp or MacroNodeType.BackgroundMouseClick => CreateMouseNode(timeline, node),
                 MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
+                MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd => CreateRepeatBlockNode(timeline, node),
                 _ => CreateTextNode(timeline, node)
             };
         }
@@ -1365,6 +1469,26 @@ public partial class MainWindow
             return control;
         }
 
+        private UIElement CreateRepeatBlockNode(MacroTimeline timeline, MacroNode node)
+        {
+            var control = new RepeatBlockNode
+            {
+                Node = node,
+                IsSelected = IsStepSelected(timeline, node),
+                Tag = node
+            };
+
+            control.RepeatCommitted += (_, _) =>
+            {
+                RefreshTimeline();
+                RefreshInspector();
+                ScheduleSaveState();
+            };
+
+            AttachNodeMouseHandlers(control, timeline, node);
+            return control;
+        }
+
         private UIElement CreateMouseNode(MacroTimeline timeline, MacroNode node)
         {
             var control = new BackgroundMouseNode
@@ -1405,11 +1529,17 @@ public partial class MainWindow
             return control;
         }
 
-        private UIElement CreateAddNode(MacroTimeline timeline)
+        private UIElement CreateAddNode(MacroTimeline timeline, MacroNode? rawInsertAnchor = null)
         {
             var control = new AddNode
             {
-                Tag = timeline
+                Tag = rawInsertAnchor == null
+                    ? timeline
+                    : new AddNodeContext
+                    {
+                        Timeline = timeline,
+                        RawInsertAnchor = rawInsertAnchor
+                    }
             };
 
             control.AddClicked += AddButton_Click;

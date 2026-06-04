@@ -29,7 +29,9 @@ public partial class MainWindow : Window
     private readonly TimelineDragState _drag = new();
 
     private MacroTimeline? _recordingTimeline;
+    private MacroNode? _recordingRawInsertAnchor;
     private MacroTimeline? _popupTimeline;
+    private MacroNode? _popupRawInsertAnchor;
     private bool _isSwitchingWorkspace;
     private bool _isRestoringWindowSelection;
     private bool _isTimelineEditingEnabled = true;

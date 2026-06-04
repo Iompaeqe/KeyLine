@@ -45,6 +45,7 @@ public static class TooltipNotes
     public const string TextNodeValue = "Text sent by this node.";
     public const string TextNodeEdit = "Text sent by this node.";
     public const string PickMouseCoordinates = "Pick the mouse coordinates in the target window.";
+    public const string RepeatCount = "How many times the nodes inside this Repeat block run.";
 
     public const string StandardDelayRequiresEnable = "Enable standard delay to edit this setting.";
 }

@@ -221,7 +221,7 @@ public partial class MainWindow
             {
                 var previousTimeline = _selection.SelectedTimeline;
                 SelectTimeline(_pendingClickSelectionTimeline, refreshInspector: false);
-                _selection.SelectNode(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
+                SelectStepOrBlock(_pendingClickSelectionTimeline, _pendingClickSelectionStep);
                 UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
                 RefreshInspectorDeferred();
             }
@@ -253,7 +253,7 @@ public partial class MainWindow
             }
 
             SelectTimeline(timeline, refreshInspector: false);
-            _selection.SelectNode(timeline, node);
+            SelectStepOrBlock(timeline, node);
             UpdateSelectionVisuals(previousTimeline, _selection.SelectedTimeline);
             RefreshInspectorDeferred();
         }
@@ -725,7 +725,7 @@ public partial class MainWindow
             }
             else
             {
-                _selection.SelectNode(timeline, draggedNode);
+                SelectStepOrBlock(timeline, draggedNode);
             }
 
             return true;
@@ -755,7 +755,7 @@ public partial class MainWindow
                 _selection.SelectedNodes.Where(step => updatedTimelineNodeSet.Contains(step)).ToList(),
                 _selection.AnchorNode);
             if (!_selection.HasNodeSelection)
-                _selection.SelectNode(timeline, draggedNode);
+                SelectStepOrBlock(timeline, draggedNode);
 
             return true;
         }

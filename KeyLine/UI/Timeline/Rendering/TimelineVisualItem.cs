@@ -4,6 +4,7 @@ namespace KeyLine.UI.Timeline;
 
 public sealed class TimelineVisualItem
 {
+    public KeyLine.Domain.MacroNode? Node { get; init; }
     public required UIElement Element { get; init; }
     public required double Left { get; set; }
     public required Size Size { get; init; }
