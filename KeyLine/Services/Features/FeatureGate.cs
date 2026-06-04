@@ -44,10 +44,10 @@ public sealed class FeatureGate
     {
         return feature switch
         {
-            FeatureId.Profiles => "Profiles are not available in this version.",
-            FeatureId.RepeatBlocks => "Repeat Blocks are not available in this version.",
-            FeatureId.ConditionBlocks => "Condition Blocks are not available in this version.",
-            _ => "This feature is not available in this version."
+            FeatureId.Profiles => "Profiles are not available.",
+            FeatureId.RepeatBlocks => "Repeat Blocks are not available.",
+            FeatureId.ConditionBlocks => "Condition Blocks are not available.",
+            _ => "This feature is not available."
         };
     }
 }
