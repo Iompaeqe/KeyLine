@@ -4,62 +4,16 @@
                      xmlns:local="clr-namespace:KeyLine.UI.Nodes"
                      Focusable="False">
     <Border x:Name="RootBorder"
+            Width="10"
             Height="50"
-            Margin="5,0,5,0"
-            CornerRadius="10"
-            BorderThickness="1">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="16" />
-                <RowDefinition Height="21" />
-                <RowDefinition Height="13" />
-            </Grid.RowDefinitions>
-
-            <TextBlock x:Name="TitleTextBlock"
-                       Grid.Row="0"
-                       FontSize="9"
-                       FontWeight="Black"
-                       FontFamily="Segoe UI"
-                       TextAlignment="Center"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Bottom" />
-
-            <TextBox x:Name="CountTextBox"
-                     Grid.Row="1"
-                     Background="Transparent"
-                     BorderBrush="Transparent"
-                     BorderThickness="0"
-                     FontSize="16"
-                     FontWeight="Black"
-                     FontFamily="Segoe UI"
-                     TextAlignment="Center"
-                     VerticalContentAlignment="Center"
-                     Padding="0"
-                     Margin="5,-1,5,0"
-                     PreviewTextInput="CountTextBox_PreviewTextInput"
-                     GotKeyboardFocus="CountTextBox_GotKeyboardFocus"
-                     LostFocus="CountTextBox_LostFocus"
-                     KeyDown="CountTextBox_KeyDown" />
-
-            <TextBlock x:Name="EndTextBlock"
-                       Grid.Row="1"
-                       Text="END"
-                       FontSize="15"
-                       FontWeight="Black"
-                       FontFamily="Segoe UI"
-                       TextAlignment="Center"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Visibility="Collapsed" />
-
-            <TextBlock x:Name="DetailTextBlock"
-                       Grid.Row="2"
-                       FontSize="9"
-                       FontWeight="SemiBold"
-                       FontFamily="Segoe UI"
-                       TextAlignment="Center"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Top" />
-        </Grid>
+            Margin="0"
+            Background="Transparent">
+        <Border x:Name="BoundaryLine"
+                Width="3"
+                Height="28"
+                CornerRadius="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsHitTestVisible="False" />
     </Border>
 </local:BlockNodeBase>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using KeyLine.Domain;
+using KeyLine.Services.Timeline;
 using KeyLine.State;
 using KeyLine.UI.Common.EntryBlocks;
 using KeyLine.UI.Timeline;
@@ -40,7 +41,12 @@ public sealed class NodeInspectorBuilder
     public UIElement? Build(MacroTimeline timeline)
     {
         if (_selection.HasMultipleNodeSelection)
+        {
+            if (TryGetSelectedRepeatBlock(timeline, out var repeatStart, out var blockNodeCount))
+                return CreateRepeatBlockInspector(repeatStart, blockNodeCount);
+
             return CreateReadonlySectionContent(("Selected", _selection.SelectedNodes.Count.ToString()));
+        }
 
         if (_selection.HasNodeSelection && _selection.SelectedNode != null)
         {
@@ -155,6 +161,51 @@ public sealed class NodeInspectorBuilder
         }
 
         return section;
+    }
+
+    private UIElement CreateRepeatBlockInspector(MacroNode repeatStart, int blockNodeCount)
+    {
+        var section = CreateSection();
+
+        section.Children.Add(CreateReadonlyRow("Type", "Repeat Block"));
+        section.Children.Add(CreateNumberRow(
+            "Count",
+            Math.Max(1, repeatStart.RepeatCount),
+            value => _commitNodeChange(() => repeatStart.RepeatCount = Math.Max(1, value)),
+            min: 1,
+            tooltip: TooltipNotes.RepeatCount,
+            isEnabled: true));
+        section.Children.Add(CreateReadonlyRow("Inside", Math.Max(0, blockNodeCount - 2).ToString()));
+
+        return section;
+    }
+
+    private bool TryGetSelectedRepeatBlock(
+        MacroTimeline timeline,
+        out MacroNode repeatStart,
+        out int blockNodeCount)
+    {
+        repeatStart = null!;
+        blockNodeCount = 0;
+
+        if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
+            return false;
+
+        var selectedSet = _selection.SelectedNodes.ToHashSet();
+        foreach (var selectedStart in _selection.SelectedNodes.Where(node => node.Type == MacroNodeType.RepeatStart))
+        {
+            if (!TimelineBlockService.TryGetRepeatBlockRange(timeline, selectedStart, out var range))
+                continue;
+
+            if (range.Count != selectedSet.Count || range.Any(node => !selectedSet.Contains(node)))
+                continue;
+
+            repeatStart = selectedStart;
+            blockNodeCount = range.Count;
+            return true;
+        }
+
+        return false;
     }
 
     private static string GetBlockLabel(MacroNode node)

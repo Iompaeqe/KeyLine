@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using KeyLine.Domain;
 
@@ -8,29 +6,9 @@ namespace KeyLine.UI.Nodes;
 
 public partial class RepeatBlockNode : BlockNodeBase
 {
-    private bool _isEditing;
-
-    public event EventHandler? RepeatCommitted;
-
     public RepeatBlockNode()
     {
         InitializeComponent();
-    }
-
-    public override InlineEditorActivationMode GetInlineEditorActivationMode(DependencyObject? source)
-    {
-        return IsBlockStart && FindCountTextBox(source) != null
-            ? InlineEditorActivationMode.SuppressMouseUp
-            : InlineEditorActivationMode.None;
-    }
-
-    public override void FocusInlineEditor(DependencyObject? source = null)
-    {
-        if (!IsBlockStart)
-            return;
-
-        CountTextBox.Focus();
-        CountTextBox.SelectAll();
     }
 
     protected override void UpdateVisual()
@@ -39,97 +17,17 @@ public partial class RepeatBlockNode : BlockNodeBase
         if (step == null)
             return;
 
-        var isStart = step.Type == MacroNodeType.RepeatStart;
-        RootBorder.Width = isStart ? 76 : 68;
-        RootBorder.ToolTip = isStart
-            ? "Repeat every node until the matching Repeat End."
-            : "End of this repeat block.";
+        RootBorder.Width = step.Type == MacroNodeType.RepeatStart ? 10 : 8;
+        RootBorder.ToolTip = step.Type == MacroNodeType.RepeatStart
+            ? "Repeat block start. Selects the full block."
+            : "Repeat block end. Selects the full block.";
 
-        TitleTextBlock.Text = "REPEAT";
-        DetailTextBlock.Text = isStart ? "times" : "block";
+        var lineColor = IsSelected
+            ? Color.FromRgb(216, 180, 254)
+            : Color.FromArgb(150, 168, 85, 247);
 
-        CountTextBox.Visibility = isStart ? Visibility.Visible : Visibility.Collapsed;
-        CountTextBox.IsHitTestVisible = isStart;
-        EndTextBlock.Visibility = isStart ? Visibility.Collapsed : Visibility.Visible;
-
-        if (!_isEditing)
-            CountTextBox.Text = Math.Max(0, step.RepeatCount).ToString();
-
-        var background = Color.FromRgb(30, 25, 46);
-        var border = Color.FromRgb(86, 66, 120);
-        var foreground = Color.FromRgb(233, 213, 255);
-        var detail = Color.FromRgb(196, 181, 253);
-
-        if (IsSelected)
-        {
-            background = Color.FromRgb(48, 34, 84);
-            border = Color.FromRgb(168, 85, 247);
-            foreground = Color.FromRgb(243, 232, 255);
-            detail = Color.FromRgb(216, 180, 254);
-        }
-
-        RootBorder.Background = new SolidColorBrush(background);
-        RootBorder.BorderBrush = new SolidColorBrush(border);
-        RootBorder.BorderThickness = IsSelected ? new Thickness(2) : new Thickness(1);
-        TitleTextBlock.Foreground = new SolidColorBrush(detail);
-        CountTextBox.Foreground = new SolidColorBrush(foreground);
-        EndTextBlock.Foreground = new SolidColorBrush(foreground);
-        DetailTextBlock.Foreground = new SolidColorBrush(detail);
-    }
-
-    private TextBox? FindCountTextBox(DependencyObject? source)
-    {
-        while (source != null)
-        {
-            if (ReferenceEquals(source, CountTextBox))
-                return CountTextBox;
-
-            source = VisualTreeHelper.GetParent(source);
-        }
-
-        return null;
-    }
-
-    private void CountTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
-    {
-        e.Handled = !e.Text.All(char.IsDigit);
-    }
-
-    private void CountTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (Node == null || Node.Type != MacroNodeType.RepeatStart)
-            return;
-
-        _isEditing = true;
-        CountTextBox.Text = Math.Max(0, Node.RepeatCount).ToString();
-        CountTextBox.SelectAll();
-    }
-
-    private void CountTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        CommitRepeatCount();
-    }
-
-    private void CountTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter)
-            return;
-
-        CommitRepeatCount();
-        Keyboard.ClearFocus();
-        e.Handled = true;
-    }
-
-    private void CommitRepeatCount()
-    {
-        if (Node == null || Node.Type != MacroNodeType.RepeatStart || !_isEditing)
-            return;
-
-        _isEditing = false;
-        if (int.TryParse(CountTextBox.Text, out var repeatCount))
-            Node.RepeatCount = Math.Max(1, repeatCount);
-
-        UpdateVisual();
-        RepeatCommitted?.Invoke(this, EventArgs.Empty);
+        BoundaryLine.Background = new SolidColorBrush(lineColor);
+        BoundaryLine.Height = IsSelected ? 34 : 28;
+        BoundaryLine.Width = IsSelected ? 4 : 3;
     }
 }

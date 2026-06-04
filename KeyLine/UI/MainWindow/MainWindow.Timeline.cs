@@ -680,10 +680,10 @@ public partial class MainWindow
                     other.StartIndex < range.StartIndex &&
                     other.EndIndex > range.EndIndex);
 
-                var left = startItem.Left - 2;
-                var right = endItem.Left + endItem.Width + 2;
-                var top = 5 + (depth * 4);
-                var height = Math.Max(36, TimelineRowHeight - 10 - (depth * 8));
+                var left = startItem.Left - 4;
+                var right = endItem.Left + endItem.Width + 4;
+                var top = 4 + (depth * 4);
+                var height = Math.Max(38, TimelineRowHeight - 8 - (depth * 8));
 
                 var background = new Border
                 {
@@ -700,7 +700,46 @@ public partial class MainWindow
                 Canvas.SetTop(background, top);
                 Panel.SetZIndex(background, -30 - depth);
                 canvas.Children.Add(background);
+
+                var repeatLabel = CreateBlockLabel(
+                    $"↻ \u00d7{Math.Max(1, range.Start.RepeatCount)}",
+                    horizontalPadding: 7);
+                Canvas.SetLeft(repeatLabel, left + 12);
+                Canvas.SetTop(repeatLabel, Math.Max(0, top - 7));
+                Panel.SetZIndex(repeatLabel, 20);
+                canvas.Children.Add(repeatLabel);
+
+                var endLabel = CreateBlockLabel("End", horizontalPadding: 6);
+                endLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var endLabelLeft = right - endLabel.DesiredSize.Width - 12;
+                Canvas.SetLeft(endLabel, Math.Max(left + 12, endLabelLeft));
+                Canvas.SetTop(endLabel, top + height - 10);
+                Panel.SetZIndex(endLabel, 20);
+                canvas.Children.Add(endLabel);
             }
+        }
+
+        private static Border CreateBlockLabel(string text, double horizontalPadding)
+        {
+            return new Border
+            {
+                Padding = new Thickness(horizontalPadding, 1, horizontalPadding, 1),
+                Margin = new Thickness(-10, -5, -10, -3),
+                CornerRadius = new CornerRadius(7),
+                Background = new SolidColorBrush(Color.FromRgb(15, 20, 29)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(150, 168, 85, 247)),
+                BorderThickness = new Thickness(1),
+                IsHitTestVisible = false,
+                Child = new TextBlock
+                {
+                    Text = text,
+                    FontSize = 11,
+                    FontWeight = FontWeights.Black,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    Foreground = new SolidColorBrush(Color.FromRgb(233, 213, 255)),
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
         }
 
         private static Border? CreateTimelineConnector(IReadOnlyList<TimelineVisualItem> visualItems)
@@ -1476,13 +1515,6 @@ public partial class MainWindow
                 Node = node,
                 IsSelected = IsStepSelected(timeline, node),
                 Tag = node
-            };
-
-            control.RepeatCommitted += (_, _) =>
-            {
-                RefreshTimeline();
-                RefreshInspector();
-                ScheduleSaveState();
             };
 
             AttachNodeMouseHandlers(control, timeline, node);
