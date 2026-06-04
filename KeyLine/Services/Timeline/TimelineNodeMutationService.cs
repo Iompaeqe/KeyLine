@@ -104,6 +104,9 @@ public static class TimelineNodeMutationService
 
     public static List<MacroNode> GetStepsToRemoveForDelete(MacroTimeline timeline, MacroNode node)
     {
+        if (TimelineBlockService.TryGetRepeatBlockRange(timeline, node, out var blockRange))
+            return blockRange;
+
         if (node.IsSyntheticDisplayNode)
         {
             return node.SourceNodes
@@ -166,8 +169,12 @@ public static class TimelineNodeMutationService
 
     private static void AddAttachedStandardDelaySteps(MacroTimeline timeline, MacroNode node, List<MacroNode> rawSteps)
     {
-        if (!timeline.UseStandardDelay || node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
+        if (!timeline.UseStandardDelay ||
+            node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay ||
+            TimelineBlockService.IsControlNode(node))
+        {
             return;
+        }
 
         var stepIndex = timeline.Nodes.IndexOf(node);
         if (stepIndex < 0)

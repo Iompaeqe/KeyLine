@@ -1,5 +1,6 @@
 using KeyLine.Domain;
 using KeyLine.Services.Input;
+using KeyLine.Services.Timeline;
 
 namespace KeyLine.Services.Macro;
 
@@ -42,23 +43,14 @@ public sealed class MacroRunner
 
             while (!token.IsCancellationRequested)
             {
-                var didDelayThisLoop = false;
-
-                for (var i = 0; i < executionSteps.Count; i++)
-                {
-                    var step = executionSteps[i];
-                    token.ThrowIfCancellationRequested();
-                    await WaitIfPaused(token);
-                    await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
-
-                    didDelayThisLoop |= step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
-
-                    if (ShouldApplyBaseDelay(executionSteps, i) && safeBaseDelayMs > 0)
-                    {
-                        await DelayWithPause(safeBaseDelayMs, token);
-                        didDelayThisLoop = true;
-                    }
-                }
+                var didDelayThisLoop = await RunExecutionPassAsync(
+                    targetHwnd,
+                    executionSteps,
+                    safeBaseDelayMs,
+                    minimumDelayMs,
+                    heldModifierKeys,
+                    useTextInputMode,
+                    token);
 
                 if (!didDelayThisLoop && minimumDelayMs > 0)
                     await DelayWithPause(minimumDelayMs, token);
@@ -143,31 +135,113 @@ public sealed class MacroRunner
 
         foreach (var step in sourceSteps)
         {
-            if (step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
+            if (IsDelayNode(step))
                 continue;
 
             result.Add(step);
 
-            result.Add(new MacroNode
+            if (!TimelineBlockService.IsControlNode(step))
             {
-                Type = MacroNodeType.Delay,
-                DelayMs = standardDelayMs
-            });
+                result.Add(new MacroNode
+                {
+                    Type = MacroNodeType.Delay,
+                    DelayMs = standardDelayMs
+                });
+            }
         }
 
         return result;
     }
 
+    private async Task<bool> RunExecutionPassAsync(
+        nint targetHwnd,
+        IReadOnlyList<MacroNode> executionSteps,
+        int safeBaseDelayMs,
+        int minimumDelayMs,
+        ISet<int> heldModifierKeys,
+        bool useTextInputMode,
+        CancellationToken token)
+    {
+        var didDelayThisPass = false;
+        var repeatPairs = TimelineBlockService.BuildRepeatPairMap(executionSteps);
+        var repeatStack = new Stack<RepeatContext>();
+
+        for (var i = 0; i < executionSteps.Count; i++)
+        {
+            var step = executionSteps[i];
+            token.ThrowIfCancellationRequested();
+            await WaitIfPaused(token);
+
+            if (step.Type == MacroNodeType.RepeatStart)
+            {
+                if (!repeatPairs.TryGetValue(i, out var endIndex))
+                    continue;
+
+                var repeatCount = Math.Max(0, step.RepeatCount);
+                if (repeatCount == 0)
+                {
+                    i = endIndex;
+                    continue;
+                }
+
+                repeatStack.Push(new RepeatContext(i + 1, endIndex, repeatCount));
+                continue;
+            }
+
+            if (step.Type == MacroNodeType.RepeatEnd)
+            {
+                if (repeatStack.Count == 0 || repeatStack.Peek().EndIndex != i)
+                    continue;
+
+                var context = repeatStack.Pop();
+                context.RemainingIterations--;
+
+                if (context.RemainingIterations > 0)
+                {
+                    repeatStack.Push(context);
+                    i = context.BodyStartIndex - 1;
+                }
+
+                continue;
+            }
+
+            await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
+
+            didDelayThisPass |= IsDelayNode(step);
+
+            if (ShouldApplyBaseDelay(executionSteps, i) && safeBaseDelayMs > 0)
+            {
+                await DelayWithPause(safeBaseDelayMs, token);
+                didDelayThisPass = true;
+            }
+        }
+
+        return didDelayThisPass;
+    }
+
     private static bool ShouldApplyBaseDelay(IReadOnlyList<MacroNode> executionSteps, int index)
     {
         var step = executionSteps[index];
-        if (step.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay)
+        if (IsDelayNode(step) || TimelineBlockService.IsControlNode(step))
             return false;
 
-        var nextIndex = index + 1;
-        return nextIndex >= executionSteps.Count ||
-               executionSteps[nextIndex].Type is not (MacroNodeType.Delay or MacroNodeType.RandomDelay);
+        var nextIndex = GetNextNonControlNodeIndex(executionSteps, index + 1);
+        return nextIndex >= executionSteps.Count || !IsDelayNode(executionSteps[nextIndex]);
     }
+
+    private static int GetNextNonControlNodeIndex(IReadOnlyList<MacroNode> executionSteps, int startIndex)
+    {
+        for (var i = startIndex; i < executionSteps.Count; i++)
+        {
+            if (!TimelineBlockService.IsControlNode(executionSteps[i]))
+                return i;
+        }
+
+        return executionSteps.Count;
+    }
+
+    private static bool IsDelayNode(MacroNode node) =>
+        node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
 
     private async Task ExecuteStep(
         nint hwnd,
@@ -265,5 +339,19 @@ public sealed class MacroRunner
             token.ThrowIfCancellationRequested();
             await _pauseGate.Task.WaitAsync(token);
         }
+    }
+
+    private sealed class RepeatContext
+    {
+        public RepeatContext(int bodyStartIndex, int endIndex, int remainingIterations)
+        {
+            BodyStartIndex = bodyStartIndex;
+            EndIndex = endIndex;
+            RemainingIterations = remainingIterations;
+        }
+
+        public int BodyStartIndex { get; }
+        public int EndIndex { get; }
+        public int RemainingIterations { get; set; }
     }
 }

@@ -51,13 +51,39 @@ public static class MacroCloneService
             BaseDelayMs = source.BaseDelayMs
         };
 
-        foreach (var step in source.Nodes.Where(step => !step.IsSyntheticDisplayNode))
-            clone.Nodes.Add(CloneStep(step));
+        foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode)))
+            clone.Nodes.Add(step);
 
         return clone;
     }
 
+    public static List<MacroNode> CloneSteps(IEnumerable<MacroNode> source)
+    {
+        return CloneSteps(source, remapRepeatBlockIds: false);
+    }
+
+    public static List<MacroNode> CloneStepsForPaste(IEnumerable<MacroNode> source)
+    {
+        return CloneSteps(source, remapRepeatBlockIds: true);
+    }
+
     public static MacroNode CloneStep(MacroNode source)
+    {
+        return CloneStep(source, repeatBlockIdMap: null);
+    }
+
+    private static List<MacroNode> CloneSteps(IEnumerable<MacroNode> source, bool remapRepeatBlockIds)
+    {
+        var repeatBlockIdMap = remapRepeatBlockIds
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : null;
+
+        return source
+            .Select(step => CloneStep(step, repeatBlockIdMap))
+            .ToList();
+    }
+
+    private static MacroNode CloneStep(MacroNode source, Dictionary<string, string>? repeatBlockIdMap)
     {
         return new MacroNode
         {
@@ -71,8 +97,26 @@ public static class MacroCloneService
             MouseX = source.MouseX,
             MouseY = source.MouseY,
             MouseButton = source.MouseButton,
-            IsRecordedDelay = source.IsRecordedDelay
+            IsRecordedDelay = source.IsRecordedDelay,
+            RepeatBlockId = GetClonedRepeatBlockId(source.RepeatBlockId, repeatBlockIdMap),
+            RepeatCount = source.RepeatCount
         };
+    }
+
+    private static string GetClonedRepeatBlockId(
+        string sourceBlockId,
+        Dictionary<string, string>? repeatBlockIdMap)
+    {
+        if (repeatBlockIdMap == null || string.IsNullOrWhiteSpace(sourceBlockId))
+            return sourceBlockId;
+
+        if (!repeatBlockIdMap.TryGetValue(sourceBlockId, out var clonedBlockId))
+        {
+            clonedBlockId = Guid.NewGuid().ToString("N");
+            repeatBlockIdMap[sourceBlockId] = clonedBlockId;
+        }
+
+        return clonedBlockId;
     }
 }
 

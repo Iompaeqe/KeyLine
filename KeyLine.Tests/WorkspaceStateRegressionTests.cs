@@ -1,5 +1,6 @@
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
+using KeyLine.Services.Timeline;
 
 namespace KeyLine.Tests;
 
@@ -154,6 +155,69 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         var result = WorkspaceNameService.GetUniqueDuplicateName(workspaces, "Macro 1");
 
         Assert.Equal("Macro 1 - copy 2", result);
+    }
+
+    [Fact]
+    public void RepeatBlockSelectionRange_IncludesEndpointsAndContents()
+    {
+        var timeline = new MacroTimeline();
+        var before = new MacroNode { Type = MacroNodeType.Text, Text = "before" };
+        var (repeatStart, repeatEnd) = TimelineBlockService.CreateRepeatBlock(3);
+        var inside = new MacroNode { Type = MacroNodeType.Text, Text = "inside" };
+        var after = new MacroNode { Type = MacroNodeType.Text, Text = "after" };
+
+        timeline.Nodes.Add(before);
+        timeline.Nodes.Add(repeatStart);
+        timeline.Nodes.Add(inside);
+        timeline.Nodes.Add(repeatEnd);
+        timeline.Nodes.Add(after);
+
+        var selection = TimelineBlockService.GetSelectionNodesForStep(timeline, repeatEnd);
+
+        Assert.Equal(new[] { repeatStart, inside, repeatEnd }, selection);
+    }
+
+    [Fact]
+    public void CloneStepsForPaste_RemapsRepeatBlockIds()
+    {
+        var (repeatStart, repeatEnd) = TimelineBlockService.CreateRepeatBlock(4);
+
+        var clones = MacroCloneService.CloneStepsForPaste(new[] { repeatStart, repeatEnd });
+
+        Assert.Equal(2, clones.Count);
+        Assert.Equal(MacroNodeType.RepeatStart, clones[0].Type);
+        Assert.Equal(MacroNodeType.RepeatEnd, clones[1].Type);
+        Assert.Equal(4, clones[0].RepeatCount);
+        Assert.NotEqual(repeatStart.RepeatBlockId, clones[0].RepeatBlockId);
+        Assert.Equal(clones[0].RepeatBlockId, clones[1].RepeatBlockId);
+    }
+
+    [Fact]
+    public void SaveAndLoad_PreservesRepeatBlockNodes()
+    {
+        var workspace = CreateWorkspace("Repeat State", MacroLoopMode.Async);
+        var timeline = workspace.Document.ActiveTimeline;
+        var (repeatStart, repeatEnd) = TimelineBlockService.CreateRepeatBlock(5);
+
+        timeline.Nodes.Add(repeatStart);
+        timeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "inside" });
+        timeline.Nodes.Add(repeatEnd);
+
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(3, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.RepeatStart, loadedNodes[0].Type);
+        Assert.Equal(MacroNodeType.RepeatEnd, loadedNodes[2].Type);
+        Assert.Equal(5, loadedNodes[0].RepeatCount);
+        Assert.Equal(loadedNodes[0].RepeatBlockId, loadedNodes[2].RepeatBlockId);
     }
 
     public void Dispose()

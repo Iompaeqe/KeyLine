@@ -374,7 +374,9 @@ public static class MacroStateStore
             MouseX = persistedStep.MouseX,
             MouseY = persistedStep.MouseY,
             MouseButton = mouseButton,
-            IsRecordedDelay = persistedStep.IsRecordedDelay
+            IsRecordedDelay = persistedStep.IsRecordedDelay,
+            RepeatBlockId = persistedStep.RepeatBlockId,
+            RepeatCount = Math.Max(0, persistedStep.RepeatCount)
         };
     }
 
@@ -562,7 +564,9 @@ public static class MacroStateStore
             MouseX = node.MouseX,
             MouseY = node.MouseY,
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
-            IsRecordedDelay = node.IsRecordedDelay
+            IsRecordedDelay = node.IsRecordedDelay,
+            RepeatBlockId = node.RepeatBlockId,
+            RepeatCount = Math.Max(0, node.RepeatCount)
         };
     }
 
@@ -639,6 +643,8 @@ public static class MacroStateStore
         public int MouseY { get; set; }
         public int MouseButton { get; set; } = 1;
         public bool IsRecordedDelay { get; set; }
+        public string RepeatBlockId { get; set; } = "";
+        public int RepeatCount { get; set; } = 2;
     }
 }
 

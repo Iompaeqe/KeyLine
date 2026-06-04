@@ -13,7 +13,9 @@ public enum MacroNodeType
     CursorMove,
     BackgroundMouseDown,
     BackgroundMouseUp,
-    BackgroundMouseClick
+    BackgroundMouseClick,
+    RepeatStart,
+    RepeatEnd
 }
 
 public sealed class MacroNode
@@ -42,4 +44,8 @@ public sealed class MacroNode
     public bool IsSyntheticDisplayNode { get; set; }
 
     public List<MacroNode> SourceNodes { get; set; } = new();
+
+    public string RepeatBlockId { get; set; } = "";
+
+    public int RepeatCount { get; set; } = 2;
 }

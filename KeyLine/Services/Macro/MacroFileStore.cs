@@ -146,7 +146,9 @@ public static class MacroFileStore
             MouseX = node.MouseX,
             MouseY = node.MouseY,
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
-            IsRecordedDelay = node.IsRecordedDelay
+            IsRecordedDelay = node.IsRecordedDelay,
+            RepeatBlockId = node.RepeatBlockId,
+            RepeatCount = Math.Max(0, node.RepeatCount)
         };
     }
 
@@ -233,7 +235,9 @@ public static class MacroFileStore
             MouseX = Math.Max(0, persisted.MouseX),
             MouseY = Math.Max(0, persisted.MouseY),
             MouseButton = Math.Clamp(persisted.MouseButton <= 0 ? 1 : persisted.MouseButton, 1, 5),
-            IsRecordedDelay = persisted.IsRecordedDelay
+            IsRecordedDelay = persisted.IsRecordedDelay,
+            RepeatBlockId = persisted.RepeatBlockId,
+            RepeatCount = Math.Max(0, persisted.RepeatCount)
         };
     }
 
@@ -293,6 +297,8 @@ public static class MacroFileStore
         public int MouseY { get; set; }
         public int MouseButton { get; set; } = 1;
         public bool IsRecordedDelay { get; set; }
+        public string RepeatBlockId { get; set; } = "";
+        public int RepeatCount { get; set; } = 2;
     }
 }
 
