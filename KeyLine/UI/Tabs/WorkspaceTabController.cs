@@ -342,7 +342,7 @@ public sealed class WorkspaceTabController
             Background = new SolidColorBrush(isPendingDelete
                 ? Color.FromRgb(127, 29, 29)
                 : hasError
-                ? Color.FromRgb(127, 29, 29)
+                ? Color.FromRgb(97, 99, 09)
                 : isRunning && isActive
                 ? Color.FromRgb(5, 150, 105)
                 : isRunning
@@ -353,7 +353,7 @@ public sealed class WorkspaceTabController
             BorderBrush = new SolidColorBrush(isPendingDelete
                 ? Color.FromRgb(248, 113, 113)
                 : hasError
-                ? Color.FromRgb(248, 113, 113)
+                ? Color.FromRgb(188, 183, 23)
                 : isRunning && isActive
                 ? Color.FromRgb(52, 211, 153)
                 : isRunning
@@ -364,7 +364,7 @@ public sealed class WorkspaceTabController
             Foreground = new SolidColorBrush(isPendingDelete
                 ? Color.FromRgb(254, 202, 202)
                 : hasError
-                ? Color.FromRgb(254, 202, 202)
+                ? Color.FromRgb(254, 252, 202)
                 : isRunning && isActive
                 ? Color.FromRgb(236, 253, 245)
                 : isRunning
