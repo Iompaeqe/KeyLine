@@ -127,6 +127,7 @@ public partial class MainWindow : Window
             new Action(() =>
             {
                 RefreshTimeline();
+                BeginSettingsUpdateCheck();
 
                 Dispatcher.BeginInvoke(
                     DispatcherPriority.Render,

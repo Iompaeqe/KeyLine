@@ -52,8 +52,11 @@ public sealed class SettingsController : ISettingsActions
     private const string GitHubLatestReleaseApi = "https://api.github.com/repos/Iompaeqe/KeyLine/releases/latest";
     private const string GitHubReleasesPage = "https://github.com/Iompaeqe/KeyLine/releases";
     private string _importExportNotice = "";
+    private Task<UpdateCheckResult>? _updateCheckTask;
     public string CurrentVersionText => GetCurrentVersionText();
     public string ImportExportNotice => _importExportNotice;
+    public UpdateCheckResult? LastUpdateCheckResult { get; private set; }
+    public event EventHandler<UpdateCheckResult>? UpdateCheckCompleted;
     public bool IsFeatureVisible(FeatureId feature) => _featureGate.IsVisible(feature);
     public bool IsFeatureLocked(FeatureId feature) => _featureGate.IsLocked(feature);
     public string GetLockedFeatureMessage(FeatureId feature) => _featureGate.GetLockedFeatureMessage(feature);
@@ -121,12 +124,7 @@ public sealed class SettingsController : ISettingsActions
 
     public bool IsOpen => _modalOverlay.Visibility == Visibility.Visible;
 
-    public void Show()
-    {
-        Show(null);
-    }
-
-    private void Show(string? initialCategory)
+    public void Show(string? initialCategory = null)
     {
         _modalHost.Content = new SettingsView(_settings, this, initialCategory)
         {
@@ -795,50 +793,95 @@ public sealed class SettingsController : ISettingsActions
         return string.IsNullOrWhiteSpace(name) ? "Macro" : name;
     }
 
-    public async Task<UpdateCheckResult> CheckForUpdatesAsync()
+    public Task<UpdateCheckResult> CheckForUpdatesAsync(bool forceRefresh = false)
     {
+        if (!forceRefresh && LastUpdateCheckResult != null)
+            return Task.FromResult(LastUpdateCheckResult);
+
+        if (_updateCheckTask is { IsCompleted: false })
+            return _updateCheckTask;
+
+        _updateCheckTask = CheckForUpdatesCoreAsync();
+        return _updateCheckTask;
+    }
+
+    private async Task<UpdateCheckResult> CheckForUpdatesCoreAsync()
+    {
+        UpdateCheckResult result;
+
         try
         {
-            using var client = new HttpClient();
+            using var client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(8)
+            };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("KeyLine");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
 
             using var response = await client.GetAsync(GitHubLatestReleaseApi);
 
             if (!response.IsSuccessStatusCode)
-                return new UpdateCheckResult(UpdateCheckState.Failed, "Update check failed - retry");
+            {
+                result = new UpdateCheckResult(UpdateCheckState.Failed, "Update check failed - retry");
+                return PublishUpdateCheckResult(result);
+            }
 
             await using var stream = await response.Content.ReadAsStreamAsync();
             var release = await JsonSerializer.DeserializeAsync<GitHubRelease>(stream);
 
             if (release == null || string.IsNullOrWhiteSpace(release.TagName))
-                return new UpdateCheckResult(UpdateCheckState.Failed, "Update check failed - retry");
+            {
+                result = new UpdateCheckResult(UpdateCheckState.Failed, "Update check failed - retry");
+                return PublishUpdateCheckResult(result);
+            }
 
             var currentVersion = TryParseVersion(GetCurrentVersionText());
             var latestVersion = TryParseVersion(release.TagName);
 
             if (currentVersion == null || latestVersion == null)
-                return new UpdateCheckResult(
+            {
+                result = new UpdateCheckResult(
                     UpdateCheckState.UpdateAvailable,
-                    $"Latest release: {release.TagName} - open",
+                    $"Latest release: {release.TagName} - install",
                     release.HtmlUrl);
+                return PublishUpdateCheckResult(result);
+            }
 
             if (latestVersion > currentVersion)
-                return new UpdateCheckResult(
+            {
+                result = new UpdateCheckResult(
                     UpdateCheckState.UpdateAvailable,
-                    $"Update available: {release.TagName} - open",
+                    $"Update available: {release.TagName} - install",
                     release.HtmlUrl);
+                return PublishUpdateCheckResult(result);
+            }
 
-            return new UpdateCheckResult(
+            result = new UpdateCheckResult(
                 UpdateCheckState.Latest,
                 "Latest version");
+            return PublishUpdateCheckResult(result);
         }
         catch
         {
-            return new UpdateCheckResult(
+            result = new UpdateCheckResult(
                 UpdateCheckState.Failed,
                 "Update check failed - retry");
+            return PublishUpdateCheckResult(result);
         }
+    }
+
+    private UpdateCheckResult PublishUpdateCheckResult(UpdateCheckResult result)
+    {
+        if (result.State == UpdateCheckState.Failed &&
+            LastUpdateCheckResult?.State == UpdateCheckState.UpdateAvailable)
+        {
+            UpdateCheckCompleted?.Invoke(this, LastUpdateCheckResult);
+            return LastUpdateCheckResult;
+        }
+
+        LastUpdateCheckResult = result;
+        UpdateCheckCompleted?.Invoke(this, result);
+        return result;
     }
 
     public void OpenReleasesPage(string? releaseUrl = null)

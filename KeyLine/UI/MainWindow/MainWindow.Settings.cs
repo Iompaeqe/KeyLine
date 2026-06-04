@@ -55,12 +55,15 @@ public partial class MainWindow
             saveStateNow: SaveStateNow,
             setStatusText: text => StatusText.Text = text,
             previewPlaybackSound: PreviewPlaybackSound);
+
+        _settingsModalController.UpdateCheckCompleted += SettingsModalController_UpdateCheckCompleted;
+        UpdateSettingsUpdateBadge(_settingsModalController.LastUpdateCheckResult);
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         CloseInspector();
-        _settingsModalController?.Show();
+        _settingsModalController?.Show(IsUpdateAvailable() ? "About" : null);
     }
 
     private void CloseSettingsModal()
@@ -71,6 +74,43 @@ public partial class MainWindow
     private bool IsSettingsModalOpen()
     {
         return _settingsModalController?.IsOpen == true;
+    }
+
+    private void SettingsModalController_UpdateCheckCompleted(object? sender, UpdateCheckResult result)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => SettingsModalController_UpdateCheckCompleted(sender, result)));
+            return;
+        }
+
+        UpdateSettingsUpdateBadge(result);
+    }
+
+    private bool IsUpdateAvailable()
+    {
+        return _settingsModalController?.LastUpdateCheckResult?.State == UpdateCheckState.UpdateAvailable;
+    }
+
+    private void UpdateSettingsUpdateBadge(UpdateCheckResult? result)
+    {
+        var isAvailable = result?.State == UpdateCheckState.UpdateAvailable;
+        TitleCommandButtons.SetSettingsUpdateAvailable(isAvailable, isAvailable ? result?.ButtonText : null);
+    }
+
+    private async void BeginSettingsUpdateCheck()
+    {
+        if (_settingsModalController == null)
+            return;
+
+        try
+        {
+            await _settingsModalController.CheckForUpdatesAsync();
+        }
+        catch
+        {
+            // CheckForUpdatesAsync reports failures through its result; this only protects startup.
+        }
     }
 
     private void Window_Drop(object sender, DragEventArgs e)

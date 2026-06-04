@@ -6,6 +6,8 @@ public interface ISettingsActions
 {
     string CurrentVersionText { get; }
     string ImportExportNotice { get; }
+    UpdateCheckResult? LastUpdateCheckResult { get; }
+    event EventHandler<UpdateCheckResult>? UpdateCheckCompleted;
 
     void ApplySettings();
     void SetLaunchOnStartup(bool enabled);
@@ -23,7 +25,7 @@ public interface ISettingsActions
     bool IsFeatureLocked(FeatureId feature);
     string GetLockedFeatureMessage(FeatureId feature);
 
-    Task<UpdateCheckResult> CheckForUpdatesAsync();
+    Task<UpdateCheckResult> CheckForUpdatesAsync(bool forceRefresh = false);
     void OpenReleasesPage(string? releaseUrl = null);
 }
 

@@ -26,10 +26,35 @@
                     Style="{StaticResource TitleGlyphButton}"
                     ToolTip="{x:Static ui:TooltipNotes.ToggleInspector}" />
 
-            <Button x:Name="SettingsButton"
-                    Content="&#x2699;"
-                    Style="{StaticResource TitleGlyphButton}"
-                    ToolTip="{x:Static ui:TooltipNotes.OpenSettings}" />
+            <Grid Width="30"
+                  Height="22">
+                <Button x:Name="SettingsButton"
+                        Content="&#x2699;"
+                        Style="{StaticResource TitleGlyphButton}"
+                        ToolTip="{x:Static ui:TooltipNotes.OpenSettings}" />
+
+                <Border x:Name="SettingsUpdateBadge"
+                        Width="12"
+                        Height="12"
+                        CornerRadius="6"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,-3,-2,0"
+                        Background="#F59E0B"
+                        BorderBrush="#FEF3C7"
+                        BorderThickness="1"
+                        IsHitTestVisible="False"
+                        Visibility="Collapsed">
+                    <TextBlock Text="!"
+                               FontFamily="Segoe UI"
+                               FontSize="8"
+                               FontWeight="Black"
+                               Foreground="#111827"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0,-1,0,0" />
+                </Border>
+            </Grid>
 
             <Button x:Name="MinimizeButton"
                     Content="─"

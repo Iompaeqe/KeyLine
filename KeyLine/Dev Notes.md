@@ -1,7 +1,7 @@
 ﻿
 # Known Bugs
 
-- [ ] when there are nested blocks, dragging distances mess up.
+- [X] when there are nested blocks, dragging distances mess up.
 
 # Feedbacks
 
@@ -9,7 +9,7 @@
 
 # To Do
 
-- [ ] show a ! next to macro tabs if there is a new version available, tooltip to inform about this.
+- [X] show a ! next to macro tabs if there is a new version available, tooltip to inform about this.
 - [ ] look into preventing input from reaching target window with a remapper option.
 
 

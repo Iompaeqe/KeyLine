@@ -11,12 +11,18 @@ namespace KeyLine;
 
 public partial class SettingsView : UserControl
 {
+    private const string AboutCategory = "About";
+
     private readonly AppSettings _settings;
     private readonly ISettingsActions _actions;
     private readonly Dictionary<string, Action> _renderers;
     private Button? _capturingShortcutButton;
+    private Button? _updateCheckButton;
+    private TextBlock? _updateStatusText;
+    private TextBlock? _aboutCategoryWarningText;
     private Action<string>? _commitShortcut;
     private readonly List<int> _capturedShortcutKeys = new();
+    private bool _isCheckingForUpdates;
 
     public SettingsView(AppSettings settings, ISettingsActions actions, string? initialCategory = null)
     {
@@ -32,17 +38,22 @@ public partial class SettingsView : UserControl
             ["Import/Export"] = RenderImportExport,
             ["Reset"] = RenderReset,
             ["Experimental"] = RenderExperimental,
-            ["About"] = RenderAbout
+            [AboutCategory] = RenderAbout
         };
 
         InitializeComponent();
 
         foreach (var category in _renderers.Keys)
-            CategoryListBox.Items.Add(category);
+            CategoryListBox.Items.Add(CreateCategoryItem(category));
 
-        CategoryListBox.SelectedItem = _renderers.ContainsKey(initialCategory ?? "")
-            ? initialCategory
+        _actions.UpdateCheckCompleted += Actions_UpdateCheckCompleted;
+        Unloaded += (_, _) => _actions.UpdateCheckCompleted -= Actions_UpdateCheckCompleted;
+
+        var selectedCategory = _renderers.ContainsKey(initialCategory ?? "")
+            ? initialCategory!
             : _renderers.Keys.First();
+        SelectCategory(selectedCategory);
+        UpdateAboutCategoryBadge();
         Focusable = true;
     }
 
@@ -50,16 +61,97 @@ public partial class SettingsView : UserControl
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 
+    private void Actions_UpdateCheckCompleted(object? sender, UpdateCheckResult result)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => Actions_UpdateCheckCompleted(sender, result)));
+            return;
+        }
+
+        UpdateAboutCategoryBadge();
+        UpdateUpdateCheckControls();
+    }
+
+    private ListBoxItem CreateCategoryItem(string category)
+    {
+        if (category != AboutCategory)
+            return new ListBoxItem { Tag = category, Content = category };
+
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(new TextBlock
+        {
+            Text = AboutCategory,
+            Foreground = DimBrush
+        });
+
+        _aboutCategoryWarningText = new TextBlock
+        {
+            Text = "!",
+            FontWeight = FontWeights.Black,
+            Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138)),
+            Margin = new Thickness(6, 0, 0, 0),
+            Visibility = IsUpdateAvailable() ? Visibility.Visible : Visibility.Collapsed
+        };
+        panel.Children.Add(_aboutCategoryWarningText);
+
+        return new ListBoxItem
+        {
+            Tag = category,
+            Content = panel
+        };
+    }
+
+    private void SelectCategory(string category)
+    {
+        foreach (var item in CategoryListBox.Items.OfType<ListBoxItem>())
+        {
+            if (item.Tag as string != category)
+                continue;
+
+            CategoryListBox.SelectedItem = item;
+            return;
+        }
+    }
+
+    private string? GetSelectedCategory()
+    {
+        return CategoryListBox.SelectedItem is ListBoxItem { Tag: string category }
+            ? category
+            : CategoryListBox.SelectedItem as string;
+    }
+
+    private bool IsUpdateAvailable()
+    {
+        return _actions.LastUpdateCheckResult?.State == UpdateCheckState.UpdateAvailable;
+    }
+
+    private void UpdateAboutCategoryBadge()
+    {
+        if (_aboutCategoryWarningText == null)
+            return;
+
+        _aboutCategoryWarningText.Visibility = IsUpdateAvailable()
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
     private void CategoryListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CategoryListBox.SelectedItem is string category && _renderers.TryGetValue(category, out var renderer))
+        if (GetSelectedCategory() is { } category &&
+            _renderers.TryGetValue(category, out var renderer))
+        {
             renderer();
+        }
     }
 
     private void RenderCurrentCategory()
     {
-        if (CategoryListBox.SelectedItem is string category && _renderers.TryGetValue(category, out var renderer))
+        if (GetSelectedCategory() is { } category &&
+            _renderers.TryGetValue(category, out var renderer))
+        {
             renderer();
+        }
     }
 
     private void RenderGeneral()
@@ -178,7 +270,7 @@ public partial class SettingsView : UserControl
 
     private void RenderAbout()
     {
-        BeginSection("About");
+        BeginSection(IsUpdateAvailable() ? "About  !" : "About");
         AddDescription("KeyLine");
         AddDescription($"Version: {_actions.CurrentVersionText}");
         AddLicenseLink();
@@ -186,6 +278,7 @@ public partial class SettingsView : UserControl
         AddDescription("A compact window-targeted macro recorder with keyboard, mouse, timeline, and shortcut support.");
 
         AddUpdateCheckButton();
+        BeginUpdateCheck(forceRefresh: true);
     }
 
     private void BeginSection(string title)
@@ -440,6 +533,16 @@ public partial class SettingsView : UserControl
     
     private void AddUpdateCheckButton()
     {
+        _updateStatusText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138)),
+            Margin = new Thickness(0, 2, 0, 8),
+            Visibility = Visibility.Collapsed
+        };
+        SettingsPanel.Children.Add(_updateStatusText);
+
         var button = new Button
         {
             Content = "Check for updates",
@@ -449,44 +552,89 @@ public partial class SettingsView : UserControl
             Margin = new Thickness(0, 0, 0, 8)
         };
 
-        var opensReleasePage = false;
-        string? releaseUrl = null;
-
-        button.Click += async (_, _) =>
+        button.Click += (_, _) =>
         {
-            if (opensReleasePage)
+            var result = _actions.LastUpdateCheckResult;
+            if (result?.State == UpdateCheckState.UpdateAvailable)
             {
-                _actions.OpenReleasesPage(releaseUrl);
+                _actions.OpenReleasesPage(result.ReleaseUrl);
                 return;
             }
 
-            button.IsEnabled = false;
-            button.Content = "Checking...";
-
-            var result = await _actions.CheckForUpdatesAsync();
-
-            switch (result.State)
-            {
-                case UpdateCheckState.UpdateAvailable:
-                    releaseUrl = result.ReleaseUrl;
-                    opensReleasePage = true;
-                    button.Content = result.ButtonText;
-                    button.IsEnabled = true;
-                    break;
-
-                case UpdateCheckState.Latest:
-                    button.Content = result.ButtonText;
-                    button.IsEnabled = false;
-                    break;
-
-                case UpdateCheckState.Failed:
-                    button.Content = result.ButtonText;
-                    button.IsEnabled = true;
-                    break;
-            }
+            BeginUpdateCheck(forceRefresh: true);
         };
 
+        _updateCheckButton = button;
         SettingsPanel.Children.Add(button);
+        UpdateUpdateCheckControls();
+    }
+
+    private async void BeginUpdateCheck(bool forceRefresh)
+    {
+        if (_isCheckingForUpdates)
+            return;
+
+        _isCheckingForUpdates = true;
+        UpdateUpdateCheckControls();
+
+        try
+        {
+            await _actions.CheckForUpdatesAsync(forceRefresh);
+        }
+        finally
+        {
+            _isCheckingForUpdates = false;
+            UpdateUpdateCheckControls();
+        }
+    }
+
+    private void UpdateUpdateCheckControls()
+    {
+        if (_updateCheckButton == null || _updateStatusText == null)
+            return;
+
+        if (_isCheckingForUpdates)
+        {
+            _updateCheckButton.Content = "Checking...";
+            _updateCheckButton.IsEnabled = false;
+            _updateStatusText.Text = "Checking GitHub releases...";
+            _updateStatusText.Foreground = new SolidColorBrush(Color.FromRgb(147, 197, 253));
+            _updateStatusText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var result = _actions.LastUpdateCheckResult;
+        if (result == null)
+        {
+            _updateCheckButton.Content = "Check for updates";
+            _updateCheckButton.IsEnabled = true;
+            _updateStatusText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _updateCheckButton.Content = result.ButtonText;
+        _updateCheckButton.IsEnabled = true;
+
+        switch (result.State)
+        {
+            case UpdateCheckState.UpdateAvailable:
+                _updateStatusText.Text = "! New version available. Click the button to open the release page and install it.";
+                _updateStatusText.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+                _updateStatusText.Visibility = Visibility.Visible;
+                break;
+
+            case UpdateCheckState.Latest:
+                _updateStatusText.Text = "No update available.";
+                _updateStatusText.Foreground = DimBrush;
+                _updateStatusText.Visibility = Visibility.Visible;
+                break;
+
+            case UpdateCheckState.Failed:
+                _updateStatusText.Text = "Could not check for updates. Try again.";
+                _updateStatusText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+                _updateStatusText.Visibility = Visibility.Visible;
+                break;
+        }
     }
 
     private void Set(bool value, Action<bool> setter)
