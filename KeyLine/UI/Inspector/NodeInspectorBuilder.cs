@@ -478,7 +478,8 @@ public sealed class NodeInspectorBuilder
             DisplayMemberPath = nameof(InspectorOption<T>.Label),
             SelectedValuePath = nameof(InspectorOption<T>.Value),
             SelectedValue = currentValue,
-            Width = 138,
+            Padding = new Thickness(-5,0,-5,0),
+            Width = 118,
             Height = 24,
             IsEnabled = canEdit,
             ToolTip = rowTooltip
