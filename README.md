@@ -1,8 +1,6 @@
 
 # KeyLine
 
-License: MIT
-
 KeyLine is a lightweight timeline-based macro recorder and editor for Windows.
 
 It lets you select a target window, record or build macros, organize them into profiles, and run them using visual timelines. In compatible applications, keyboard input can be sent to an unfocused/background window while you continue using your PC normally.
