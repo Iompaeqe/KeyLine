@@ -11,7 +11,7 @@ KeyLine is not meant to be a huge automation framework. It is designed to be sim
 
 ---
 
-<img width="2286" height="745" alt="image" src="https://github.com/user-attachments/assets/883ec9d6-ba85-4091-8e74-b4582252cfb7" />
+<img width="1998" height="739" alt="image" src="https://github.com/user-attachments/assets/fffa1af3-fda3-46c8-b287-3e9f97d12e81" />
 
 ---
 
