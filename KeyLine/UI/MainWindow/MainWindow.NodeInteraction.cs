@@ -37,10 +37,37 @@ public partial class MainWindow
 
         private void AttachNodeMouseHandlers(NodeBase nodeControl, MacroTimeline timeline, MacroNode node)
         {
-            nodeControl.PreviewMouseLeftButtonDown += (_, e) =>
+            AttachNodeLikeMouseHandlers(
+                nodeControl,
+                timeline,
+                node,
+                source => nodeControl.GetInlineEditorActivationMode(source),
+                source => nodeControl.FocusInlineEditor(source));
+        }
+
+        private void AttachBlockLabelMouseHandlers(FrameworkElement element, MacroTimeline timeline, MacroNode node)
+        {
+            AttachNodeLikeMouseHandlers(
+                element,
+                timeline,
+                node,
+                _ => InlineEditorActivationMode.None,
+                _ => { });
+        }
+
+        private void AttachNodeLikeMouseHandlers(
+            FrameworkElement element,
+            MacroTimeline timeline,
+            MacroNode node,
+            Func<DependencyObject?, InlineEditorActivationMode> getInlineEditorActivation,
+            Action<DependencyObject?> focusInlineEditor)
+        {
+            element.PreviewMouseLeftButtonDown += (_, e) =>
             {
                 EnsureTimelineDragGlobalHandlers();
-                var inlineEditorActivation = nodeControl.GetInlineEditorActivationMode(e.OriginalSource as DependencyObject);
+
+                var originalSource = e.OriginalSource as DependencyObject;
+                var inlineEditorActivation = getInlineEditorActivation(originalSource);
 
                 if (inlineEditorActivation != InlineEditorActivationMode.None)
                 {
@@ -56,7 +83,7 @@ public partial class MainWindow
                     SaveUndoSnapshot();
                     _isDelayValueMouseEditPending = inlineEditorActivation == InlineEditorActivationMode.SuppressMouseUp;
                     _isMouseNodeEditPending = inlineEditorActivation == InlineEditorActivationMode.AllowMouseUp;
-                    nodeControl.FocusInlineEditor(e.OriginalSource as DependencyObject);
+                    focusInlineEditor(originalSource);
                     e.Handled = true;
                     return;
                 }
@@ -94,12 +121,12 @@ public partial class MainWindow
 
                 _drag.BeginStepDrag(timeline, node, e.GetPosition(TimelineRowsPanel));
 
-                nodeControl.CaptureMouse();
+                element.CaptureMouse();
 
                 e.Handled = true;
             };
 
-            nodeControl.PreviewMouseMove += (_, e) =>
+            element.PreviewMouseMove += (_, e) =>
             {
                 if (!_isTimelineEditingEnabled)
                     return;
@@ -124,7 +151,7 @@ public partial class MainWindow
                     BeginStepDragPreviewModel(_drag.DraggedNodeTimeline, _drag.DraggedNode);
                     UpdateStepDragPreviewFromMouse(currentPoint);
 
-                    BeginWindowLevelStepDragCapture(nodeControl);
+                    BeginWindowLevelStepDragCapture(element);
                     BeginDraggedStepGhost();
 
                     RefreshTimelineDragPreview();
@@ -140,7 +167,7 @@ public partial class MainWindow
                 e.Handled = true;
             };
 
-            nodeControl.PreviewMouseLeftButtonUp += (_, e) =>
+            element.PreviewMouseLeftButtonUp += (_, e) =>
             {
                 if (_isDelayValueMouseEditPending)
                 {
@@ -162,13 +189,13 @@ public partial class MainWindow
                 e.Handled = true;
             };
 
-            nodeControl.LostMouseCapture += (_, _) =>
+            element.LostMouseCapture += (_, _) =>
             {
                 if (Mouse.LeftButton != MouseButtonState.Pressed && _drag.DraggedNode != null)
                     CancelTimelineDragState();
             };
 
-            nodeControl.PreviewMouseRightButtonDown += (_, e) =>
+            element.PreviewMouseRightButtonDown += (_, e) =>
             {
                 CancelTimelineDragState();
 
