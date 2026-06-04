@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.UI;
 
 namespace KeyLine.UI.Tabs;
@@ -43,6 +44,8 @@ public sealed class WorkspaceTabController
     private readonly Action<string> _showWarning;
     private readonly Action _scheduleSaveState;
     private readonly Action<bool> _setReorderNoticeVisible;
+    private readonly FeatureGate _featureGate;
+    private readonly Action<FeatureId> _showLockedFeature;
 
     private MacroWorkspace? _pendingDeleteWorkspace;
     private MacroWorkspace? _renamingWorkspace;
@@ -82,7 +85,9 @@ public sealed class WorkspaceTabController
         Action<int, int> reorderWorkspace,
         Action<string> showWarning,
         Action scheduleSaveState,
-        Action<bool> setReorderNoticeVisible)
+        Action<bool> setReorderNoticeVisible,
+        FeatureGate featureGate,
+        Action<FeatureId> showLockedFeature)
     {
         _tabsPanel = tabsPanel;
         _scrollViewer = scrollViewer;
@@ -104,6 +109,8 @@ public sealed class WorkspaceTabController
         _showWarning = showWarning;
         _scheduleSaveState = scheduleSaveState;
         _setReorderNoticeVisible = setReorderNoticeVisible;
+        _featureGate = featureGate;
+        _showLockedFeature = showLockedFeature;
     }
 
     public bool IsReorderModeEnabled => _isReorderModeEnabled;
@@ -389,24 +396,39 @@ public sealed class WorkspaceTabController
         var contextMenu = new ContextMenu();
         contextMenu.SetResourceReference(FrameworkElement.StyleProperty, "KeyLineContextMenu");
 
-        var moveToProfileItem = new MenuItem
+        if (_featureGate.IsVisible(FeatureId.Profiles))
         {
-            Header = "Move to profile"
-        };
-
-        foreach (var (profileId, profileName) in GetProfileMenuOptions())
-        {
-            var targetProfileId = profileId;
-            var profileItem = new MenuItem
+            var moveToProfileItem = new MenuItem
             {
-                Header = profileName,
-                IsEnabled = !string.Equals(
-                    MacroProfile.NormalizeId(workspace.ProfileId),
-                    targetProfileId,
-                    StringComparison.OrdinalIgnoreCase)
+                Header = _featureGate.IsEnabled(FeatureId.Profiles)
+                    ? "Move to profile"
+                    : "Move to profile (locked)"
             };
-            profileItem.Click += (_, _) => _moveWorkspaceToProfile(workspace, targetProfileId);
-            moveToProfileItem.Items.Add(profileItem);
+
+            if (_featureGate.IsEnabled(FeatureId.Profiles))
+            {
+                foreach (var (profileId, profileName) in GetProfileMenuOptions())
+                {
+                    var targetProfileId = profileId;
+                    var profileItem = new MenuItem
+                    {
+                        Header = profileName,
+                        IsEnabled = !string.Equals(
+                            MacroProfile.NormalizeId(workspace.ProfileId),
+                            targetProfileId,
+                            StringComparison.OrdinalIgnoreCase)
+                    };
+                    profileItem.Click += (_, _) => _moveWorkspaceToProfile(workspace, targetProfileId);
+                    moveToProfileItem.Items.Add(profileItem);
+                }
+            }
+            else
+            {
+                moveToProfileItem.Click += (_, _) => _showLockedFeature(FeatureId.Profiles);
+            }
+
+            contextMenu.Items.Add(moveToProfileItem);
+            contextMenu.Items.Add(new Separator());
         }
 
         var duplicateItem = new MenuItem
@@ -434,8 +456,6 @@ public sealed class WorkspaceTabController
         };
         reorderItem.Click += (_, _) => BeginReorderMode();
 
-        contextMenu.Items.Add(moveToProfileItem);
-        contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(duplicateItem);
         contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(reorderItem);

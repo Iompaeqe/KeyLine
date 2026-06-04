@@ -1,6 +1,8 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.Services.Timeline;
 
 namespace KeyLine;
@@ -33,11 +35,41 @@ public partial class MainWindow
         _popupRawInsertAnchor = context?.RawInsertAnchor;
 
         if (sender is UIElement placementTarget)
-            AddPopup.PlacementTarget = placementTarget;
+        AddPopup.PlacementTarget = placementTarget;
 
         AddPopup.Placement = PlacementMode.Top;
+        UpdateFeatureAddMenuVisibility();
         UpdateExperimentalAddMenuVisibility();
         AddPopup.IsOpen = true;
+    }
+
+    private void UpdateFeatureAddMenuVisibility()
+    {
+        ApplyFeatureAddMenuButtonState(RepeatBlockMenuButton, FeatureId.RepeatBlocks, "Repeat block");
+        ApplyFeatureAddMenuButtonState(ConditionBlockMenuButton, FeatureId.ConditionBlocks, "Condition block");
+    }
+
+    private void ApplyFeatureAddMenuButtonState(Button button, FeatureId feature, string label)
+    {
+        if (_featureGate.IsHidden(feature))
+        {
+            button.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        button.Visibility = Visibility.Visible;
+
+        if (_featureGate.IsEnabled(feature))
+        {
+            button.Content = label;
+            button.Opacity = 1.0;
+            button.ToolTip = null;
+            return;
+        }
+
+        button.Content = $"{label} (locked)";
+        button.Opacity = 0.55;
+        button.ToolTip = _featureGate.GetLockedFeatureMessage(feature);
     }
 
     private void UpdateExperimentalAddMenuVisibility()
@@ -175,6 +207,8 @@ public partial class MainWindow
     private void RepeatBlockMenuButton_Click(object sender, RoutedEventArgs e)
     {
         AddPopup.IsOpen = false;
+        if (!TryUseFeature(FeatureId.RepeatBlocks))
+            return;
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -192,6 +226,8 @@ public partial class MainWindow
     private void ConditionBlockMenuButton_Click(object sender, RoutedEventArgs e)
     {
         AddPopup.IsOpen = false;
+        if (!TryUseFeature(FeatureId.ConditionBlocks))
+            return;
 
         SaveUndoSnapshot();
         var timeline = GetPopupTimeline();

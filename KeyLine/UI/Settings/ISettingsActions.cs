@@ -1,3 +1,5 @@
+using KeyLine.Services.Features;
+
 namespace KeyLine;
 
 public interface ISettingsActions
@@ -17,6 +19,9 @@ public interface ISettingsActions
     void ResetSettings();
     void ResetAllSavedData();
     void SetShortcutCaptureActive(bool isActive);
+    bool IsFeatureVisible(FeatureId feature);
+    bool IsFeatureLocked(FeatureId feature);
+    string GetLockedFeatureMessage(FeatureId feature);
 
     Task<UpdateCheckResult> CheckForUpdatesAsync();
     void OpenReleasesPage(string? releaseUrl = null);

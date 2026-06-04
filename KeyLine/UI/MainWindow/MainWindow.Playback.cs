@@ -41,6 +41,9 @@ public partial class MainWindow
             return;
         }
 
+        if (!ValidateWorkspaceFeaturesForPlayback(_activeWorkspace))
+            return;
+
         var target = GetPlaybackTarget(_activeWorkspace, updateSelection: true);
         if (target == null)
             return;
@@ -162,6 +165,9 @@ public partial class MainWindow
             return;
 
         var workspace = _workspaces[workspaceIndex];
+        if (!ValidateWorkspaceFeaturesForPlayback(workspace))
+            return;
+
         if (!_playback.MarkShortcutStarting(workspace))
             return;
         RefreshMacroTabs();

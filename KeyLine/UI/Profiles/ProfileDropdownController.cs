@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.UI.Timeline;
 
 namespace KeyLine.UI.Profiles;
@@ -28,11 +29,13 @@ public sealed class ProfileDropdownController
 
     private readonly Func<IReadOnlyList<MacroProfile>> _getProfiles;
     private readonly Func<string> _getActiveProfileId;
-    private readonly Func<MacroProfile> _addProfile;
+    private readonly Func<MacroProfile?> _addProfile;
     private readonly Action<string> _activateProfile;
     private readonly Action<MacroProfile, string> _renameProfile;
     private readonly Action<MacroProfile> _deleteProfile;
     private readonly Action<int, int> _reorderProfile;
+    private readonly FeatureGate _featureGate;
+    private readonly Action<FeatureId> _showLockedFeature;
 
     private MacroProfile? _pendingDeleteProfile;
     private MacroProfile? _renamingProfile;
@@ -62,11 +65,13 @@ public sealed class ProfileDropdownController
         Dispatcher dispatcher,
         Func<IReadOnlyList<MacroProfile>> getProfiles,
         Func<string> getActiveProfileId,
-        Func<MacroProfile> addProfile,
+        Func<MacroProfile?> addProfile,
         Action<string> activateProfile,
         Action<MacroProfile, string> renameProfile,
         Action<MacroProfile> deleteProfile,
-        Action<int, int> reorderProfile)
+        Action<int, int> reorderProfile,
+        FeatureGate featureGate,
+        Action<FeatureId> showLockedFeature)
     {
         _selectorButton = selectorButton;
         _selectedProfileText = selectedProfileText;
@@ -83,6 +88,8 @@ public sealed class ProfileDropdownController
         _renameProfile = renameProfile;
         _deleteProfile = deleteProfile;
         _reorderProfile = reorderProfile;
+        _featureGate = featureGate;
+        _showLockedFeature = showLockedFeature;
 
         WireEvents();
     }
@@ -91,6 +98,7 @@ public sealed class ProfileDropdownController
 
     public void Refresh()
     {
+        ApplyFeatureState();
         _selectedProfileText.Text = GetSelectedProfileName();
 
         var previousRowTops = CaptureRowTops();
@@ -167,6 +175,15 @@ public sealed class ProfileDropdownController
     {
         _selectorButton.Click += (_, _) =>
         {
+            if (!_featureGate.IsVisible(FeatureId.Profiles))
+                return;
+
+            if (!_featureGate.IsEnabled(FeatureId.Profiles))
+            {
+                _showLockedFeature(FeatureId.Profiles);
+                return;
+            }
+
             _popup.IsOpen = !_popup.IsOpen;
             if (_popup.IsOpen)
                 Refresh();
@@ -187,7 +204,13 @@ public sealed class ProfileDropdownController
 
         _addButton.Click += (_, _) =>
         {
+            if (!TryUseProfiles())
+                return;
+
             var profile = _addProfile();
+            if (profile == null)
+                return;
+
             _renamingProfile = profile;
             _isAddingProfile = true;
             _popup.StaysOpen = true;
@@ -236,6 +259,12 @@ public sealed class ProfileDropdownController
         {
             if (_renamingProfile != null)
                 return;
+
+            if (!TryUseProfiles())
+            {
+                e.Handled = true;
+                return;
+            }
 
             if (profile != null && ReferenceEquals(_pendingDeleteProfile, profile))
             {
@@ -330,13 +359,17 @@ public sealed class ProfileDropdownController
 
         var editNameItem = new MenuItem
         {
-            Header = "Edit name"
+            Header = _featureGate.IsEnabled(FeatureId.Profiles)
+                ? "Edit name"
+                : "Edit name (locked)"
         };
         editNameItem.Click += (_, _) => BeginRename(profile);
 
         var deleteItem = new MenuItem
         {
-            Header = "Delete"
+            Header = _featureGate.IsEnabled(FeatureId.Profiles)
+                ? "Delete"
+                : "Delete (locked)"
         };
         deleteItem.Click += (_, _) => BeginOrConfirmDelete(profile);
 
@@ -394,6 +427,9 @@ public sealed class ProfileDropdownController
 
     private void BeginRename(MacroProfile profile)
     {
+        if (!TryUseProfiles())
+            return;
+
         _pendingDeleteProfile = null;
         _renamingProfile = profile;
         _isAddingProfile = false;
@@ -403,6 +439,9 @@ public sealed class ProfileDropdownController
 
     private void BeginOrConfirmDelete(MacroProfile profile)
     {
+        if (!TryUseProfiles())
+            return;
+
         if (ReferenceEquals(_pendingDeleteProfile, profile))
         {
             _pendingDeleteProfile = null;
@@ -422,6 +461,9 @@ public sealed class ProfileDropdownController
 
     private void CommitRename(MacroProfile profile, string name, bool closePopup = false)
     {
+        if (!TryUseProfiles())
+            return;
+
         if (!ReferenceEquals(_renamingProfile, profile))
             return;
 
@@ -445,6 +487,9 @@ public sealed class ProfileDropdownController
 
     private void ScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (!TryUseProfiles())
+            return;
+
         if (IsSourceInsideTextBox(e.OriginalSource as DependencyObject))
             return;
 
@@ -466,6 +511,9 @@ public sealed class ProfileDropdownController
 
     private void ScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
     {
+        if (!_featureGate.IsEnabled(FeatureId.Profiles))
+            return;
+
         if (!_isDraggingProfiles || e.LeftButton != MouseButtonState.Pressed)
             return;
 
@@ -496,6 +544,9 @@ public sealed class ProfileDropdownController
 
     private void ReorderDraggedProfile(Point panelPoint)
     {
+        if (!_featureGate.IsEnabled(FeatureId.Profiles))
+            return;
+
         if (_draggedProfile == null)
             return;
 
@@ -771,6 +822,38 @@ public sealed class ProfileDropdownController
                 activeProfileId,
                 StringComparison.OrdinalIgnoreCase))
             ?.Name ?? MacroProfile.NoProfileName;
+    }
+
+    private void ApplyFeatureState()
+    {
+        if (!_featureGate.IsVisible(FeatureId.Profiles))
+        {
+            _selectorButton.Visibility = Visibility.Collapsed;
+            _popup.IsOpen = false;
+            return;
+        }
+
+        _selectorButton.Visibility = Visibility.Visible;
+
+        var isEnabled = _featureGate.IsEnabled(FeatureId.Profiles);
+        _selectorButton.Opacity = isEnabled ? 1.0 : 0.55;
+        _selectorButton.ToolTip = isEnabled ? null : _featureGate.GetLockedFeatureMessage(FeatureId.Profiles);
+        _addButton.IsHitTestVisible = isEnabled;
+        _addButton.Focusable = isEnabled;
+        _addButton.Opacity = isEnabled ? 1.0 : 0.45;
+        _addButton.ToolTip = isEnabled ? null : _featureGate.GetLockedFeatureMessage(FeatureId.Profiles);
+
+        if (!isEnabled)
+            _popup.IsOpen = false;
+    }
+
+    private bool TryUseProfiles()
+    {
+        if (_featureGate.IsEnabled(FeatureId.Profiles))
+            return true;
+
+        _showLockedFeature(FeatureId.Profiles);
+        return false;
     }
 
     private static bool IsSourceInsideTextBox(DependencyObject? source)

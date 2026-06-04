@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.Services.Input;
 using KeyLine.UI;
 
@@ -152,7 +153,7 @@ public partial class SettingsView : UserControl
         BeginSection("Import/Export");
         AddAction("Import", _actions.Import);
         AddAction("Export Macro", _actions.ExportMacro);
-        AddAction("Export Profile", _actions.ExportProfile);
+        AddFeatureAction("Export Profile", FeatureId.Profiles, _actions.ExportProfile);
         AddAction("Export EVERYTHING", _actions.ExportEverything);
         AddAction("Open Backups", _actions.OpenBackups);
 
@@ -336,6 +337,26 @@ public partial class SettingsView : UserControl
             HorizontalAlignment = HorizontalAlignment.Left,
             MinWidth = 180,
             Margin = new Thickness(0, 0, 0, 8)
+        };
+        button.Click += (_, _) => action();
+        SettingsPanel.Children.Add(button);
+    }
+
+    private void AddFeatureAction(string label, FeatureId feature, Action action)
+    {
+        if (!_actions.IsFeatureVisible(feature))
+            return;
+
+        var isLocked = _actions.IsFeatureLocked(feature);
+        var button = new Button
+        {
+            Content = isLocked ? $"{label} (locked)" : label,
+            Height = 28,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MinWidth = 180,
+            Margin = new Thickness(0, 0, 0, 8),
+            Opacity = isLocked ? 0.55 : 1.0,
+            ToolTip = isLocked ? _actions.GetLockedFeatureMessage(feature) : null
         };
         button.Click += (_, _) => action();
         SettingsPanel.Children.Add(button);

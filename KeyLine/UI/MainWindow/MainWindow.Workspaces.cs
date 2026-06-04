@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Input;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.Services.Macro;
 using KeyLine.UI.Tabs;
 
@@ -42,7 +43,9 @@ public partial class MainWindow
                 reorderWorkspace: ReorderWorkspace,
                 showWarning: SetWorkspaceTabWarningStatus,
                 scheduleSaveState: ScheduleSaveState,
-                setReorderNoticeVisible: MacroTabsBlock.SetReorderNoticeVisible);
+                setReorderNoticeVisible: MacroTabsBlock.SetReorderNoticeVisible,
+                featureGate: _featureGate,
+                showLockedFeature: ShowLockedFeatureStatus);
         }
 
         private static MacroWorkspace CreateWorkspace(
@@ -222,6 +225,9 @@ public partial class MainWindow
 
         private void MoveWorkspaceToProfile(MacroWorkspace workspace, string profileId)
         {
+            if (!TryUseFeature(FeatureId.Profiles))
+                return;
+
             if (!_workspaces.Contains(workspace))
                 return;
 
@@ -302,8 +308,7 @@ public partial class MainWindow
 
         private void SetWorkspaceTabWarningStatus(string text)
         {
-            StatusText.Text = text;
-            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+            SetWarningStatus(text);
         }
 
     // From MainWindow.TabScrolling.cs

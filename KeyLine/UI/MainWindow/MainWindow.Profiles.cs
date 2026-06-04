@@ -1,4 +1,5 @@
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.Services.Macro;
 using KeyLine.UI.Profiles;
 
@@ -23,7 +24,9 @@ public partial class MainWindow
             activateProfile: ActivateProfile,
             renameProfile: RenameProfile,
             deleteProfile: DeleteProfile,
-            reorderProfile: ReorderProfile);
+            reorderProfile: ReorderProfile,
+            featureGate: _featureGate,
+            showLockedFeature: ShowLockedFeatureStatus);
 
         _profileDropdown.Refresh();
     }
@@ -90,8 +93,11 @@ public partial class MainWindow
         _workspaces.Add(CreateWorkspace(GetNextWorkspaceNumber(profileId), settings, profileId));
     }
 
-    private MacroProfile AddProfile()
+    private MacroProfile? AddProfile()
     {
+        if (!TryUseFeature(FeatureId.Profiles))
+            return null;
+
         CaptureActiveWorkspaceState();
 
         var profile = new MacroProfile
@@ -114,6 +120,9 @@ public partial class MainWindow
 
     private void ActivateProfile(string profileId)
     {
+        if (!TryUseFeature(FeatureId.Profiles))
+            return;
+
         profileId = MacroProfile.NormalizeId(profileId);
 
         if (string.Equals(_activeProfileId, profileId, StringComparison.OrdinalIgnoreCase) &&
@@ -137,6 +146,9 @@ public partial class MainWindow
 
     private void RenameProfile(MacroProfile profile, string name)
     {
+        if (!TryUseFeature(FeatureId.Profiles))
+            return;
+
         if (!_profiles.Contains(profile))
             return;
 
@@ -147,6 +159,9 @@ public partial class MainWindow
 
     private void DeleteProfile(MacroProfile profile)
     {
+        if (!TryUseFeature(FeatureId.Profiles))
+            return;
+
         if (!_profiles.Contains(profile))
             return;
 
@@ -178,6 +193,9 @@ public partial class MainWindow
 
     private void ReorderProfile(int sourceIndex, int targetIndex)
     {
+        if (!TryUseFeature(FeatureId.Profiles))
+            return;
+
         if (sourceIndex < 0 || sourceIndex >= _profiles.Count)
             return;
 
@@ -194,6 +212,10 @@ public partial class MainWindow
 
     private void RefreshProfileDropdown()
     {
+        ProfileDropdownBlock.Visibility = _featureGate.IsVisible(FeatureId.Profiles)
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+
         _profileDropdown?.Refresh();
     }
 
@@ -210,6 +232,9 @@ public partial class MainWindow
 
     private IReadOnlyList<MacroWorkspace> GetActiveProfileWorkspaces()
     {
+        if (!_featureGate.IsEnabled(FeatureId.Profiles))
+            return GetWorkspacesForProfile(MacroProfile.NoProfileId);
+
         return _workspaces
             .Where(workspace => IsWorkspaceInProfile(workspace, _activeProfileId))
             .ToList();
@@ -218,6 +243,8 @@ public partial class MainWindow
     private IReadOnlyList<MacroWorkspace> GetWorkspacesForProfile(string profileId)
     {
         profileId = MacroProfile.NormalizeId(profileId);
+        if (!_featureGate.IsEnabled(FeatureId.Profiles) && !MacroProfile.IsNoProfile(profileId))
+            return Array.Empty<MacroWorkspace>();
 
         return _workspaces
             .Where(workspace => IsWorkspaceInProfile(workspace, profileId))

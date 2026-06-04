@@ -1,0 +1,53 @@
+namespace KeyLine.Services.Features;
+
+public sealed class FeatureGate
+{
+    private readonly FeatureConfig _config;
+
+    public FeatureGate(FeatureConfig config)
+    {
+        _config = config;
+    }
+
+    public FeatureState GetState(FeatureId feature)
+    {
+        return feature switch
+        {
+            FeatureId.Profiles => _config.Profiles,
+            FeatureId.RepeatBlocks => _config.RepeatBlocks,
+            FeatureId.ConditionBlocks => _config.ConditionBlocks,
+            _ => FeatureState.DisabledHidden
+        };
+    }
+
+    public bool IsVisible(FeatureId feature)
+    {
+        return GetState(feature) is FeatureState.Enabled or FeatureState.DisabledVisible;
+    }
+
+    public bool IsEnabled(FeatureId feature)
+    {
+        return GetState(feature) == FeatureState.Enabled;
+    }
+
+    public bool IsLocked(FeatureId feature)
+    {
+        return GetState(feature) == FeatureState.DisabledVisible;
+    }
+
+    public bool IsHidden(FeatureId feature)
+    {
+        return GetState(feature) == FeatureState.DisabledHidden;
+    }
+
+    public string GetLockedFeatureMessage(FeatureId feature)
+    {
+        return feature switch
+        {
+            FeatureId.Profiles => "Profiles are not available in this version.",
+            FeatureId.RepeatBlocks => "Repeat Blocks are not available in this version.",
+            FeatureId.ConditionBlocks => "Condition Blocks are not available in this version.",
+            _ => "This feature is not available in this version."
+        };
+    }
+}

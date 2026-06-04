@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using KeyLine.Domain;
+using KeyLine.Services.Features;
 using KeyLine.Services.Macro;
 using Microsoft.Win32;
 
@@ -21,6 +22,8 @@ public sealed class SettingsController : ISettingsActions
     private readonly UIElement _modalOverlay;
     private readonly IList<MacroWorkspace> _workspaces;
     private readonly IList<MacroProfile> _profiles;
+    private readonly FeatureGate _featureGate;
+    private readonly MacroFeatureValidator _macroFeatureValidator;
 
     private readonly Func<MacroWorkspace> _getActiveWorkspace;
     private readonly Func<string> _getActiveProfileId;
@@ -51,6 +54,9 @@ public sealed class SettingsController : ISettingsActions
     private string _importExportNotice = "";
     public string CurrentVersionText => GetCurrentVersionText();
     public string ImportExportNotice => _importExportNotice;
+    public bool IsFeatureVisible(FeatureId feature) => _featureGate.IsVisible(feature);
+    public bool IsFeatureLocked(FeatureId feature) => _featureGate.IsLocked(feature);
+    public string GetLockedFeatureMessage(FeatureId feature) => _featureGate.GetLockedFeatureMessage(feature);
 
     public SettingsController(
         Window owner,
@@ -59,6 +65,7 @@ public sealed class SettingsController : ISettingsActions
         UIElement modalOverlay,
         IList<MacroWorkspace> workspaces,
         IList<MacroProfile> profiles,
+        FeatureGate featureGate,
         Func<MacroWorkspace> getActiveWorkspace,
         Func<string> getActiveProfileId,
         Func<IReadOnlyList<MacroWorkspace>> getActiveProfileWorkspaces,
@@ -87,6 +94,8 @@ public sealed class SettingsController : ISettingsActions
         _modalOverlay = modalOverlay;
         _workspaces = workspaces;
         _profiles = profiles;
+        _featureGate = featureGate;
+        _macroFeatureValidator = new MacroFeatureValidator(_featureGate);
         _getActiveWorkspace = getActiveWorkspace;
         _getActiveProfileId = getActiveProfileId;
         _getActiveProfileWorkspaces = getActiveProfileWorkspaces;
@@ -190,15 +199,21 @@ public sealed class SettingsController : ISettingsActions
 
     public void ExportMacro()
     {
-        if (_workspaces.Count == 1)
+        var exportableWorkspaces = _featureGate.IsEnabled(FeatureId.Profiles)
+            ? _workspaces.ToList()
+            : _workspaces
+                .Where(workspace => MacroProfile.IsNoProfile(MacroProfile.NormalizeId(workspace.ProfileId)))
+                .ToList();
+
+        if (exportableWorkspaces.Count == 1)
         {
-            ExportWorkspaces(new[] { _workspaces[0] });
+            ExportWorkspaces(new[] { exportableWorkspaces[0] });
             return;
         }
 
         _modalHost.Content = new ExportMacroSelectionView(
-            _workspaces.ToList(),
-            _profiles.ToList(),
+            exportableWorkspaces,
+            _featureGate.IsEnabled(FeatureId.Profiles) ? _profiles.ToList() : new List<MacroProfile>(),
             _getActiveWorkspace(),
             selected =>
             {
@@ -212,6 +227,12 @@ public sealed class SettingsController : ISettingsActions
 
     public void ExportProfile()
     {
+        if (!_featureGate.IsEnabled(FeatureId.Profiles))
+        {
+            _setStatusText(_featureGate.GetLockedFeatureMessage(FeatureId.Profiles));
+            return;
+        }
+
         if (_profiles.Count == 0)
         {
             _setStatusText("No profiles to export");
@@ -365,11 +386,16 @@ public sealed class SettingsController : ISettingsActions
                 var package = MacroFileStore.ImportPackage(path);
                 if (package.Kind == MacroFileKind.Profiles || package.Profiles.Count > 0)
                 {
+                    if (!CanImportProfiles())
+                        return;
+
+                    ApplyFeatureValidationToWorkspaces(package.Workspaces);
                     PreviewProfileImport(package.Profiles, package.Workspaces);
                     return;
                 }
                 else
                 {
+                    ApplyFeatureValidationToWorkspaces(package.Workspaces);
                     ImportWorkspaces(package.Workspaces);
                 }
             }
@@ -384,6 +410,11 @@ public sealed class SettingsController : ISettingsActions
         IReadOnlyList<MacroProfile> importedProfiles,
         IReadOnlyList<MacroWorkspace> importedWorkspaces)
     {
+        if (!CanImportProfiles())
+            return;
+
+        var featureWarning = ApplyFeatureValidationToWorkspaces(importedWorkspaces);
+
         if (importedProfiles.Count == 0)
         {
             ImportWorkspaces(importedWorkspaces);
@@ -399,7 +430,8 @@ public sealed class SettingsController : ISettingsActions
                 ImportProfiles(importedProfiles, importedWorkspaces);
                 Close();
             },
-            () => Show(ImportExportCategory)));
+            () => Show(ImportExportCategory),
+            string.IsNullOrWhiteSpace(featureWarning) ? null : featureWarning));
     }
 
     private void PreviewEverythingImport(string path)
@@ -411,6 +443,18 @@ public sealed class SettingsController : ISettingsActions
             return;
         }
 
+        if (ContainsProfileData(snapshot) && !_featureGate.IsEnabled(FeatureId.Profiles))
+        {
+            _setStatusText(_featureGate.GetLockedFeatureMessage(FeatureId.Profiles));
+            Show(ImportExportCategory);
+            return;
+        }
+
+        var featureWarning = ApplyFeatureValidationToWorkspaces(snapshot.Workspaces);
+        var warningText = "Warning: importing EVERYTHING will replace every setting, profile, and macro. The current state will be backed up first.";
+        if (!string.IsNullOrWhiteSpace(featureWarning))
+            warningText += Environment.NewLine + Environment.NewLine + featureWarning;
+
         SystemSounds.Exclamation.Play();
         ShowImportConfirmation(new ImportConfirmationView(
             "Confirm EVERYTHING import",
@@ -418,7 +462,7 @@ public sealed class SettingsController : ISettingsActions
             CreateEverythingImportPreview(snapshot),
             () => ApplyEverythingImport(path, snapshot),
             () => Show(ImportExportCategory),
-            "Warning: importing EVERYTHING will replace every setting, profile, and macro. The current state will be backed up first.",
+            warningText,
             CreateSettingsPreview(snapshot)));
     }
 
@@ -479,6 +523,7 @@ public sealed class SettingsController : ISettingsActions
         if (imported.Count == 0)
             return;
 
+        var featureWarning = ApplyFeatureValidationToWorkspaces(imported);
         _captureActiveWorkspaceState();
 
         var activeProfileId = _getActiveProfileId();
@@ -494,6 +539,8 @@ public sealed class SettingsController : ISettingsActions
 
         _activateWorkspace(_workspaces.Count - imported.Count, true);
         _scheduleSaveState();
+        if (!string.IsNullOrWhiteSpace(featureWarning))
+            _setStatusText(featureWarning);
     }
 
     private void ImportProfiles(
@@ -506,6 +553,10 @@ public sealed class SettingsController : ISettingsActions
             return;
         }
 
+        if (!CanImportProfiles())
+            return;
+
+        var featureWarning = ApplyFeatureValidationToWorkspaces(importedWorkspaces);
         _captureActiveWorkspaceState();
 
         var profileIdMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -547,6 +598,9 @@ public sealed class SettingsController : ISettingsActions
             _activateProfile(firstImportedProfileId);
         else
             _scheduleSaveState();
+
+        if (!string.IsNullOrWhiteSpace(featureWarning))
+            _setStatusText(featureWarning);
     }
 
     private static IReadOnlyList<ImportProfilePreview> CreateProfileImportPreview(
@@ -694,6 +748,43 @@ public sealed class SettingsController : ISettingsActions
         workspace.TargetWindowTitle = "";
         workspace.TargetChildWindowHandle = 0;
         workspace.TargetChildWindowTitle = "";
+    }
+
+    private bool CanImportProfiles()
+    {
+        if (_featureGate.IsEnabled(FeatureId.Profiles))
+            return true;
+
+        _setStatusText(_featureGate.GetLockedFeatureMessage(FeatureId.Profiles));
+        Show(ImportExportCategory);
+        return false;
+    }
+
+    private string ApplyFeatureValidationToWorkspaces(IEnumerable<MacroWorkspace> workspaces)
+    {
+        var workspaceList = workspaces.ToList();
+        foreach (var workspace in workspaceList)
+        {
+            var validation = _macroFeatureValidator.ValidateWorkspace(workspace);
+            if (!validation.CanRun)
+                workspace.ErrorMessage = MacroFeatureValidator.FormatErrors(validation);
+        }
+
+        var aggregateValidation = _macroFeatureValidator.ValidateWorkspaces(workspaceList);
+        if (aggregateValidation.CanRun)
+            return "";
+
+        var message = MacroFeatureValidator.FormatErrors(aggregateValidation);
+        _importExportNotice = message;
+        return message;
+    }
+
+    private static bool ContainsProfileData(MacroStateSnapshot snapshot)
+    {
+        return snapshot.Profiles.Count > 0 ||
+               !MacroProfile.IsNoProfile(snapshot.ActiveProfileId) ||
+               snapshot.Workspaces.Any(workspace =>
+                   !MacroProfile.IsNoProfile(MacroProfile.NormalizeId(workspace.ProfileId)));
     }
 
     private static string SanitizeFileName(string name)

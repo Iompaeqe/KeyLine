@@ -248,6 +248,9 @@ public partial class MainWindow
         if (clipboard == null)
             return;
 
+        if (!CanPasteClipboard(clipboard))
+            return;
+
         SaveUndoSnapshot();
 
         switch (clipboard.Kind)
@@ -291,6 +294,9 @@ public partial class MainWindow
         if (steps.Count == 0)
             return;
 
+        if (!TryUseFeaturesRequiredByNodes(steps))
+            return;
+
         var timeline = _selection.SelectedTimeline ?? _document.ActiveTimeline;
         var insertIndex = timeline.Nodes.Count;
 
@@ -320,6 +326,9 @@ public partial class MainWindow
 
     private void PasteTimelines(IReadOnlyList<MacroTimeline> timelines)
     {
+        if (!timelines.All(TryUseFeaturesRequiredByTimeline))
+            return;
+
         var insertIndex = _document.Timelines.Count;
         if (_selection.HasTimelineSelection && _selection.SelectedTimeline != null)
         {
@@ -345,6 +354,9 @@ public partial class MainWindow
 
     private void PasteWorkspaces(IReadOnlyList<MacroWorkspace> workspaces)
     {
+        if (!workspaces.All(TryUseFeaturesRequiredByWorkspace))
+            return;
+
         var insertIndex = Math.Clamp(_activeWorkspaceIndex + 1, 0, _workspaces.Count);
         foreach (var workspace in workspaces)
         {
@@ -363,6 +375,9 @@ public partial class MainWindow
     {
         var sourceIndex = _document.Timelines.IndexOf(source);
         if (sourceIndex < 0)
+            return;
+
+        if (!TryUseFeaturesRequiredByTimeline(source))
             return;
 
         SaveUndoSnapshot();
@@ -385,6 +400,9 @@ public partial class MainWindow
         CaptureActiveWorkspaceState();
 
         var source = _workspaces[sourceIndex];
+        if (!TryUseFeaturesRequiredByWorkspace(source))
+            return;
+
         var clone = MacroCloneService.CloneWorkspace(source);
         clone.ProfileId = source.ProfileId;
         clone.Name = WorkspaceNameService.GetUniqueDuplicateName(
@@ -412,6 +430,17 @@ public partial class MainWindow
             .Distinct()
             .OrderBy(step => rawOrder.TryGetValue(step, out var index) ? index : int.MaxValue)
             .ToList();
+    }
+
+    private bool CanPasteClipboard(EditClipboard clipboard)
+    {
+        return clipboard.Kind switch
+        {
+            EditClipboardKind.Nodes => TryUseFeaturesRequiredByNodes(clipboard.Nodes),
+            EditClipboardKind.Timelines => clipboard.Timelines.All(TryUseFeaturesRequiredByTimeline),
+            EditClipboardKind.Workspaces => clipboard.Workspaces.All(TryUseFeaturesRequiredByWorkspace),
+            _ => true
+        };
     }
 }
 

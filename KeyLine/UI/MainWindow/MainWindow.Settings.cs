@@ -15,6 +15,7 @@ public partial class MainWindow
             modalOverlay: SettingsModalOverlay,
             workspaces: _workspaces,
             profiles: _profiles,
+            featureGate: _featureGate,
             getActiveWorkspace: () => _activeWorkspace,
             getActiveProfileId: () => _activeProfileId,
             getActiveProfileWorkspaces: GetActiveProfileWorkspaces,

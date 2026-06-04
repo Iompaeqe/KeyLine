@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using KeyLine.Domain;
 using KeyLine.Services.AppWindow;
+using KeyLine.Services.Features;
 using KeyLine.Services.Macro;
 using KeyLine.Services.Playback;
 using KeyLine.Services.Recording;
@@ -21,6 +22,8 @@ public partial class MainWindow : Window
     private readonly PlaybackController _playback = new();
     private readonly MacroRecorder _recorder = new();
     private readonly AppSettings _settings;
+    private readonly FeatureGate _featureGate = new(new FeatureConfig());
+    private readonly MacroFeatureValidator _macroFeatureValidator;
 
     private readonly Dictionary<object, Point> _timelineVisualPositions = new();
     private ProfileDropdownController? _profileDropdown;
@@ -45,6 +48,8 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _macroFeatureValidator = new MacroFeatureValidator(_featureGate);
+
         var savedState = MacroStateStore.Load();
         _settings = savedState?.Settings ?? new AppSettings();
         _workspaces = savedState?.Workspaces.Count > 0
@@ -53,6 +58,9 @@ public partial class MainWindow : Window
         _profiles = savedState?.Profiles ?? new List<MacroProfile>();
         _activeProfileId = savedState?.ActiveProfileId ?? MacroProfile.NoProfileId;
         NormalizeProfileState();
+        if (!_featureGate.IsEnabled(FeatureId.Profiles))
+            _activeProfileId = MacroProfile.NoProfileId;
+
         EnsureWorkspaceForProfile(_activeProfileId, _settings);
         _activeWorkspaceIndex = ResolveInitialWorkspaceIndex(savedState?.ActiveWorkspaceIndex ?? 0);
         _activeWorkspace = _workspaces[_activeWorkspaceIndex];
