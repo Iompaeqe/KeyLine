@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KeyLine.Domain;
 using KeyLine.Services.Input;
+using KeyLine.Services.Timeline;
 
 namespace KeyLine.Services.Macro;
 
@@ -288,11 +289,11 @@ public static class MacroStateStore
                 persistedWorkspace.Timelines,
                 persistedWorkspace.ActiveTimelineIndex,
                 Math.Max(0, persistedWorkspace.LoopCount),
-                Math.Max(0, persistedWorkspace.BaseDelayMs)),
+                GetPersistedDelayMs(persistedWorkspace.BaseDelayMs)),
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
             LoopMode = GetPersistedLoopMode(persistedWorkspace),
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
-            BaseDelayMs = Math.Max(0, persistedWorkspace.BaseDelayMs),
+            BaseDelayMs = GetPersistedDelayMs(persistedWorkspace.BaseDelayMs),
             ShortcutKeys = persistedWorkspace.ShortcutKeys,
             ShortcutsEnabled = persistedWorkspace.ShortcutsEnabled,
             TargetWindowSearchName = persistedWorkspace.TargetWindowSearchName,
@@ -311,7 +312,7 @@ public static class MacroStateStore
             Document = ToDocument(state.Timelines, state.ActiveTimelineIndex, Math.Max(0, state.LoopCount), 50),
             LoopCount = Math.Max(0, state.LoopCount),
             LoopMode = MacroLoopMode.Async,
-            TimerMs = Math.Max(0, state.TimerMs > 0 ? state.TimerMs : state.TimerMinutes * 60_000),
+            TimerMs = GetPersistedTimerMs(state.TimerMs, state.TimerMinutes),
             BaseDelayMs = 50
         };
     }
@@ -343,11 +344,11 @@ public static class MacroStateStore
         {
             Name = persistedTimeline.Name,
             UseStandardDelay = persistedTimeline.UseStandardDelay,
-            StandardDelayMs = Math.Max(0, persistedTimeline.StandardDelayMs),
+            StandardDelayMs = GetPersistedDelayMs(persistedTimeline.StandardDelayMs),
             ShowKeyUpDown = persistedTimeline.ShowKeyUpDown,
             UseTextInputMode = persistedTimeline.UseTextInputMode,
             LoopCount = Math.Max(0, persistedTimeline.LoopCount ?? fallbackLoopCount),
-            BaseDelayMs = Math.Max(0, persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs)
+            BaseDelayMs = GetPersistedDelayMs(persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs)
         };
 
         foreach (var persistedStep in persistedTimeline.Nodes)
@@ -368,9 +369,9 @@ public static class MacroStateStore
             Type = type,
             KeyName = GetPersistedStepKeyName(type, persistedStep.KeyName, mouseButton),
             VirtualKey = persistedStep.VirtualKey,
-            DelayMs = Math.Max(0, persistedStep.DelayMs),
-            RandomDelayMinMs = Math.Max(0, persistedStep.RandomDelayMinMs),
-            RandomDelayMaxMs = Math.Max(0, persistedStep.RandomDelayMaxMs),
+            DelayMs = GetPersistedDelayMs(persistedStep.DelayMs),
+            RandomDelayMinMs = GetPersistedDelayMs(persistedStep.RandomDelayMinMs),
+            RandomDelayMaxMs = GetPersistedDelayMs(persistedStep.RandomDelayMaxMs),
             Text = persistedStep.Text,
             MouseX = persistedStep.MouseX,
             MouseY = persistedStep.MouseY,
@@ -415,11 +416,11 @@ public static class MacroStateStore
         {
             Name = timeline.Name,
             UseStandardDelay = timeline.UseStandardDelay,
-            StandardDelayMs = Math.Max(0, timeline.StandardDelayMs),
+            StandardDelayMs = GetPersistedDelayMs(timeline.StandardDelayMs),
             ShowKeyUpDown = timeline.ShowKeyUpDown,
             UseTextInputMode = timeline.UseTextInputMode,
             LoopCount = Math.Max(0, timeline.LoopCount),
-            BaseDelayMs = Math.Max(0, timeline.BaseDelayMs),
+            BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -439,8 +440,8 @@ public static class MacroStateStore
                 Math.Max(0, workspace.Document.Timelines.Count - 1)),
             LoopCount = Math.Max(0, workspace.LoopCount),
             LoopMode = workspace.LoopMode,
-            TimerMs = Math.Max(0, workspace.TimerMs),
-            BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
+            TimerMs = GetPersistedDelayMs(workspace.TimerMs),
+            BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
             ShortcutsEnabled = workspace.ShortcutsEnabled,
             TargetWindowSearchName = workspace.TargetWindowSearchName,
@@ -545,10 +546,21 @@ public static class MacroStateStore
     private static int GetPersistedTimerMs(PersistedWorkspace persistedWorkspace)
     {
         if (persistedWorkspace.TimerMs > 0)
-            return Math.Max(0, persistedWorkspace.TimerMs);
+            return GetPersistedDelayMs(persistedWorkspace.TimerMs);
 
-        return Math.Max(0, persistedWorkspace.TimerMinutes * 60_000);
+        return GetPersistedDelayMs((long)persistedWorkspace.TimerMinutes * 60_000);
     }
+
+    private static int GetPersistedTimerMs(int timerMs, int timerMinutes)
+    {
+        if (timerMs > 0)
+            return GetPersistedDelayMs(timerMs);
+
+        return GetPersistedDelayMs((long)timerMinutes * 60_000);
+    }
+
+    private static int GetPersistedDelayMs(long milliseconds) =>
+        DelayFormatter.ClampMilliseconds(milliseconds);
 
     private static void ApplyLegacyShortcutEnabledState(
         IEnumerable<MacroWorkspace> workspaces,
@@ -578,9 +590,9 @@ public static class MacroStateStore
             Type = node.Type.ToString(),
             KeyName = node.KeyName,
             VirtualKey = node.VirtualKey,
-            DelayMs = Math.Max(0, node.DelayMs),
-            RandomDelayMinMs = Math.Max(0, node.RandomDelayMinMs),
-            RandomDelayMaxMs = Math.Max(0, node.RandomDelayMaxMs),
+            DelayMs = GetPersistedDelayMs(node.DelayMs),
+            RandomDelayMinMs = GetPersistedDelayMs(node.RandomDelayMinMs),
+            RandomDelayMaxMs = GetPersistedDelayMs(node.RandomDelayMaxMs),
             Text = node.Text,
             MouseX = node.MouseX,
             MouseY = node.MouseY,

@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KeyLine.Domain;
 using KeyLine.Services.Input;
+using KeyLine.Services.Timeline;
 
 namespace KeyLine.Services.Macro;
 
@@ -97,8 +98,8 @@ public static class MacroFileStore
             ActiveTimelineIndex = workspace.Document.ActiveTimelineIndex,
             LoopCount = Math.Max(0, workspace.LoopCount),
             LoopMode = workspace.LoopMode,
-            TimerMs = Math.Max(0, workspace.TimerMs),
-            BaseDelayMs = Math.Max(0, workspace.BaseDelayMs),
+            TimerMs = GetPersistedDelayMs(workspace.TimerMs),
+            BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
             ShortcutKeys = workspace.ShortcutKeys,
             ShortcutsEnabled = workspace.ShortcutsEnabled,
             TargetWindowSearchName = workspace.TargetWindowSearchName,
@@ -121,11 +122,11 @@ public static class MacroFileStore
         {
             Name = timeline.Name,
             UseStandardDelay = timeline.UseStandardDelay,
-            StandardDelayMs = Math.Max(0, timeline.StandardDelayMs),
+            StandardDelayMs = GetPersistedDelayMs(timeline.StandardDelayMs),
             ShowKeyUpDown = timeline.ShowKeyUpDown,
             UseTextInputMode = timeline.UseTextInputMode,
             LoopCount = Math.Max(0, timeline.LoopCount),
-            BaseDelayMs = Math.Max(0, timeline.BaseDelayMs),
+            BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -140,9 +141,9 @@ public static class MacroFileStore
             Type = node.Type.ToString(),
             KeyName = node.KeyName,
             VirtualKey = node.VirtualKey,
-            DelayMs = Math.Max(0, node.DelayMs),
-            RandomDelayMinMs = Math.Max(0, node.RandomDelayMinMs),
-            RandomDelayMaxMs = Math.Max(0, node.RandomDelayMaxMs),
+            DelayMs = GetPersistedDelayMs(node.DelayMs),
+            RandomDelayMinMs = GetPersistedDelayMs(node.RandomDelayMinMs),
+            RandomDelayMaxMs = GetPersistedDelayMs(node.RandomDelayMaxMs),
             Text = node.Text,
             MouseX = node.MouseX,
             MouseY = node.MouseY,
@@ -175,8 +176,8 @@ public static class MacroFileStore
             Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Imported Macro" : persisted.Name,
             LoopCount = Math.Max(0, persisted.LoopCount),
             LoopMode = GetPersistedLoopMode(persisted),
-            TimerMs = Math.Max(0, persisted.TimerMs),
-            BaseDelayMs = Math.Max(0, persisted.BaseDelayMs),
+            TimerMs = GetPersistedTimerMs(persisted),
+            BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs),
             ShortcutKeys = persisted.ShortcutKeys,
             ShortcutsEnabled = persisted.ShortcutsEnabled,
             TargetWindowSearchName = persisted.TargetWindowSearchName
@@ -187,7 +188,7 @@ public static class MacroFileStore
             workspace.Document.Timelines.Add(ToTimeline(
                 timeline,
                 Math.Max(0, persisted.LoopCount),
-                Math.Max(0, persisted.BaseDelayMs)));
+                GetPersistedDelayMs(persisted.BaseDelayMs)));
 
         workspace.Document.EnsureTimeline();
         workspace.Document.SelectTimeline(Math.Clamp(
@@ -213,11 +214,11 @@ public static class MacroFileStore
         {
             Name = persisted.Name,
             UseStandardDelay = persisted.UseStandardDelay,
-            StandardDelayMs = Math.Max(0, persisted.StandardDelayMs),
+            StandardDelayMs = GetPersistedDelayMs(persisted.StandardDelayMs),
             ShowKeyUpDown = persisted.ShowKeyUpDown,
             UseTextInputMode = persisted.UseTextInputMode,
             LoopCount = Math.Max(0, persisted.LoopCount ?? fallbackLoopCount),
-            BaseDelayMs = Math.Max(0, persisted.BaseDelayMs ?? fallbackBaseDelayMs)
+            BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs ?? fallbackBaseDelayMs)
         };
 
         foreach (var step in persisted.Nodes)
@@ -237,19 +238,20 @@ public static class MacroFileStore
         var type = Enum.TryParse<MacroNodeType>(persisted.Type, out var parsed)
             ? parsed
             : MacroNodeType.Delay;
+        var mouseButton = Math.Clamp(persisted.MouseButton <= 0 ? 1 : persisted.MouseButton, 1, 5);
 
         return new MacroNode
         {
             Type = type,
-            KeyName = persisted.KeyName,
+            KeyName = GetPersistedStepKeyName(type, persisted.KeyName, mouseButton),
             VirtualKey = persisted.VirtualKey,
-            DelayMs = Math.Max(0, persisted.DelayMs),
-            RandomDelayMinMs = Math.Max(0, persisted.RandomDelayMinMs),
-            RandomDelayMaxMs = Math.Max(0, persisted.RandomDelayMaxMs),
+            DelayMs = GetPersistedDelayMs(persisted.DelayMs),
+            RandomDelayMinMs = GetPersistedDelayMs(persisted.RandomDelayMinMs),
+            RandomDelayMaxMs = GetPersistedDelayMs(persisted.RandomDelayMaxMs),
             Text = persisted.Text,
             MouseX = Math.Max(0, persisted.MouseX),
             MouseY = Math.Max(0, persisted.MouseY),
-            MouseButton = Math.Clamp(persisted.MouseButton <= 0 ? 1 : persisted.MouseButton, 1, 5),
+            MouseButton = mouseButton,
             IsRecordedDelay = persisted.IsRecordedDelay,
             RepeatBlockId = persisted.RepeatBlockId,
             RepeatCount = Math.Max(0, persisted.RepeatCount),
@@ -268,6 +270,25 @@ public static class MacroFileStore
             ConditionLoopMode = GetPersistedConditionLoopMode(persisted.ConditionLoopMode),
             ConditionLoopInterval = Math.Max(1, persisted.ConditionLoopInterval)
         };
+    }
+
+    private static int GetPersistedTimerMs(PersistedWorkspace persisted)
+    {
+        if (persisted.TimerMs > 0)
+            return GetPersistedDelayMs(persisted.TimerMs);
+
+        return GetPersistedDelayMs((long)persisted.TimerMinutes * 60_000);
+    }
+
+    private static int GetPersistedDelayMs(long milliseconds) =>
+        DelayFormatter.ClampMilliseconds(milliseconds);
+
+    private static string GetPersistedStepKeyName(MacroNodeType type, string keyName, int mouseButton)
+    {
+        if (type is MacroNodeType.MouseDown or MacroNodeType.MouseUp)
+            return $"M{mouseButton}";
+
+        return keyName;
     }
 
     private static MacroConditionType GetPersistedConditionType(MacroConditionType type) =>
@@ -293,6 +314,7 @@ public static class MacroFileStore
         public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public MacroLoopMode? LoopType { get; set; }
+        public int TimerMinutes { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
