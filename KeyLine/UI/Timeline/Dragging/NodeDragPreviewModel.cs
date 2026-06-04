@@ -30,6 +30,7 @@ public sealed class NodeDragPreviewModel
         IReadOnlyList<MacroNode> draggedItems,
         MacroNode? draggedNode,
         Func<MacroNode, double> measureNodeWidth,
+        Func<MacroNode, double> measureLeadingVisualWidth,
         double firstItemLeft,
         double itemGap)
     {
@@ -46,6 +47,7 @@ public sealed class NodeDragPreviewModel
             _draggedRawItemSet,
             draggedNode,
             measureNodeWidth,
+            measureLeadingVisualWidth,
             firstItemLeft,
             itemGap));
 
@@ -108,6 +110,7 @@ public sealed class NodeDragPreviewModel
         IReadOnlySet<MacroNode> draggedItems,
         MacroNode? draggedNode,
         Func<MacroNode, double> measureNodeWidth,
+        Func<MacroNode, double> measureLeadingVisualWidth,
         double firstItemLeft,
         double itemGap)
     {
@@ -123,7 +126,8 @@ public sealed class NodeDragPreviewModel
             if (rawItems.Count == 0)
                 continue;
 
-            var measuredNode = rawItems.Any(draggedItems.Contains) && draggedNode != null
+            var isDraggedSlot = rawItems.Any(draggedItems.Contains);
+            var measuredNode = isDraggedSlot && draggedNode != null
                 ? draggedNode
                 : displayNode;
 
@@ -131,8 +135,11 @@ public sealed class NodeDragPreviewModel
             {
                 DisplayNode = displayNode,
                 RawItems = rawItems,
+                LeadingVisualWidth = isDraggedSlot
+                    ? 0
+                    : Math.Max(0, measureLeadingVisualWidth(displayNode)),
                 Width = Math.Max(1, measureNodeWidth(measuredNode)),
-                IsDraggedSlot = rawItems.Any(draggedItems.Contains),
+                IsDraggedSlot = isDraggedSlot,
                 Left = 0
             });
         }
@@ -168,6 +175,9 @@ public sealed class NodeDragPreviewModel
         var currentLeft = firstItemLeft;
         foreach (var slot in slots)
         {
+            if (slot.LeadingVisualWidth > 0)
+                currentLeft += slot.LeadingVisualWidth + itemGap;
+
             slot.Left = currentLeft;
             currentLeft += slot.Width + itemGap;
         }

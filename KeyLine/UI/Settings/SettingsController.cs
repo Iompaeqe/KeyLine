@@ -49,8 +49,8 @@ public sealed class SettingsController : ISettingsActions
     private readonly Action<bool> _setShortcutCaptureActive;
 
     private const string ImportExportCategory = "Import/Export";
-    private const string GitHubLatestReleaseApi = "https://api.github.com/repos/mkurtt96/KeyLine/releases/latest";
-    private const string GitHubReleasesPage = "https://github.com/mkurtt96/KeyLine/releases";
+    private const string GitHubLatestReleaseApi = "https://api.github.com/repos/Iompaeqe/KeyLine/releases/latest";
+    private const string GitHubReleasesPage = "https://github.com/Iompaeqe/KeyLine/releases";
     private string _importExportNotice = "";
     public string CurrentVersionText => GetCurrentVersionText();
     public string ImportExportNotice => _importExportNotice;

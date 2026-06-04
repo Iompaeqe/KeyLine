@@ -9,9 +9,9 @@
 
 # To Do
 
-### 1. BlockNodes
-- [X] Add new block nodes logic that consists of start and end
-- [X] Current goals: Repeat Block and Conditional Block
+- [ ] show a ! next to macro tabs if there is a new version available, tooltip to inform about this.
+- [ ] look into preventing input from reaching target window with a remapper option.
+
 
 
 ### notes

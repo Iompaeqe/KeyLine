@@ -189,6 +189,59 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void Load_AcceptsNumericNodeTypeFields()
+    {
+        Directory.CreateDirectory(MacroStateStore.StateDirectory);
+        File.WriteAllText(
+            Path.Combine(MacroStateStore.StateDirectory, "state.json"),
+            """
+            {
+              "Version": 3,
+              "ActiveWorkspaceIndex": 0,
+              "ShortcutsEnabled": false,
+              "Settings": {},
+              "Workspaces": [
+                {
+                  "Name": "Numeric Node Types",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [
+                    {
+                      "Name": "T1",
+                      "LoopCount": 0,
+                      "BaseDelayMs": 50,
+                      "Nodes": [
+                        {
+                          "Type": 12,
+                          "RepeatBlockId": "repeat-a",
+                          "RepeatCount": 3
+                        },
+                        {
+                          "Type": 13,
+                          "RepeatBlockId": "repeat-a"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.RepeatStart, loadedNodes[0].Type);
+        Assert.Equal(MacroNodeType.RepeatEnd, loadedNodes[1].Type);
+        Assert.Equal("repeat-a", loadedNodes[0].RepeatBlockId);
+        Assert.Equal(3, loadedNodes[0].RepeatCount);
+    }
+
+    [Fact]
     public void GetUniqueDuplicateName_UsesCopySuffixAndIncrements()
     {
         var workspaces = new[]

@@ -613,6 +613,7 @@ public partial class MainWindow
                 draggedItems,
                 _drag.DraggedNode,
                 measuredNode => GetCachedNodePreviewWidth(timeline, measuredNode),
+                displayNode => GetLeadingNodePreviewWidth(timeline, displayNode),
                 TimelineFirstItemLeft,
                 TimelineItemGap);
 

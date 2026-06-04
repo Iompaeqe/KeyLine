@@ -359,9 +359,7 @@ public static class MacroStateStore
 
     private static MacroNode ToStep(PersistedStep persistedStep)
     {
-        var type = Enum.TryParse<MacroNodeType>(persistedStep.Type, out var parsedType)
-            ? parsedType
-            : MacroNodeType.Delay;
+        var type = GetPersistedNodeType(persistedStep.Type);
         var mouseButton = Math.Clamp(persistedStep.MouseButton <= 0 ? 1 : persistedStep.MouseButton, 1, 5);
 
         return new MacroNode
@@ -402,6 +400,14 @@ public static class MacroStateStore
             return $"M{mouseButton}";
 
         return keyName;
+    }
+
+    private static MacroNodeType GetPersistedNodeType(string type)
+    {
+        if (!Enum.TryParse<MacroNodeType>(type, ignoreCase: true, out var parsedType))
+            return MacroNodeType.Delay;
+
+        return Enum.IsDefined(parsedType) ? parsedType : MacroNodeType.Delay;
     }
 
     private static MacroConditionType GetPersistedConditionType(MacroConditionType type) =>
@@ -679,6 +685,7 @@ public static class MacroStateStore
 
     private sealed class PersistedStep
     {
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
         public string Type { get; set; } = nameof(MacroNodeType.Delay);
         public string KeyName { get; set; } = "";
         public int VirtualKey { get; set; }

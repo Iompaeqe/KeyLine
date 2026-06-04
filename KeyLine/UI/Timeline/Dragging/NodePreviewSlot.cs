@@ -6,6 +6,7 @@ public sealed class NodePreviewSlot
 {
     public required MacroNode DisplayNode { get; init; }
     public required List<MacroNode> RawItems { get; init; }
+    public required double LeadingVisualWidth { get; init; }
     public required double Width { get; init; }
     public required bool IsDraggedSlot { get; init; }
 

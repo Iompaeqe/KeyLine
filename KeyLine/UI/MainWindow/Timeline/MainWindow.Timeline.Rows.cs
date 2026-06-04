@@ -312,6 +312,14 @@ public partial class MainWindow
         return GetStableNodePreviewWidth(node, MeasureTimelineItem(CreateNode(timeline, node)).Width);
     }
 
+    private double GetLeadingNodePreviewWidth(MacroTimeline timeline, MacroNode node)
+    {
+        if (!ShouldShowBlockAddButton(timeline, node))
+            return 0;
+
+        return Math.Max(0, MeasureTimelineItem(CreateAddNode(timeline, node)).Width);
+    }
+
     private static double GetStableNodePreviewWidth(MacroNode node, double measuredWidth)
     {
         var minimumWidth = TimelineBlockService.IsBlockBoundary(node)
