@@ -2,8 +2,15 @@ namespace KeyLine.Services.Timeline;
 
 public static class DelayFormatter
 {
+    public const int MaxMilliseconds = 99 * 60 * 60 * 1000;
+
+    public static int ClampMilliseconds(long milliseconds) =>
+        (int)Math.Clamp(milliseconds, 0, MaxMilliseconds);
+
     public static string Format(int milliseconds)
     {
+        milliseconds = ClampMilliseconds(milliseconds);
+
         if (milliseconds < 1000)
             return milliseconds.ToString();
 
