@@ -727,7 +727,7 @@ public partial class MainWindow
             if (ShortcutToggleTextBlock == null)
                 return;
 
-            ShortcutToggleTextBlock.Text = _activeWorkspace.ShortcutsEnabled ? "on" : "off";
+            ShortcutToggleTextBlock.Text = _activeWorkspace.ShortcutsEnabled ? "enabled" : "disabled";
 
             if (_activeWorkspace.ShortcutsEnabled)
             {

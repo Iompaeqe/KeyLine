@@ -238,6 +238,7 @@ public partial class SettingsView : UserControl
         });
         AddShortcut("Emergency stop shortcut", _settings.EmergencyStopShortcut, value => _settings.EmergencyStopShortcut = value);
         AddShortcut("Pause/resume all macros hotkey", _settings.PauseResumeAllMacrosShortcut, value => _settings.PauseResumeAllMacrosShortcut = value);
+        AddShortcut("Toggle global remap shortcut", _settings.ToggleGlobalRemapShortcut, value => _settings.ToggleGlobalRemapShortcut = value);
     }
 
     private void RenderImportExport()
@@ -656,4 +657,3 @@ public partial class SettingsView : UserControl
 
     private static Brush DimBrush => new SolidColorBrush(Color.FromRgb(142, 160, 182));
 }
-

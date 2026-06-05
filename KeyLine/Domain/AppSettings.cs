@@ -42,6 +42,8 @@ public sealed class AppSettings
     public string PlaybackSoundName { get; set; } = "Beep";
     public string EmergencyStopShortcut { get; set; } = "17,18,27";
     public string PauseResumeAllMacrosShortcut { get; set; } = "";
+    public bool GlobalRemapEnabled { get; set; } = true;
+    public string ToggleGlobalRemapShortcut { get; set; } = "17,16,18,82";
 
     public bool ExperimentalFeaturesEnabled { get; set; }
 
@@ -76,6 +78,8 @@ public sealed class AppSettings
         PlaybackSoundName = source.PlaybackSoundName;
         EmergencyStopShortcut = source.EmergencyStopShortcut;
         PauseResumeAllMacrosShortcut = source.PauseResumeAllMacrosShortcut;
+        GlobalRemapEnabled = source.GlobalRemapEnabled;
+        ToggleGlobalRemapShortcut = source.ToggleGlobalRemapShortcut;
         ExperimentalFeaturesEnabled = source.ExperimentalFeaturesEnabled;
     }
 }

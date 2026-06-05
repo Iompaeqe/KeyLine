@@ -23,7 +23,8 @@ public partial class MainWindow
             canRunRemapMacroFromShortcut: CanRunRemapMacroFromShortcut,
             startRemapMacroFromShortcut: StartRemapMacroFromShortcut,
             emergencyStop: StopAllPlaybackFromGlobalShortcut,
-            pauseResumeAll: PauseResumeAllPlaybackFromGlobalShortcut);
+            pauseResumeAll: PauseResumeAllPlaybackFromGlobalShortcut,
+            toggleGlobalRemap: ToggleGlobalRemapFromShortcut);
     }
 
     private bool IsShortcutCaptureActive()
@@ -39,6 +40,7 @@ public partial class MainWindow
     private void ApplyShortcutHookState()
     {
         _shortcutController?.ApplyHookState();
+        UpdateGlobalRemapToggle();
     }
 
     private void StopGlobalShortcutHook()
@@ -99,6 +101,7 @@ public partial class MainWindow
     private bool CanRunRemapMacroFromShortcut(int profileWorkspaceIndex)
     {
         if (!_featureGate.IsEnabled(FeatureId.ShortcutRemap) ||
+            !_settings.GlobalRemapEnabled ||
             IsShortcutCaptureActive() ||
             _recorder.IsRecording)
         {

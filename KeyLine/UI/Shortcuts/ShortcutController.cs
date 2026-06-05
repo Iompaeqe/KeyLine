@@ -22,6 +22,7 @@ public sealed class ShortcutController : IDisposable
     private readonly Action<int> _startRemapMacroFromShortcut;
     private readonly Action _emergencyStop;
     private readonly Action _pauseResumeAll;
+    private readonly Action _toggleGlobalRemap;
 
     private readonly HashSet<int> _globalPressedKeys = new();
     private readonly HashSet<int> _suppressedKeys = new();
@@ -42,7 +43,8 @@ public sealed class ShortcutController : IDisposable
         Func<int, bool> canRunRemapMacroFromShortcut,
         Action<int> startRemapMacroFromShortcut,
         Action emergencyStop,
-        Action pauseResumeAll)
+        Action pauseResumeAll,
+        Action toggleGlobalRemap)
     {
         _dispatcher = dispatcher;
         _getSettings = getSettings;
@@ -53,6 +55,7 @@ public sealed class ShortcutController : IDisposable
         _startRemapMacroFromShortcut = startRemapMacroFromShortcut;
         _emergencyStop = emergencyStop;
         _pauseResumeAll = pauseResumeAll;
+        _toggleGlobalRemap = toggleGlobalRemap;
     }
 
     public void SetCaptureActive(bool isActive)
@@ -93,6 +96,11 @@ public sealed class ShortcutController : IDisposable
     {
         foreach (var virtualKey in ShortcutGesture.Parse(shortcut))
             _suppressedKeys.Add(virtualKey);
+    }
+
+    public void ClearConsumedRemapKeys()
+    {
+        _consumedRemapKeys.Clear();
     }
 
     public bool TryGetEditingCommand(
@@ -187,7 +195,12 @@ public sealed class ShortcutController : IDisposable
         if (message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN)
         {
             if (_consumedRemapKeys.Contains(virtualKey))
-                return true;
+            {
+                if (_getSettings().GlobalRemapEnabled)
+                    return true;
+
+                _consumedRemapKeys.Remove(virtualKey);
+            }
 
             if (_suppressedKeys.Remove(virtualKey))
                 return false;
@@ -211,7 +224,7 @@ public sealed class ShortcutController : IDisposable
             _triggeredShortcutSignature = "";
 
             if (_consumedRemapKeys.Remove(virtualKey))
-                return true;
+                return _getSettings().GlobalRemapEnabled;
         }
 
         return false;
@@ -240,6 +253,9 @@ public sealed class ShortcutController : IDisposable
 
     private bool TryTriggerRemapShortcut(int virtualKey)
     {
+        if (!_getSettings().GlobalRemapEnabled)
+            return false;
+
         if (!_areMacroShortcutsEnabled())
             return false;
 
@@ -267,9 +283,13 @@ public sealed class ShortcutController : IDisposable
         }
 
         return TryTriggerSingleSettingsShortcut(
-            settings.PauseResumeAllMacrosShortcut,
-            "pause-resume",
-            _pauseResumeAll);
+                   settings.PauseResumeAllMacrosShortcut,
+                   "pause-resume",
+                   _pauseResumeAll) ||
+               TryTriggerSingleSettingsShortcut(
+                   settings.ToggleGlobalRemapShortcut,
+                   "toggle-global-remap",
+                   _toggleGlobalRemap);
     }
 
     private bool TryTriggerSingleSettingsShortcut(string shortcut, string name, Action action)
@@ -296,7 +316,8 @@ public sealed class ShortcutController : IDisposable
 
         return _areMacroShortcutsEnabled() ||
                ShortcutGesture.Parse(settings.EmergencyStopShortcut).Length > 0 ||
-               ShortcutGesture.Parse(settings.PauseResumeAllMacrosShortcut).Length > 0;
+               ShortcutGesture.Parse(settings.PauseResumeAllMacrosShortcut).Length > 0 ||
+               ShortcutGesture.Parse(settings.ToggleGlobalRemapShortcut).Length > 0;
     }
 
     private int FindMatchingPassThroughShortcutWorkspaceIndex()

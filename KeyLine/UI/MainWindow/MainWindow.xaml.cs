@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         InitializeStatePersistence();
         InitializeShortcuts();
         ApplyShortcutHookState();
+        InitializeGlobalRemapToggle();
         
         MacroTabsScrollViewer.PreviewMouseWheel += MacroTabsScrollViewer_PreviewMouseWheel;
         MacroTabsScrollViewer.PreviewMouseLeftButtonDown += MacroTabsScrollViewer_PreviewMouseLeftButtonDown;

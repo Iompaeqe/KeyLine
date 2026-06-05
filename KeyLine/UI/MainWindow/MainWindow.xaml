@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:KeyLine.UI"
         xmlns:controls="clr-namespace:KeyLine.UI.MainWindow.Controls"
+        xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks"
         Title="KeyLine"
         Icon="/Assets/AppIcon.ico"
         Width="900" Height="420"
@@ -147,21 +148,20 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <controls:AppTitleBlock x:Name="AppTitleBlock" Grid.Column="0" />
 
                     <controls:ProfileDropdownBlock x:Name="ProfileDropdownBlock" Grid.Column="1" Margin="10,0,0,0" />
 
-                    <controls:MacroTabsBlock x:Name="MacroTabsBlock"
-                                             Grid.Column="2"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center"
-                                             Panel.ZIndex="1001" />
+                    <controls:MacroTabsBlock x:Name="MacroTabsBlock" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="1001" />
 
-                    <controls:TitleCommandButtons x:Name="TitleCommandButtons" Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    <entryBlocks:OptionsPillBlock x:Name="GlobalRemapPill" Grid.Column="3" Padding="0,7,0,0" Text="Remaps: off"/>
 
-                    <Border Grid.ColumnSpan="4" Height="1" VerticalAlignment="Bottom" Margin="-14,0" Background="#263244" />
+                    <controls:TitleCommandButtons x:Name="TitleCommandButtons" Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                    <Border Grid.ColumnSpan="5" Height="1" VerticalAlignment="Bottom" Margin="-14,0" Background="#263244" />
                 </Grid>
 
                 <!-- ── Config strip ────────────────────────────────── -->

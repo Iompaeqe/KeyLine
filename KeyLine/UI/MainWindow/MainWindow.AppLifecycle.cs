@@ -79,7 +79,7 @@ public partial class MainWindow
         {
             while (source != null)
             {
-                if (source is Button or TextBox or ScrollViewer)
+                if (source is Button or TextBox or ScrollViewer or OptionsPillBlock)
                     return true;
 
                 source = VisualTreeHelper.GetParent(source);

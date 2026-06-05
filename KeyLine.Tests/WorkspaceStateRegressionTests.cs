@@ -59,6 +59,37 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void AppSettings_DefaultsGlobalRemapEnabledWithToggleShortcut()
+    {
+        var settings = new AppSettings();
+
+        Assert.True(settings.GlobalRemapEnabled);
+        Assert.Equal("Ctrl + Shift + Alt + R", ShortcutGesture.Format(settings.ToggleGlobalRemapShortcut));
+    }
+
+    [Fact]
+    public void SaveAndLoad_PreservesGlobalRemapSettings()
+    {
+        var settings = new AppSettings
+        {
+            GlobalRemapEnabled = false,
+            ToggleGlobalRemapShortcut = "17,18,82"
+        };
+
+        MacroStateStore.Save(
+            new[] { CreateWorkspace("State Test Macro", MacroLoopMode.Async) },
+            0,
+            shortcutsEnabled: false,
+            settings);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        Assert.False(snapshot.Settings.GlobalRemapEnabled);
+        Assert.Equal("17,18,82", snapshot.Settings.ToggleGlobalRemapShortcut);
+    }
+
+    [Fact]
     public void ExportAndImport_PreservesLoopMode()
     {
         var workspace = CreateWorkspace("Exported", MacroLoopMode.Sync, profileId: "profile-a");

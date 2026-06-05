@@ -36,7 +36,7 @@
                                                   Focusable="True" />
 
                     <entryBlocks:OptionsPillBlock x:Name="ShortcutTogglePill"
-                                                  Text="on"
+                                                  Text="enabled"
                                                   ToolTip="{x:Static ui:TooltipNotes.MacroShortcutToggle}" />
 
                     <entryBlocks:OptionsPillBlock x:Name="ShortcutRemapPill"
