@@ -18,6 +18,7 @@ public sealed class ShortcutController : IDisposable
     private readonly Func<IReadOnlyList<MacroWorkspace>> _getWorkspaces;
     private readonly Func<bool> _areMacroShortcutsEnabled;
     private readonly Action<int> _toggleMacroFromShortcut;
+    private readonly Func<int, bool> _canConsumeRemapMacroFromShortcut;
     private readonly Func<int, bool> _canRunRemapMacroFromShortcut;
     private readonly Action<int> _startRemapMacroFromShortcut;
     private readonly Action _emergencyStop;
@@ -40,6 +41,7 @@ public sealed class ShortcutController : IDisposable
         Func<IReadOnlyList<MacroWorkspace>> getWorkspaces,
         Func<bool> areMacroShortcutsEnabled,
         Action<int> toggleMacroFromShortcut,
+        Func<int, bool> canConsumeRemapMacroFromShortcut,
         Func<int, bool> canRunRemapMacroFromShortcut,
         Action<int> startRemapMacroFromShortcut,
         Action emergencyStop,
@@ -51,6 +53,7 @@ public sealed class ShortcutController : IDisposable
         _getWorkspaces = getWorkspaces;
         _areMacroShortcutsEnabled = areMacroShortcutsEnabled;
         _toggleMacroFromShortcut = toggleMacroFromShortcut;
+        _canConsumeRemapMacroFromShortcut = canConsumeRemapMacroFromShortcut;
         _canRunRemapMacroFromShortcut = canRunRemapMacroFromShortcut;
         _startRemapMacroFromShortcut = startRemapMacroFromShortcut;
         _emergencyStop = emergencyStop;
@@ -266,10 +269,12 @@ public sealed class ShortcutController : IDisposable
         if (matchIndex < 0)
             return false;
 
-        if (!_canRunRemapMacroFromShortcut(matchIndex))
+        if (!_canConsumeRemapMacroFromShortcut(matchIndex))
             return false;
 
-        _dispatcher.BeginInvoke(new Action(() => _startRemapMacroFromShortcut(matchIndex)));
+        if (_canRunRemapMacroFromShortcut(matchIndex))
+            _dispatcher.BeginInvoke(new Action(() => _startRemapMacroFromShortcut(matchIndex)));
+
         return true;
     }
 

@@ -20,6 +20,7 @@ public partial class MainWindow
             getWorkspaces: GetActiveProfileWorkspaces,
             areMacroShortcutsEnabled: AnyActiveProfileMacroShortcutEnabled,
             toggleMacroFromShortcut: ToggleMacroFromShortcut,
+            canConsumeRemapMacroFromShortcut: CanConsumeRemapMacroFromShortcut,
             canRunRemapMacroFromShortcut: CanRunRemapMacroFromShortcut,
             startRemapMacroFromShortcut: StartRemapMacroFromShortcut,
             emergencyStop: StopAllPlaybackFromGlobalShortcut,
@@ -98,7 +99,7 @@ public partial class MainWindow
                 ShortcutGesture.IsSingleKeyboardKeyShortcut(workspace.ShortcutKeys));
     }
 
-    private bool CanRunRemapMacroFromShortcut(int profileWorkspaceIndex)
+    private bool CanConsumeRemapMacroFromShortcut(int profileWorkspaceIndex)
     {
         if (!_featureGate.IsEnabled(FeatureId.ShortcutRemap) ||
             !_settings.GlobalRemapEnabled ||
@@ -115,8 +116,7 @@ public partial class MainWindow
         var workspace = _workspaces[workspaceIndex];
         if (!IsWorkspaceInProfile(workspace, _activeProfileId) ||
             !HasEnabledMacroShortcut(workspace) ||
-            workspace.ShortcutTriggerBehavior != ShortcutTriggerBehavior.RemapConsume ||
-            IsWorkspaceRunning(workspace))
+            workspace.ShortcutTriggerBehavior != ShortcutTriggerBehavior.RemapConsume)
         {
             return false;
         }
@@ -128,6 +128,17 @@ public partial class MainWindow
             return false;
 
         return IsWorkspaceTargetFocused(workspace);
+    }
+
+    private bool CanRunRemapMacroFromShortcut(int profileWorkspaceIndex)
+    {
+        if (!CanConsumeRemapMacroFromShortcut(profileWorkspaceIndex))
+            return false;
+
+        var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(profileWorkspaceIndex);
+        return workspaceIndex >= 0 &&
+               workspaceIndex < _workspaces.Count &&
+               !IsWorkspaceRunning(_workspaces[workspaceIndex]);
     }
 
     private void StartRemapMacroFromShortcut(int profileWorkspaceIndex)
