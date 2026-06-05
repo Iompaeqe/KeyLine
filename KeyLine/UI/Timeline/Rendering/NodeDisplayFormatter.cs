@@ -55,6 +55,8 @@ public static class NodeDisplayFormatter
             MacroNodeType.MouseClick => "Mouse Click",
             MacroNodeType.MouseDown => "Mouse Down",
             MacroNodeType.MouseUp => "Mouse Up",
+            MacroNodeType.MouseScrollUp => "Mouse Scroll Up",
+            MacroNodeType.MouseScrollDown => "Mouse Scroll Down",
             MacroNodeType.CursorMove => "Move Cursor",
             MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
             MacroNodeType.BackgroundMouseUp => "BG Mouse Up",

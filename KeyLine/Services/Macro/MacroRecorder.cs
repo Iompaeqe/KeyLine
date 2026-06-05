@@ -46,6 +46,15 @@ public sealed class MacroRecorder
         return RecordMouse(MacroNodeType.MouseUp, includeDelay, mouseButton);
     }
 
+    public IEnumerable<MacroNode> RecordMouseScroll(int wheelDelta, bool includeDelay)
+    {
+        if (wheelDelta == 0)
+            yield break;
+
+        foreach (var node in RecordMouseWheel(wheelDelta, includeDelay))
+            yield return node;
+    }
+
     private IEnumerable<MacroNode> RecordKey(KeyEventArgs e, MacroNodeType type, bool includeDelay)
     {
         if (!VirtualKeyParser.TryFromRecordedKey(e, out var virtualKey, out var keyName))
@@ -98,6 +107,33 @@ public sealed class MacroRecorder
             Type = type,
             MouseButton = Math.Clamp(mouseButton, 1, 5),
             KeyName = $"M{Math.Clamp(mouseButton, 1, 5)}"
+        };
+
+        _lastInputTimeUtc = DateTime.UtcNow;
+    }
+
+    private IEnumerable<MacroNode> RecordMouseWheel(int wheelDelta, bool includeDelay)
+    {
+        if (includeDelay)
+        {
+            var delayMs = GetDelaySinceLastInput();
+
+            if (delayMs > 0)
+            {
+                yield return new MacroNode
+                {
+                    Type = MacroNodeType.Delay,
+                    DelayMs = delayMs,
+                    IsRecordedDelay = true
+                };
+            }
+        }
+
+        yield return new MacroNode
+        {
+            Type = wheelDelta > 0 ? MacroNodeType.MouseScrollUp : MacroNodeType.MouseScrollDown,
+            KeyName = wheelDelta > 0 ? "Wheel Up" : "Wheel Down",
+            MouseWheelDelta = wheelDelta
         };
 
         _lastInputTimeUtc = DateTime.UtcNow;

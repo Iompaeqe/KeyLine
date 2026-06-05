@@ -70,6 +70,11 @@ public sealed class NodeInspectorPolicy
                 HasInspector = false
             },
 
+            MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown => new NodeInspectorPolicy
+            {
+                HasInspector = false
+            },
+
             MacroNodeType.RepeatStart => new NodeInspectorPolicy
             {
                 CanEditRepeatCount = true

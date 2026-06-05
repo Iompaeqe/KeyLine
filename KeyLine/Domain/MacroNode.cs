@@ -17,7 +17,9 @@ public enum MacroNodeType
     RepeatStart,
     RepeatEnd,
     ConditionStart,
-    ConditionEnd
+    ConditionEnd,
+    MouseScrollUp,
+    MouseScrollDown
 }
 
 public enum MacroConditionType
@@ -58,6 +60,8 @@ public sealed class MacroNode
     public int MouseY { get; set; }
 
     public int MouseButton { get; set; } = 1;
+
+    public int MouseWheelDelta { get; set; }
 
     public bool IsRecordedDelay { get; set; }
 

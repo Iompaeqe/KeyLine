@@ -34,6 +34,8 @@ internal static class NativeMethods
     public const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
     public const uint MOUSEEVENTF_XDOWN = 0x0080;
     public const uint MOUSEEVENTF_XUP = 0x0100;
+    public const uint MOUSEEVENTF_WHEEL = 0x0800;
+    public const int WHEEL_DELTA = 120;
     public const uint XBUTTON1 = 0x0001;
     public const uint XBUTTON2 = 0x0002;
 

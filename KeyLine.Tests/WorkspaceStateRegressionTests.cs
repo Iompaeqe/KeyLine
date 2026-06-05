@@ -28,6 +28,23 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void CloneSteps_PreservesMouseWheelDelta()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.MouseScrollDown,
+            KeyName = "Wheel Down",
+            MouseWheelDelta = -240
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.MouseScrollDown, clone.Type);
+        Assert.Equal("Wheel Down", clone.KeyName);
+        Assert.Equal(-240, clone.MouseWheelDelta);
+    }
+
+    [Fact]
     public void SaveAndLoad_PreservesLoopMode()
     {
         var profile = new MacroProfile
@@ -56,6 +73,31 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal("Gaming", snapshot.Profiles[0].Name);
         Assert.Equal(profile.Id, snapshot.ActiveProfileId);
         Assert.Equal(1234, snapshot.MainWindowWidth);
+    }
+
+    [Fact]
+    public void SaveAndLoad_PreservesMouseScrollNodes()
+    {
+        var workspace = CreateWorkspace("State Scroll", MacroLoopMode.Async);
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.MouseScrollUp,
+            KeyName = "Wheel Up",
+            MouseWheelDelta = 240
+        });
+
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNode = Assert.Single(snapshot.Workspaces[0].Document.ActiveTimeline.Nodes);
+        Assert.Equal(MacroNodeType.MouseScrollUp, loadedNode.Type);
+        Assert.Equal(240, loadedNode.MouseWheelDelta);
     }
 
     [Fact]
@@ -103,6 +145,29 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Single(imported);
         Assert.Equal(MacroLoopMode.Sync, imported[0].LoopMode);
         Assert.Equal("profile-a", imported[0].ProfileId);
+    }
+
+    [Fact]
+    public void ExportAndImport_PreservesMouseScrollNodes()
+    {
+        var workspace = CreateWorkspace("Export Scroll", MacroLoopMode.Async);
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.MouseScrollDown,
+            KeyName = "Wheel Down",
+            MouseWheelDelta = -240
+        });
+        var exportPath = Path.Combine(_appDataRoot, "scroll.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+
+        MacroFileStore.Export(exportPath, new[] { workspace });
+
+        var imported = MacroFileStore.Import(exportPath);
+
+        Assert.Single(imported);
+        var loadedNode = Assert.Single(imported[0].Document.ActiveTimeline.Nodes);
+        Assert.Equal(MacroNodeType.MouseScrollDown, loadedNode.Type);
+        Assert.Equal(-240, loadedNode.MouseWheelDelta);
     }
 
     [Fact]
@@ -222,6 +287,9 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     [Fact]
     public void Load_AcceptsNumericNodeTypeFields()
     {
+        Assert.Equal(12, (int)MacroNodeType.RepeatStart);
+        Assert.Equal(13, (int)MacroNodeType.RepeatEnd);
+
         Directory.CreateDirectory(MacroStateStore.StateDirectory);
         File.WriteAllText(
             Path.Combine(MacroStateStore.StateDirectory, "state.json"),

@@ -21,6 +21,8 @@ public partial class MouseNode : NodeBase
         ActionTextBlock.Text = step.Type switch
         {
             MacroNodeType.MouseClick => "CLICK",
+            MacroNodeType.MouseScrollUp => "SCROLL UP",
+            MacroNodeType.MouseScrollDown => "SCROLL DN",
             MacroNodeType.MouseDown => $"M{NormalizeMouseButton(step.MouseButton)}↓",
             MacroNodeType.MouseUp => $"M{NormalizeMouseButton(step.MouseButton)}↑",
             _ => "M"

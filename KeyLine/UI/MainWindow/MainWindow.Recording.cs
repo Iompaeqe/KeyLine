@@ -73,6 +73,17 @@ public partial class MainWindow
         AppendRecordedInputSteps(timeline, addedSteps);
     }
 
+    private void RecordMouseScroll(int wheelDelta)
+    {
+        if (!_recorder.IsRecording)
+            return;
+
+        var timeline = _recordingTimeline ?? _document.ActiveTimeline;
+        var addedSteps = _recorder.RecordMouseScroll(wheelDelta, ShouldIncludeRecordedDelay(timeline)).ToList();
+
+        AppendRecordedInputSteps(timeline, addedSteps);
+    }
+
     private void AppendRecordedInputSteps(MacroTimeline timeline, List<MacroNode> addedSteps)
     {
         if (addedSteps.Count == 0)

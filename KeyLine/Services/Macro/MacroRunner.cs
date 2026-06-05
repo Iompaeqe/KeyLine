@@ -418,6 +418,11 @@ public sealed class MacroRunner
                 InputMessageSender.SendForegroundMouseUp(node.MouseButton);
                 break;
 
+            case MacroNodeType.MouseScrollUp:
+            case MacroNodeType.MouseScrollDown:
+                InputMessageSender.SendForegroundMouseWheel(GetMouseWheelDelta(node));
+                break;
+
             case MacroNodeType.CursorMove:
                 InputMessageSender.MoveCursorToClientPoint(hwnd, node.MouseX, node.MouseY);
                 break;
@@ -434,6 +439,16 @@ public sealed class MacroRunner
                 InputMessageSender.SendMouseClick(hwnd, node.MouseX, node.MouseY);
                 break;
         }
+    }
+
+    private static int GetMouseWheelDelta(MacroNode node)
+    {
+        if (node.MouseWheelDelta != 0)
+            return node.MouseWheelDelta;
+
+        return node.Type == MacroNodeType.MouseScrollDown
+            ? -NativeMethods.WHEEL_DELTA
+            : NativeMethods.WHEEL_DELTA;
     }
 
     private async Task DelayWithPause(int milliseconds, CancellationToken token)

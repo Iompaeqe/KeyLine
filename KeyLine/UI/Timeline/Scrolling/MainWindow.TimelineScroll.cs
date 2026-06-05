@@ -35,6 +35,13 @@ public partial class MainWindow
 
     private void TimelineScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (_recorder.IsRecording)
+        {
+            RecordMouseScroll(e.Delta);
+            e.Handled = true;
+            return;
+        }
+
         if (!HasTimelineOverflow(TimelineScrollViewer.ExtentWidth, TimelineScrollViewer.ViewportWidth))
             return;
 

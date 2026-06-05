@@ -48,6 +48,8 @@ public static class MacroTimelineBuilder
 
             if (step.Type is MacroNodeType.Text
                 or MacroNodeType.MouseClick
+                or MacroNodeType.MouseScrollUp
+                or MacroNodeType.MouseScrollDown
                 or MacroNodeType.CursorMove
                 or MacroNodeType.BackgroundMouseDown
                 or MacroNodeType.BackgroundMouseUp

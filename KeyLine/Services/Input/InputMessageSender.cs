@@ -114,6 +114,19 @@ public static class InputMessageSender
         NativeMethods.mouse_event(flags, 0, 0, data, UIntPtr.Zero);
     }
 
+    public static void SendForegroundMouseWheel(int delta)
+    {
+        if (delta == 0)
+            return;
+
+        NativeMethods.mouse_event(
+            NativeMethods.MOUSEEVENTF_WHEEL,
+            0,
+            0,
+            unchecked((uint)delta),
+            UIntPtr.Zero);
+    }
+
     public static void MoveCursorToClientPoint(nint hwnd, int x, int y)
     {
         var point = new NativeMethods.POINT

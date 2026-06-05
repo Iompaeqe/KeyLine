@@ -5,7 +5,7 @@ namespace KeyLine.Services.Edit;
 
 public sealed class MacroDocumentHistoryController
 {
-    private const int MaxUndoSnapshots = 50;
+    private const int MaxUndoSnapshots = 30;
 
     private readonly Dictionary<MacroWorkspace, Stack<MacroDocument>> _undoStacks = new();
     private readonly Dictionary<MacroWorkspace, Stack<MacroDocument>> _redoStacks = new();

@@ -249,7 +249,7 @@
                                 Visibility="Collapsed"
                                 IsHitTestVisible="False"
                                 Panel.ZIndex="80">
-                            <TextBlock Text="Recording: click this timeline area to add mouse down/up"
+                            <TextBlock Text="Recording: click or scroll this timeline area to add mouse input"
                                        FontSize="11"
                                        FontWeight="SemiBold"
                                        Foreground="#FCA5A5" />

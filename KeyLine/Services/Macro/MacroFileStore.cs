@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KeyLine.Domain;
+using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.Timeline;
 
@@ -149,6 +150,7 @@ public static class MacroFileStore
             MouseX = node.MouseX,
             MouseY = node.MouseY,
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
+            MouseWheelDelta = GetPersistedMouseWheelDelta(node.Type, node.MouseWheelDelta),
             IsRecordedDelay = node.IsRecordedDelay,
             RepeatBlockId = node.RepeatBlockId,
             RepeatCount = Math.Max(0, node.RepeatCount),
@@ -252,6 +254,7 @@ public static class MacroFileStore
             MouseX = Math.Max(0, persisted.MouseX),
             MouseY = Math.Max(0, persisted.MouseY),
             MouseButton = mouseButton,
+            MouseWheelDelta = GetPersistedMouseWheelDelta(type, persisted.MouseWheelDelta),
             IsRecordedDelay = persisted.IsRecordedDelay,
             RepeatBlockId = persisted.RepeatBlockId,
             RepeatCount = Math.Max(0, persisted.RepeatCount),
@@ -288,7 +291,24 @@ public static class MacroFileStore
         if (type is MacroNodeType.MouseDown or MacroNodeType.MouseUp)
             return $"M{mouseButton}";
 
+        if (type == MacroNodeType.MouseScrollUp)
+            return string.IsNullOrWhiteSpace(keyName) ? "Wheel Up" : keyName;
+
+        if (type == MacroNodeType.MouseScrollDown)
+            return string.IsNullOrWhiteSpace(keyName) ? "Wheel Down" : keyName;
+
         return keyName;
+    }
+
+    private static int GetPersistedMouseWheelDelta(MacroNodeType type, int wheelDelta)
+    {
+        if (type == MacroNodeType.MouseScrollUp)
+            return wheelDelta > 0 ? wheelDelta : NativeMethods.WHEEL_DELTA;
+
+        if (type == MacroNodeType.MouseScrollDown)
+            return wheelDelta < 0 ? wheelDelta : -NativeMethods.WHEEL_DELTA;
+
+        return 0;
     }
 
     private static MacroNodeType GetPersistedNodeType(string type)
@@ -384,6 +404,7 @@ public static class MacroFileStore
         public int MouseX { get; set; }
         public int MouseY { get; set; }
         public int MouseButton { get; set; } = 1;
+        public int MouseWheelDelta { get; set; }
         public bool IsRecordedDelay { get; set; }
         public string RepeatBlockId { get; set; } = "";
         public int RepeatCount { get; set; } = 2;

@@ -104,6 +104,7 @@ public static class MacroCloneService
             MouseX = source.MouseX,
             MouseY = source.MouseY,
             MouseButton = source.MouseButton,
+            MouseWheelDelta = source.MouseWheelDelta,
             IsRecordedDelay = source.IsRecordedDelay,
             RepeatBlockId = GetClonedRepeatBlockId(source.RepeatBlockId, repeatBlockIdMap),
             RepeatCount = source.RepeatCount,

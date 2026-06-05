@@ -28,7 +28,8 @@ public partial class MainWindow
             MacroNodeType.Delay or MacroNodeType.RandomDelay => CreateDelayNode(timeline, node),
             MacroNodeType.Text => CreateTextNode(timeline, node),
             MacroNodeType.MouseDown or MacroNodeType.MouseUp => CreateKeyNode(timeline, node),
-            MacroNodeType.MouseClick => CreateForegroundMouseNode(timeline, node),
+            MacroNodeType.MouseClick or MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown =>
+                CreateForegroundMouseNode(timeline, node),
             MacroNodeType.CursorMove or MacroNodeType.BackgroundMouseDown or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick => CreateMouseNode(timeline, node),
             MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
