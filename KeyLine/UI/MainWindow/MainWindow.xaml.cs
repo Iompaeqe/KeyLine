@@ -67,6 +67,7 @@ public partial class MainWindow : Window
         _document = _activeWorkspace.Document;
 
         InitializeComponent();
+        TimelineAddMenu.ActionRequested += TimelineAddMenu_ActionRequested;
         ApplySavedMainWindowWidth(savedState?.MainWindowWidth ?? 0);
         InitializeWorkspaceTabs();
         InitializeProfileDropdown();

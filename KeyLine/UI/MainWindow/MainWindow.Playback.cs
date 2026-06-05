@@ -783,7 +783,7 @@ public partial class MainWindow
         _isTimelineEditingEnabled = isEnabled;
 
         if (!isEnabled)
-            AddPopup.IsOpen = false;
+            TimelineAddMenu.Close();
 
         AddTimelineButton.IsEnabled = isEnabled;
         ClearButton.IsEnabled = isEnabled;

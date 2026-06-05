@@ -1,9 +1,8 @@
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using KeyLine.Domain;
 using KeyLine.Services.Features;
 using KeyLine.Services.Timeline;
+using KeyLine.UI.MainWindow.Controls;
 
 namespace KeyLine;
 
@@ -38,69 +37,104 @@ public partial class MainWindow
         _popupRawInsertAnchor = context?.RawInsertAnchor;
 
         if (sender is UIElement placementTarget)
-        AddPopup.PlacementTarget = placementTarget;
-
-        AddPopup.Placement = PlacementMode.Top;
-        UpdateFeatureAddMenuVisibility();
-        UpdateExperimentalAddMenuVisibility();
-        AddPopup.IsOpen = true;
+            TimelineAddMenu.Open(placementTarget, _featureGate, _settings.ExperimentalFeaturesEnabled);
     }
 
-    private void UpdateFeatureAddMenuVisibility()
+    private void TimelineAddMenu_ActionRequested(object? sender, TimelineAddMenuActionEventArgs e)
     {
-        ApplyFeatureAddMenuButtonState(RepeatBlockMenuButton, FeatureId.RepeatBlocks, "Repeat block");
-        ApplyFeatureAddMenuButtonState(ConditionBlockMenuButton, FeatureId.ConditionBlocks, "Condition block");
-        ApplySystemAddMenuState();
-    }
-
-    private void ApplyFeatureAddMenuButtonState(Button button, FeatureId feature, string label)
-    {
-        if (_featureGate.IsHidden(feature))
+        switch (e.Action)
         {
-            button.Visibility = Visibility.Collapsed;
-            return;
+            case TimelineAddMenuAction.RecordInput:
+                StartRecordingFromAddMenu();
+                break;
+            case TimelineAddMenuAction.Delay:
+                AddDelayStep();
+                break;
+            case TimelineAddMenuAction.RandomDelay:
+                AddRandomDelayStep();
+                break;
+            case TimelineAddMenuAction.Text:
+                AddTextStep();
+                break;
+            case TimelineAddMenuAction.RepeatBlock:
+                AddRepeatBlock();
+                break;
+            case TimelineAddMenuAction.ConditionBlock:
+                AddConditionBlock();
+                break;
+            case TimelineAddMenuAction.CursorMove:
+                AddCursorMoveStep();
+                break;
+            case TimelineAddMenuAction.MouseScrollUp:
+                AddMouseScrollStep(MacroNodeType.MouseScrollUp);
+                break;
+            case TimelineAddMenuAction.MouseScrollDown:
+                AddMouseScrollStep(MacroNodeType.MouseScrollDown);
+                break;
+            case TimelineAddMenuAction.MouseScrollLeft:
+                AddMouseScrollStep(MacroNodeType.MouseScrollLeft);
+                break;
+            case TimelineAddMenuAction.MouseScrollRight:
+                AddMouseScrollStep(MacroNodeType.MouseScrollRight);
+                break;
+            case TimelineAddMenuAction.SystemOpenLaunch:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.SystemOpenLaunch,
+                    SystemLaunchKind = SystemLaunchKind.Application,
+                    SystemLaunchTarget = ""
+                });
+                break;
+            case TimelineAddMenuAction.SystemVolumeControl:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.SystemVolumeControl,
+                    SystemVolumeAction = SystemVolumeAction.VolumeUp,
+                    SystemVolumePercent = 50
+                });
+                break;
+            case TimelineAddMenuAction.SystemWaitUntilWindowOpens:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.SystemWaitUntilWindowOpens,
+                    SystemWaitWindowTitle = "",
+                    SystemWaitPollIntervalMs = 250,
+                    WindowReference = WindowReference.Custom("")
+                });
+                break;
+            case TimelineAddMenuAction.SystemFocusWindow:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.SystemFocusWindow,
+                    WindowReference = new WindowReference
+                    {
+                        Type = WindowReferenceType.SelectedTarget
+                    }
+                });
+                break;
+            case TimelineAddMenuAction.SystemSelectTargetWindow:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.SystemSelectTargetWindow,
+                    SystemTargetWindowTitle = "",
+                    WindowReference = WindowReference.Custom("")
+                });
+                break;
+            case TimelineAddMenuAction.BackgroundMouseDown:
+                AddMouseStep(MacroNodeType.BackgroundMouseDown);
+                break;
+            case TimelineAddMenuAction.BackgroundMouseUp:
+                AddMouseStep(MacroNodeType.BackgroundMouseUp);
+                break;
+            case TimelineAddMenuAction.BackgroundMouseClick:
+                AddMouseStep(MacroNodeType.BackgroundMouseClick);
+                break;
         }
-
-        button.Visibility = Visibility.Visible;
-
-        if (_featureGate.IsEnabled(feature))
-        {
-            button.Content = label;
-            button.Opacity = 1.0;
-            button.ToolTip = null;
-            return;
-        }
-
-        button.Content = $"{label} (locked)";
-        button.Opacity = 0.55;
-        button.ToolTip = _featureGate.GetLockedFeatureMessage(feature);
-    }
-
-    private void ApplySystemAddMenuState()
-    {
-        if (SystemAddMenuExpander == null)
-            return;
-
-        if (_featureGate.IsHidden(FeatureId.SystemNodes))
-        {
-            SystemAddMenuExpander.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        SystemAddMenuExpander.Visibility = Visibility.Visible;
-        ApplyFeatureAddMenuButtonState(SystemOpenLaunchMenuButton, FeatureId.SystemNodes, "Open/Launch");
-        ApplyFeatureAddMenuButtonState(SystemVolumeControlMenuButton, FeatureId.SystemNodes, "Volume control");
-        ApplyFeatureAddMenuButtonState(SystemWaitUntilWindowOpensMenuButton, FeatureId.SystemNodes, "Wait until window opens");
-        ApplyFeatureAddMenuButtonState(SystemFocusWindowMenuButton, FeatureId.SystemNodes, "Focus window");
-        ApplyFeatureAddMenuButtonState(SystemSelectTargetWindowMenuButton, FeatureId.SystemNodes, "Set target window");
     }
 
     private void UpdateExperimentalAddMenuVisibility()
     {
-        if (ExperimentalAddMenuExpander != null)
-            ExperimentalAddMenuExpander.Visibility = _settings.ExperimentalFeaturesEnabled
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+        TimelineAddMenu?.SetExperimentalFeaturesVisible(_settings.ExperimentalFeaturesEnabled);
     }
 
     private MacroTimeline? ResolveTimelineFromSender(object sender)
@@ -148,15 +182,15 @@ public partial class MainWindow
             timeline.Nodes.Insert(insertIndex + i, steps[i]);
     }
 
-    private void RecordMenuButton_Click(object sender, RoutedEventArgs e)
+    private void StartRecordingFromAddMenu()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
         StartRecording(GetPopupTimeline(), GetPopupRawInsertAnchor());
     }
 
-    private void DelayMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddDelayStep()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -177,9 +211,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void RandomDelayMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddRandomDelayStep()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -201,9 +235,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void TextMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddTextStep()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         var timeline = GetPopupTimeline();
         var dialog = new TextInputWindow { Owner = this };
@@ -227,9 +261,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void RepeatBlockMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddRepeatBlock()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
         if (!TryUseFeature(FeatureId.RepeatBlocks))
             return;
 
@@ -246,9 +280,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void ConditionBlockMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddConditionBlock()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
         if (!TryUseFeature(FeatureId.ConditionBlocks))
             return;
 
@@ -265,9 +299,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void CursorMoveMenuButton_Click(object sender, RoutedEventArgs e)
+    private void AddCursorMoveStep()
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -285,71 +319,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroNodeType.BackgroundMouseDown);
-
-    private void MouseUpMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroNodeType.BackgroundMouseUp);
-
-    private void MouseClickMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseStep(MacroNodeType.BackgroundMouseClick);
-
-    private void SystemOpenLaunchMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        AddConfigurableSystemStep(new MacroNode
-        {
-            Type = MacroNodeType.SystemOpenLaunch,
-            SystemLaunchKind = SystemLaunchKind.Application,
-            SystemLaunchTarget = ""
-        });
-    }
-
-    private void SystemVolumeControlMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        AddConfigurableSystemStep(new MacroNode
-        {
-            Type = MacroNodeType.SystemVolumeControl,
-            SystemVolumeAction = SystemVolumeAction.VolumeUp,
-            SystemVolumePercent = 50
-        });
-    }
-
-    private void SystemWaitUntilWindowOpensMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        AddConfigurableSystemStep(new MacroNode
-        {
-            Type = MacroNodeType.SystemWaitUntilWindowOpens,
-            SystemWaitWindowTitle = "",
-            SystemWaitPollIntervalMs = 250,
-            WindowReference = WindowReference.Custom("")
-        });
-    }
-
-    private void SystemFocusWindowMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        AddConfigurableSystemStep(new MacroNode
-        {
-            Type = MacroNodeType.SystemFocusWindow,
-            WindowReference = new WindowReference
-            {
-                Type = WindowReferenceType.SelectedTarget
-            }
-        });
-    }
-
-    private void SystemSelectTargetWindowMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        AddConfigurableSystemStep(new MacroNode
-        {
-            Type = MacroNodeType.SystemSelectTargetWindow,
-            SystemTargetWindowTitle = "",
-            WindowReference = WindowReference.Custom("")
-        });
-    }
-
     private void AddConfigurableSystemStep(MacroNode step)
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
         if (!TryUseFeature(FeatureId.SystemNodes))
             return;
 
@@ -365,21 +337,9 @@ public partial class MainWindow
         ScheduleSaveState();
     }
 
-    private void MouseScrollUpMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseScrollStep(MacroNodeType.MouseScrollUp);
-
-    private void MouseScrollDownMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseScrollStep(MacroNodeType.MouseScrollDown);
-
-    private void MouseScrollLeftMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseScrollStep(MacroNodeType.MouseScrollLeft);
-
-    private void MouseScrollRightMenuButton_Click(object sender, RoutedEventArgs e) =>
-        AddMouseScrollStep(MacroNodeType.MouseScrollRight);
-
     private void AddMouseStep(MacroNodeType type)
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -401,7 +361,7 @@ public partial class MainWindow
 
     private void AddMouseScrollStep(MacroNodeType type)
     {
-        AddPopup.IsOpen = false;
+        TimelineAddMenu.Close();
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -429,5 +389,4 @@ public partial class MainWindow
         OpenInspectorFromSelection();
         ScheduleSaveState();
     }
-
 }
