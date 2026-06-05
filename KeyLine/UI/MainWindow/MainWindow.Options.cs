@@ -9,6 +9,7 @@ using KeyLine.Interop;
 using KeyLine.Services.Features;
 using KeyLine.Services.Input;
 using KeyLine.Services.Timeline;
+using KeyLine.UI;
 using KeyLine.UI.Inspector;
 
 namespace KeyLine;
@@ -111,6 +112,7 @@ public partial class MainWindow
             TargetWindowSearchPill.MouseLeftButtonDown += TargetWindowSearchPill_MouseLeftButtonDown;
             TargetWindowSearchTextBox.LostFocus += TargetWindowSearchTextBox_LostFocus;
             TargetWindowSearchTextBox.KeyDown += TargetWindowSearchTextBox_KeyDown;
+            UpdateAutoWindowFeatureState(isEditable: true);
 
             TimerMinutesTextBox.TextChanged += TimerMinutesTextBox_TextChanged;
         }
@@ -122,6 +124,7 @@ public partial class MainWindow
             SetLoopModeSelection(workspace.LoopMode);
 
             TargetWindowSearchTextBox.Text = workspace.TargetWindowSearchName;
+            UpdateAutoWindowFeatureState(!IsWorkspaceRunning(workspace));
 
             ResetShortcutOptionState();
             UpdateShortcutText();
@@ -135,7 +138,8 @@ public partial class MainWindow
                 : GetTimerMs();
 
             workspace.LoopMode = GetSelectedMacroLoopMode();
-            workspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
+            if (_featureGate.IsEnabled(FeatureId.AutoWindow))
+                workspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
 
             CaptureSelectedTargetWindow(workspace);
         }
@@ -144,7 +148,7 @@ public partial class MainWindow
         {
             LoopModeComboBox.IsEnabled = isEnabled;
 
-            TargetWindowSearchPill.IsEnabled = isEnabled;
+            UpdateAutoWindowFeatureState(isEnabled);
             WindowComboBox.IsEnabled = isEnabled;
             HandleComboBox.IsEnabled = isEnabled;
         }
@@ -318,6 +322,12 @@ public partial class MainWindow
             if (!TargetWindowSearchPill.IsEnabled)
                 return;
 
+            if (!TryUseFeature(FeatureId.AutoWindow))
+            {
+                e.Handled = true;
+                return;
+            }
+
             TargetWindowSearchPill.IsTextInput = true;
             TargetWindowSearchPill.FocusInput();
             e.Handled = true;
@@ -350,6 +360,13 @@ public partial class MainWindow
 
         private void CommitTargetWindowSearchName(bool resolveIfMissingTarget)
         {
+            if (!_featureGate.IsEnabled(FeatureId.AutoWindow))
+            {
+                TargetWindowSearchTextBox.Text = _activeWorkspace.TargetWindowSearchName;
+                ShowLockedFeatureStatus(FeatureId.AutoWindow);
+                return;
+            }
+
             var searchName = TargetWindowSearchTextBox.Text.Trim();
 
             if (string.Equals(_activeWorkspace.TargetWindowSearchName, searchName, StringComparison.Ordinal))
@@ -367,6 +384,23 @@ public partial class MainWindow
                 TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
 
             ScheduleSaveState();
+        }
+
+        private void UpdateAutoWindowFeatureState(bool isEditable)
+        {
+            if (_featureGate.IsHidden(FeatureId.AutoWindow))
+            {
+                TargetWindowSearchPill.Visibility = Visibility.Collapsed;
+                TargetWindowSearchPill.IsEnabled = false;
+                return;
+            }
+
+            TargetWindowSearchPill.Visibility = Visibility.Visible;
+            TargetWindowSearchPill.IsEnabled = isEditable;
+            TargetWindowSearchPill.Opacity = _featureGate.IsEnabled(FeatureId.AutoWindow) ? 1.0 : 0.55;
+            TargetWindowSearchPill.ToolTip = _featureGate.IsEnabled(FeatureId.AutoWindow)
+                ? TooltipNotes.TargetWindowSearchName
+                : _featureGate.GetLockedFeatureMessage(FeatureId.AutoWindow);
         }
 
         private void ShortcutToggleTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

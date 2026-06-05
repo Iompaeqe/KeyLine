@@ -17,6 +17,8 @@ public sealed class FeatureGate
             FeatureId.RepeatBlocks => _config.RepeatBlocks,
             FeatureId.ConditionBlocks => _config.ConditionBlocks,
             FeatureId.ShortcutRemap => _config.ShortcutRemap,
+            FeatureId.AutoWindow => _config.AutoWindow,
+            FeatureId.SystemNodes => _config.SystemNodes,
             _ => FeatureState.DisabledHidden
         };
     }
@@ -49,6 +51,8 @@ public sealed class FeatureGate
             FeatureId.RepeatBlocks => "Repeat Blocks are not available.",
             FeatureId.ConditionBlocks => "Condition Blocks are not available.",
             FeatureId.ShortcutRemap => "Shortcut remap is not available.",
+            FeatureId.AutoWindow => "Auto window targeting is not available.",
+            FeatureId.SystemNodes => "System nodes are not available.",
             _ => "This feature is not available."
         };
     }

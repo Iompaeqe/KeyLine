@@ -5,5 +5,7 @@ public enum FeatureId
     Profiles,
     RepeatBlocks,
     ConditionBlocks,
-    ShortcutRemap
+    ShortcutRemap,
+    AutoWindow,
+    SystemNodes
 }

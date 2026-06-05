@@ -16,6 +16,12 @@ public sealed class MacroFeatureValidator
     {
         var result = new MacroFeatureValidationResult();
 
+        if (!string.IsNullOrWhiteSpace(workspace.TargetWindowSearchName) &&
+            !_featureGate.IsEnabled(FeatureId.AutoWindow))
+        {
+            AddUnique(result.Errors, CreateDisabledNodeMessage(FeatureId.AutoWindow));
+        }
+
         foreach (var timeline in workspace.Document.Timelines)
         {
             foreach (var node in timeline.Nodes)
@@ -59,6 +65,11 @@ public sealed class MacroFeatureValidator
         {
             MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd => FeatureId.RepeatBlocks,
             MacroNodeType.ConditionStart or MacroNodeType.ConditionEnd => FeatureId.ConditionBlocks,
+            MacroNodeType.SystemOpenLaunch or
+                MacroNodeType.SystemVolumeControl or
+                MacroNodeType.SystemWaitUntilWindowOpens or
+                MacroNodeType.SystemSelectTargetWindow or
+                MacroNodeType.SystemFocusWindow => FeatureId.SystemNodes,
             _ => null
         };
     }
@@ -71,6 +82,10 @@ public sealed class MacroFeatureValidator
                 "This macro contains Repeat Blocks, but Repeat Blocks are disabled in this version.",
             FeatureId.ConditionBlocks =>
                 "This macro contains Condition Blocks, but Condition Blocks are disabled in this version.",
+            FeatureId.AutoWindow =>
+                "This macro uses auto window targeting, but auto window targeting is disabled in this version.",
+            FeatureId.SystemNodes =>
+                "This macro contains System nodes, but System nodes are disabled in this version.",
             _ =>
                 $"This macro contains a disabled feature: {feature}."
         };

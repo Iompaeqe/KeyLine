@@ -34,14 +34,16 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         {
             Type = MacroNodeType.MouseScrollDown,
             KeyName = "Wheel Down",
-            MouseWheelDelta = -240
+            MouseWheelDelta = -120,
+            MouseScrollAmount = 2
         };
 
         var clone = MacroCloneService.CloneStep(source);
 
         Assert.Equal(MacroNodeType.MouseScrollDown, clone.Type);
         Assert.Equal("Wheel Down", clone.KeyName);
-        Assert.Equal(-240, clone.MouseWheelDelta);
+        Assert.Equal(-120, clone.MouseWheelDelta);
+        Assert.Equal(2, clone.MouseScrollAmount);
     }
 
     [Fact]
@@ -59,6 +61,64 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal(MacroNodeType.SystemOpenLaunch, clone.Type);
         Assert.Equal(SystemLaunchKind.Url, clone.SystemLaunchKind);
         Assert.Equal("https://example.com", clone.SystemLaunchTarget);
+    }
+
+    [Fact]
+    public void CloneSteps_PreservesSystemWindowWaitConfiguration()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.SystemWaitUntilWindowOpens,
+            SystemWaitWindowTitle = "Notepad",
+            SystemWaitPollIntervalMs = 375,
+            WindowReference = WindowReference.Custom("Notepad")
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.SystemWaitUntilWindowOpens, clone.Type);
+        Assert.Equal("Notepad", clone.SystemWaitWindowTitle);
+        Assert.Equal(375, clone.SystemWaitPollIntervalMs);
+        Assert.Equal(WindowReferenceType.CustomTitle, clone.WindowReference.Type);
+        Assert.Equal("Notepad", clone.WindowReference.CustomTitle);
+    }
+
+    [Fact]
+    public void CloneSteps_PreservesSystemTargetWindowConfiguration()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.SystemSelectTargetWindow,
+            SystemTargetWindowTitle = "Game",
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.LastFoundWindow
+            }
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.SystemSelectTargetWindow, clone.Type);
+        Assert.Equal("Game", clone.SystemTargetWindowTitle);
+        Assert.Equal(WindowReferenceType.LastFoundWindow, clone.WindowReference.Type);
+    }
+
+    [Fact]
+    public void CloneSteps_PreservesSystemFocusWindowConfiguration()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.SystemFocusWindow,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.FocusedWindow
+            }
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.SystemFocusWindow, clone.Type);
+        Assert.Equal(WindowReferenceType.FocusedWindow, clone.WindowReference.Type);
     }
 
     [Fact]
@@ -100,7 +160,15 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         {
             Type = MacroNodeType.MouseScrollUp,
             KeyName = "Wheel Up",
-            MouseWheelDelta = 240
+            MouseWheelDelta = 120,
+            MouseScrollAmount = 3
+        });
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.MouseScrollLeft,
+            KeyName = "Wheel Left",
+            MouseWheelDelta = -120,
+            MouseScrollAmount = 2
         });
 
         MacroStateStore.Save(
@@ -112,9 +180,14 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         var snapshot = MacroStateStore.Load();
 
         Assert.NotNull(snapshot);
-        var loadedNode = Assert.Single(snapshot.Workspaces[0].Document.ActiveTimeline.Nodes);
-        Assert.Equal(MacroNodeType.MouseScrollUp, loadedNode.Type);
-        Assert.Equal(240, loadedNode.MouseWheelDelta);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.MouseScrollUp, loadedNodes[0].Type);
+        Assert.Equal(120, loadedNodes[0].MouseWheelDelta);
+        Assert.Equal(3, loadedNodes[0].MouseScrollAmount);
+        Assert.Equal(MacroNodeType.MouseScrollLeft, loadedNodes[1].Type);
+        Assert.Equal(-120, loadedNodes[1].MouseWheelDelta);
+        Assert.Equal(2, loadedNodes[1].MouseScrollAmount);
     }
 
     [Fact]
@@ -134,6 +207,28 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
             SystemVolumeAction = SystemVolumeAction.SetVolumePercent,
             SystemVolumePercent = 37
         });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemWaitUntilWindowOpens,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.LastLaunchedWindow
+            },
+            SystemWaitPollIntervalMs = 300
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemSelectTargetWindow,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.LastFoundWindow
+            }
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemFocusWindow,
+            WindowReference = WindowReference.Custom("Calculator")
+        });
 
         MacroStateStore.Save(
             new[] { workspace },
@@ -145,13 +240,75 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
 
         Assert.NotNull(snapshot);
         var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
-        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(5, loadedNodes.Count);
         Assert.Equal(MacroNodeType.SystemOpenLaunch, loadedNodes[0].Type);
         Assert.Equal(SystemLaunchKind.Folder, loadedNodes[0].SystemLaunchKind);
         Assert.Equal(@"C:\Temp", loadedNodes[0].SystemLaunchTarget);
         Assert.Equal(MacroNodeType.SystemVolumeControl, loadedNodes[1].Type);
         Assert.Equal(SystemVolumeAction.SetVolumePercent, loadedNodes[1].SystemVolumeAction);
         Assert.Equal(37, loadedNodes[1].SystemVolumePercent);
+        Assert.Equal(MacroNodeType.SystemWaitUntilWindowOpens, loadedNodes[2].Type);
+        Assert.Equal("", loadedNodes[2].SystemWaitWindowTitle);
+        Assert.Equal(WindowReferenceType.LastLaunchedWindow, loadedNodes[2].WindowReference.Type);
+        Assert.Equal(300, loadedNodes[2].SystemWaitPollIntervalMs);
+        Assert.Equal(MacroNodeType.SystemSelectTargetWindow, loadedNodes[3].Type);
+        Assert.Equal("", loadedNodes[3].SystemTargetWindowTitle);
+        Assert.Equal(WindowReferenceType.LastFoundWindow, loadedNodes[3].WindowReference.Type);
+        Assert.Equal(MacroNodeType.SystemFocusWindow, loadedNodes[4].Type);
+        Assert.Equal(WindowReferenceType.CustomTitle, loadedNodes[4].WindowReference.Type);
+        Assert.Equal("Calculator", loadedNodes[4].WindowReference.CustomTitle);
+    }
+
+    [Fact]
+    public void Load_MigratesLegacySystemWindowTitlesToCustomWindowReferences()
+    {
+        Directory.CreateDirectory(MacroStateStore.StateDirectory);
+        File.WriteAllText(
+            Path.Combine(MacroStateStore.StateDirectory, "state.json"),
+            """
+            {
+              "Version": 3,
+              "ActiveWorkspaceIndex": 0,
+              "ShortcutsEnabled": false,
+              "Settings": {},
+              "Workspaces": [
+                {
+                  "Name": "Legacy Window Titles",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [
+                    {
+                      "Name": "T1",
+                      "LoopCount": 0,
+                      "BaseDelayMs": 50,
+                      "Nodes": [
+                        {
+                          "Type": "SystemWaitUntilWindowOpens",
+                          "SystemWaitWindowTitle": "Discord",
+                          "SystemWaitPollIntervalMs": 300
+                        },
+                        {
+                          "Type": "SystemSelectTargetWindow",
+                          "SystemTargetWindowTitle": "Discord"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(WindowReferenceType.CustomTitle, loadedNodes[0].WindowReference.Type);
+        Assert.Equal("Discord", loadedNodes[0].WindowReference.CustomTitle);
+        Assert.Equal(WindowReferenceType.CustomTitle, loadedNodes[1].WindowReference.Type);
+        Assert.Equal("Discord", loadedNodes[1].WindowReference.CustomTitle);
     }
 
     [Fact]
@@ -209,7 +366,15 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         {
             Type = MacroNodeType.MouseScrollDown,
             KeyName = "Wheel Down",
-            MouseWheelDelta = -240
+            MouseWheelDelta = -120,
+            MouseScrollAmount = 4
+        });
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.MouseScrollRight,
+            KeyName = "Wheel Right",
+            MouseWheelDelta = 120,
+            MouseScrollAmount = 5
         });
         var exportPath = Path.Combine(_appDataRoot, "scroll.keyline");
         Directory.CreateDirectory(_appDataRoot);
@@ -219,9 +384,14 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         var imported = MacroFileStore.Import(exportPath);
 
         Assert.Single(imported);
-        var loadedNode = Assert.Single(imported[0].Document.ActiveTimeline.Nodes);
-        Assert.Equal(MacroNodeType.MouseScrollDown, loadedNode.Type);
-        Assert.Equal(-240, loadedNode.MouseWheelDelta);
+        var loadedNodes = imported[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.MouseScrollDown, loadedNodes[0].Type);
+        Assert.Equal(-120, loadedNodes[0].MouseWheelDelta);
+        Assert.Equal(4, loadedNodes[0].MouseScrollAmount);
+        Assert.Equal(MacroNodeType.MouseScrollRight, loadedNodes[1].Type);
+        Assert.Equal(120, loadedNodes[1].MouseWheelDelta);
+        Assert.Equal(5, loadedNodes[1].MouseScrollAmount);
     }
 
     [Fact]
@@ -241,6 +411,28 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
             SystemVolumeAction = SystemVolumeAction.MuteToggle,
             SystemVolumePercent = 50
         });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemWaitUntilWindowOpens,
+            WindowReference = WindowReference.Custom("Launcher"),
+            SystemWaitPollIntervalMs = 400
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemSelectTargetWindow,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.LastFoundWindow
+            }
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemFocusWindow,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.SelectedTarget
+            }
+        });
         var exportPath = Path.Combine(_appDataRoot, "system.keyline");
         Directory.CreateDirectory(_appDataRoot);
 
@@ -250,12 +442,22 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
 
         Assert.Single(imported);
         var loadedNodes = imported[0].Document.ActiveTimeline.Nodes;
-        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(5, loadedNodes.Count);
         Assert.Equal(MacroNodeType.SystemOpenLaunch, loadedNodes[0].Type);
         Assert.Equal(SystemLaunchKind.File, loadedNodes[0].SystemLaunchKind);
         Assert.Equal(@"C:\Temp\readme.txt", loadedNodes[0].SystemLaunchTarget);
         Assert.Equal(MacroNodeType.SystemVolumeControl, loadedNodes[1].Type);
         Assert.Equal(SystemVolumeAction.MuteToggle, loadedNodes[1].SystemVolumeAction);
+        Assert.Equal(MacroNodeType.SystemWaitUntilWindowOpens, loadedNodes[2].Type);
+        Assert.Equal("Launcher", loadedNodes[2].SystemWaitWindowTitle);
+        Assert.Equal(WindowReferenceType.CustomTitle, loadedNodes[2].WindowReference.Type);
+        Assert.Equal("Launcher", loadedNodes[2].WindowReference.CustomTitle);
+        Assert.Equal(400, loadedNodes[2].SystemWaitPollIntervalMs);
+        Assert.Equal(MacroNodeType.SystemSelectTargetWindow, loadedNodes[3].Type);
+        Assert.Equal("", loadedNodes[3].SystemTargetWindowTitle);
+        Assert.Equal(WindowReferenceType.LastFoundWindow, loadedNodes[3].WindowReference.Type);
+        Assert.Equal(MacroNodeType.SystemFocusWindow, loadedNodes[4].Type);
+        Assert.Equal(WindowReferenceType.SelectedTarget, loadedNodes[4].WindowReference.Type);
     }
 
     [Fact]

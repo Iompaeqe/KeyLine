@@ -377,10 +377,19 @@ public static class MacroStateStore
             MouseY = persistedStep.MouseY,
             MouseButton = mouseButton,
             MouseWheelDelta = GetPersistedMouseWheelDelta(type, persistedStep.MouseWheelDelta),
+            MouseScrollAmount = GetPersistedMouseScrollAmount(type, persistedStep.MouseScrollAmount, persistedStep.MouseWheelDelta),
             SystemLaunchKind = GetPersistedSystemLaunchKind(persistedStep.SystemLaunchKind),
             SystemLaunchTarget = persistedStep.SystemLaunchTarget,
             SystemVolumeAction = GetPersistedSystemVolumeAction(persistedStep.SystemVolumeAction),
             SystemVolumePercent = Math.Clamp(persistedStep.SystemVolumePercent, 0, 100),
+            SystemWaitWindowTitle = persistedStep.SystemWaitWindowTitle,
+            SystemWaitPollIntervalMs = GetPersistedSystemWaitPollIntervalMs(persistedStep.SystemWaitPollIntervalMs),
+            SystemTargetWindowTitle = persistedStep.SystemTargetWindowTitle,
+            WindowReference = GetPersistedWindowReference(
+                type,
+                persistedStep.WindowReference,
+                persistedStep.SystemWaitWindowTitle,
+                persistedStep.SystemTargetWindowTitle),
             IsRecordedDelay = persistedStep.IsRecordedDelay,
             RepeatBlockId = persistedStep.RepeatBlockId,
             RepeatCount = Math.Max(0, persistedStep.RepeatCount),
@@ -412,18 +421,46 @@ public static class MacroStateStore
         if (type == MacroNodeType.MouseScrollDown)
             return string.IsNullOrWhiteSpace(keyName) ? "Wheel Down" : keyName;
 
+        if (type == MacroNodeType.MouseScrollLeft)
+            return string.IsNullOrWhiteSpace(keyName) ? "Wheel Left" : keyName;
+
+        if (type == MacroNodeType.MouseScrollRight)
+            return string.IsNullOrWhiteSpace(keyName) ? "Wheel Right" : keyName;
+
         return keyName;
     }
 
     private static int GetPersistedMouseWheelDelta(MacroNodeType type, int wheelDelta)
     {
         if (type == MacroNodeType.MouseScrollUp)
-            return wheelDelta > 0 ? wheelDelta : NativeMethods.WHEEL_DELTA;
+            return NativeMethods.WHEEL_DELTA;
 
         if (type == MacroNodeType.MouseScrollDown)
-            return wheelDelta < 0 ? wheelDelta : -NativeMethods.WHEEL_DELTA;
+            return -NativeMethods.WHEEL_DELTA;
+
+        if (type == MacroNodeType.MouseScrollLeft)
+            return -NativeMethods.WHEEL_DELTA;
+
+        if (type == MacroNodeType.MouseScrollRight)
+            return NativeMethods.WHEEL_DELTA;
 
         return 0;
+    }
+
+    private static int GetPersistedMouseScrollAmount(MacroNodeType type, int amount, int wheelDelta)
+    {
+        if (type is not (MacroNodeType.MouseScrollUp or
+            MacroNodeType.MouseScrollDown or
+            MacroNodeType.MouseScrollLeft or
+            MacroNodeType.MouseScrollRight))
+        {
+            return 1;
+        }
+
+        if (amount > 0)
+            return Math.Clamp(amount, 1, 100);
+
+        return Math.Clamp(Math.Abs(wheelDelta) / NativeMethods.WHEEL_DELTA, 1, 100);
     }
 
     private static SystemLaunchKind GetPersistedSystemLaunchKind(SystemLaunchKind kind) =>
@@ -431,6 +468,91 @@ public static class MacroStateStore
 
     private static SystemVolumeAction GetPersistedSystemVolumeAction(SystemVolumeAction action) =>
         Enum.IsDefined(action) ? action : SystemVolumeAction.VolumeUp;
+
+    private static int GetPersistedSystemWaitPollIntervalMs(int milliseconds) =>
+        Math.Clamp(milliseconds <= 0 ? 250 : milliseconds, 50, 10_000);
+
+    private static string GetPersistedSystemWaitWindowTitle(MacroNode node)
+    {
+        if (node.Type != MacroNodeType.SystemWaitUntilWindowOpens)
+            return node.SystemWaitWindowTitle;
+
+        var reference = node.GetEffectiveWindowReference();
+        return reference.Type == WindowReferenceType.CustomTitle
+            ? reference.CustomTitle
+            : "";
+    }
+
+    private static string GetPersistedSystemTargetWindowTitle(MacroNode node)
+    {
+        if (node.Type != MacroNodeType.SystemSelectTargetWindow)
+            return node.SystemTargetWindowTitle;
+
+        var reference = node.GetEffectiveWindowReference();
+        return reference.Type == WindowReferenceType.CustomTitle
+            ? reference.CustomTitle
+            : "";
+    }
+
+    private static WindowReference? GetPersistedWindowReference(MacroNode node)
+    {
+        if (!UsesWindowReference(node.Type))
+            return null;
+
+        var reference = node.GetEffectiveWindowReference();
+        reference.CustomTitle = (reference.CustomTitle ?? "").Trim();
+        return reference;
+    }
+
+    private static WindowReference GetPersistedWindowReference(
+        MacroNodeType type,
+        WindowReference? persistedReference,
+        string systemWaitWindowTitle,
+        string systemTargetWindowTitle)
+    {
+        if (!UsesWindowReference(type))
+            return new WindowReference();
+
+        if (persistedReference != null && Enum.IsDefined(persistedReference.Type))
+        {
+            var reference = persistedReference.Clone();
+            reference.CustomTitle = (reference.CustomTitle ?? "").Trim();
+            if (reference.Type == WindowReferenceType.CustomTitle &&
+                string.IsNullOrWhiteSpace(reference.CustomTitle))
+            {
+                reference.CustomTitle = GetLegacyWindowTitle(type, systemWaitWindowTitle, systemTargetWindowTitle);
+            }
+
+            return reference;
+        }
+
+        if (type == MacroNodeType.SystemFocusWindow)
+        {
+            return new WindowReference
+            {
+                Type = WindowReferenceType.SelectedTarget
+            };
+        }
+
+        return WindowReference.Custom(GetLegacyWindowTitle(type, systemWaitWindowTitle, systemTargetWindowTitle));
+    }
+
+    private static string GetLegacyWindowTitle(
+        MacroNodeType type,
+        string systemWaitWindowTitle,
+        string systemTargetWindowTitle)
+    {
+        var title = type == MacroNodeType.SystemSelectTargetWindow
+            ? systemTargetWindowTitle
+            : systemWaitWindowTitle;
+
+        return (title ?? "").Trim();
+    }
+
+    private static bool UsesWindowReference(MacroNodeType type) =>
+        type is MacroNodeType.SystemWaitUntilWindowOpens or
+            MacroNodeType.SystemSelectTargetWindow or
+            MacroNodeType.SystemFocusWindow;
 
     private static MacroNodeType GetPersistedNodeType(string type)
     {
@@ -656,10 +778,15 @@ public static class MacroStateStore
             MouseY = node.MouseY,
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
             MouseWheelDelta = GetPersistedMouseWheelDelta(node.Type, node.MouseWheelDelta),
+            MouseScrollAmount = GetPersistedMouseScrollAmount(node.Type, node.MouseScrollAmount, node.MouseWheelDelta),
             SystemLaunchKind = GetPersistedSystemLaunchKind(node.SystemLaunchKind),
             SystemLaunchTarget = node.SystemLaunchTarget,
             SystemVolumeAction = GetPersistedSystemVolumeAction(node.SystemVolumeAction),
             SystemVolumePercent = Math.Clamp(node.SystemVolumePercent, 0, 100),
+            SystemWaitWindowTitle = GetPersistedSystemWaitWindowTitle(node),
+            SystemWaitPollIntervalMs = GetPersistedSystemWaitPollIntervalMs(node.SystemWaitPollIntervalMs),
+            SystemTargetWindowTitle = GetPersistedSystemTargetWindowTitle(node),
+            WindowReference = GetPersistedWindowReference(node),
             IsRecordedDelay = node.IsRecordedDelay,
             RepeatBlockId = node.RepeatBlockId,
             RepeatCount = Math.Max(0, node.RepeatCount),
@@ -755,10 +882,16 @@ public static class MacroStateStore
         public int MouseY { get; set; }
         public int MouseButton { get; set; } = 1;
         public int MouseWheelDelta { get; set; }
+        public int MouseScrollAmount { get; set; }
         public SystemLaunchKind SystemLaunchKind { get; set; } = SystemLaunchKind.Application;
         public string SystemLaunchTarget { get; set; } = "";
         public SystemVolumeAction SystemVolumeAction { get; set; } = SystemVolumeAction.VolumeUp;
         public int SystemVolumePercent { get; set; } = 50;
+        public string SystemWaitWindowTitle { get; set; } = "";
+        public int SystemWaitPollIntervalMs { get; set; } = 250;
+        public string SystemTargetWindowTitle { get; set; } = "";
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public WindowReference? WindowReference { get; set; }
         public bool IsRecordedDelay { get; set; }
         public string RepeatBlockId { get; set; } = "";
         public int RepeatCount { get; set; } = 2;

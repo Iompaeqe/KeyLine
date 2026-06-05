@@ -6,4 +6,6 @@ public sealed class FeatureConfig
     public FeatureState RepeatBlocks { get; init; } = FeatureState.Enabled;
     public FeatureState ConditionBlocks { get; init; } = FeatureState.Enabled;
     public FeatureState ShortcutRemap { get; init; } = FeatureState.Enabled;
+    public FeatureState AutoWindow { get; init; } = FeatureState.Enabled;
+    public FeatureState SystemNodes { get; init; } = FeatureState.Enabled;
 }
