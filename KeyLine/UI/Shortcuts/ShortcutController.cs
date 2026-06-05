@@ -95,7 +95,10 @@ public sealed class ShortcutController : IDisposable
     public void SuppressCurrentlyHeldShortcutKeys(string shortcut)
     {
         foreach (var virtualKey in ShortcutGesture.Parse(shortcut))
-            _suppressedKeys.Add(virtualKey);
+        {
+            if (IsVirtualKeyDown(virtualKey))
+                _suppressedKeys.Add(virtualKey);
+        }
     }
 
     public void ClearConsumedRemapKeys()
@@ -372,6 +375,11 @@ public sealed class ShortcutController : IDisposable
     {
         return (data.flags & NativeMethods.LLKHF_INJECTED) != 0 ||
                (data.flags & NativeMethods.LLKHF_LOWER_IL_INJECTED) != 0;
+    }
+
+    private static bool IsVirtualKeyDown(int virtualKey)
+    {
+        return (NativeMethods.GetAsyncKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
     }
 
     private static HashSet<int> GetCurrentShortcutKeys(KeyEventArgs e)

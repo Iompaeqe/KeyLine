@@ -24,11 +24,9 @@ public static class TooltipNotes
 
     public const string MacroTabRunning = "This macro is currently running.";
     public const string MacroTabSwitchRenameDelete = "Click to switch macro. Middle-click to delete. Right-click for options.";
-    public const string RenameMacro = "Rename macro";
 
     public const string TimelineSectionToggle = "Show or hide timeline settings.";
     public const string NodeSectionToggle = "Show or hide node settings.";
-    public const string TimelineName = "Timeline name. Click the pencil to rename it.";
     public const string RenameTimeline = "Rename timeline";
     public const string EditTimelineName = "Edit the timeline name.";
     public const string TimelineLoops = "How many times this timeline runs. 0 means infinite.";
