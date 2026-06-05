@@ -18,11 +18,14 @@ public sealed class ShortcutController : IDisposable
     private readonly Func<IReadOnlyList<MacroWorkspace>> _getWorkspaces;
     private readonly Func<bool> _areMacroShortcutsEnabled;
     private readonly Action<int> _toggleMacroFromShortcut;
+    private readonly Func<int, bool> _canRunRemapMacroFromShortcut;
+    private readonly Action<int> _startRemapMacroFromShortcut;
     private readonly Action _emergencyStop;
     private readonly Action _pauseResumeAll;
 
     private readonly HashSet<int> _globalPressedKeys = new();
     private readonly HashSet<int> _suppressedKeys = new();
+    private readonly HashSet<int> _consumedRemapKeys = new();
 
     private NativeMethods.LowLevelKeyboardProc? _keyboardProc;
     private IntPtr _keyboardHook;
@@ -36,6 +39,8 @@ public sealed class ShortcutController : IDisposable
         Func<IReadOnlyList<MacroWorkspace>> getWorkspaces,
         Func<bool> areMacroShortcutsEnabled,
         Action<int> toggleMacroFromShortcut,
+        Func<int, bool> canRunRemapMacroFromShortcut,
+        Action<int> startRemapMacroFromShortcut,
         Action emergencyStop,
         Action pauseResumeAll)
     {
@@ -44,6 +49,8 @@ public sealed class ShortcutController : IDisposable
         _getWorkspaces = getWorkspaces;
         _areMacroShortcutsEnabled = areMacroShortcutsEnabled;
         _toggleMacroFromShortcut = toggleMacroFromShortcut;
+        _canRunRemapMacroFromShortcut = canRunRemapMacroFromShortcut;
+        _startRemapMacroFromShortcut = startRemapMacroFromShortcut;
         _emergencyStop = emergencyStop;
         _pauseResumeAll = pauseResumeAll;
     }
@@ -78,6 +85,7 @@ public sealed class ShortcutController : IDisposable
         _keyboardProc = null;
         _globalPressedKeys.Clear();
         _suppressedKeys.Clear();
+        _consumedRemapKeys.Clear();
         _triggeredShortcutSignature = "";
     }
 
@@ -144,8 +152,8 @@ public sealed class ShortcutController : IDisposable
 
         _keyboardProc = (code, wParam, lParam) =>
         {
-            if (code >= 0)
-                HandleGlobalShortcutKeyMessage(wParam, lParam);
+            if (code >= 0 && HandleGlobalShortcutKeyMessage(wParam, lParam))
+                return (IntPtr)1;
 
             return NativeMethods.CallNextHookEx(_keyboardHook, code, wParam, lParam);
         };
@@ -160,44 +168,61 @@ public sealed class ShortcutController : IDisposable
             _keyboardProc = null;
     }
 
-    private void HandleGlobalShortcutKeyMessage(IntPtr wParam, IntPtr lParam)
+    private bool HandleGlobalShortcutKeyMessage(IntPtr wParam, IntPtr lParam)
     {
         if (IsCapturingShortcut)
-            return;
+            return false;
 
         var hookData = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+        if (IsInjectedKeyboardInput(hookData))
+            return false;
+
         var virtualKey = ShortcutGesture.NormalizeVirtualKey((int)hookData.vkCode);
 
         if (virtualKey <= 0)
-            return;
+            return false;
 
         var message = wParam.ToInt32();
 
         if (message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN)
         {
+            if (_consumedRemapKeys.Contains(virtualKey))
+                return true;
+
             if (_suppressedKeys.Remove(virtualKey))
-                return;
+                return false;
 
             _globalPressedKeys.Add(virtualKey);
-            TryTriggerShortcut();
+            if (TryTriggerSettingsShortcut())
+                return false;
+
+            if (TryTriggerRemapShortcut(virtualKey))
+            {
+                _consumedRemapKeys.Add(virtualKey);
+                return true;
+            }
+
+            TryTriggerPassThroughMacroShortcut();
         }
         else if (message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP)
         {
             _globalPressedKeys.Remove(virtualKey);
             _suppressedKeys.Remove(virtualKey);
             _triggeredShortcutSignature = "";
+
+            if (_consumedRemapKeys.Remove(virtualKey))
+                return true;
         }
+
+        return false;
     }
 
-    private void TryTriggerShortcut()
+    private void TryTriggerPassThroughMacroShortcut()
     {
-        if (TryTriggerSettingsShortcut())
-            return;
-
         if (!_areMacroShortcutsEnabled())
             return;
 
-        var matchIndex = FindMatchingShortcutWorkspaceIndex();
+        var matchIndex = FindMatchingPassThroughShortcutWorkspaceIndex();
 
         if (matchIndex < 0)
             return;
@@ -211,6 +236,22 @@ public sealed class ShortcutController : IDisposable
 
         _triggeredShortcutSignature = signature;
         _dispatcher.BeginInvoke(new Action(() => _toggleMacroFromShortcut(matchIndex)));
+    }
+
+    private bool TryTriggerRemapShortcut(int virtualKey)
+    {
+        if (!_areMacroShortcutsEnabled())
+            return false;
+
+        var matchIndex = FindMatchingRemapShortcutWorkspaceIndex(virtualKey);
+        if (matchIndex < 0)
+            return false;
+
+        if (!_canRunRemapMacroFromShortcut(matchIndex))
+            return false;
+
+        _dispatcher.BeginInvoke(new Action(() => _startRemapMacroFromShortcut(matchIndex)));
+        return true;
     }
 
     private bool TryTriggerSettingsShortcut()
@@ -258,13 +299,16 @@ public sealed class ShortcutController : IDisposable
                ShortcutGesture.Parse(settings.PauseResumeAllMacrosShortcut).Length > 0;
     }
 
-    private int FindMatchingShortcutWorkspaceIndex()
+    private int FindMatchingPassThroughShortcutWorkspaceIndex()
     {
         var workspaces = _getWorkspaces();
 
         for (var i = 0; i < workspaces.Count; i++)
         {
             if (!workspaces[i].ShortcutsEnabled)
+                continue;
+
+            if (workspaces[i].ShortcutTriggerBehavior == ShortcutTriggerBehavior.RemapConsume)
                 continue;
 
             var shortcutKeys = ShortcutGesture.Parse(workspaces[i].ShortcutKeys);
@@ -274,6 +318,39 @@ public sealed class ShortcutController : IDisposable
         }
 
         return -1;
+    }
+
+    private int FindMatchingRemapShortcutWorkspaceIndex(int virtualKey)
+    {
+        var workspaces = _getWorkspaces();
+
+        for (var i = 0; i < workspaces.Count; i++)
+        {
+            var workspace = workspaces[i];
+            if (!workspace.ShortcutsEnabled ||
+                workspace.ShortcutTriggerBehavior != ShortcutTriggerBehavior.RemapConsume)
+            {
+                continue;
+            }
+
+            var shortcutKeys = ShortcutGesture.Parse(workspace.ShortcutKeys);
+            if (!ShortcutGesture.IsSingleKeyboardKeyShortcut(shortcutKeys) ||
+                shortcutKeys[0] != virtualKey)
+            {
+                continue;
+            }
+
+            if (ShortcutGesture.Matches(_globalPressedKeys, shortcutKeys))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool IsInjectedKeyboardInput(NativeMethods.KBDLLHOOKSTRUCT data)
+    {
+        return (data.flags & NativeMethods.LLKHF_INJECTED) != 0 ||
+               (data.flags & NativeMethods.LLKHF_LOWER_IL_INJECTED) != 0;
     }
 
     private static HashSet<int> GetCurrentShortcutKeys(KeyEventArgs e)

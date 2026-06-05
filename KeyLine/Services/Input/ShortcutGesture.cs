@@ -14,6 +14,7 @@ public static class ShortcutGesture
             NativeMethods.VK_LSHIFT or NativeMethods.VK_RSHIFT => NativeMethods.VK_SHIFT,
             NativeMethods.VK_LCONTROL or NativeMethods.VK_RCONTROL => NativeMethods.VK_CONTROL,
             NativeMethods.VK_LMENU or NativeMethods.VK_RMENU => NativeMethods.VK_MENU,
+            NativeMethods.VK_RWIN => NativeMethods.VK_LWIN,
             _ => virtualKey
         };
     }
@@ -68,6 +69,33 @@ public static class ShortcutGesture
                shortcutKeys.All(pressedKeys.Contains);
     }
 
+    public static bool IsModifierKey(int virtualKey)
+    {
+        return NormalizeVirtualKey(virtualKey) is
+            NativeMethods.VK_CONTROL or
+            NativeMethods.VK_SHIFT or
+            NativeMethods.VK_MENU or
+            NativeMethods.VK_LWIN;
+    }
+
+    public static bool IsSingleKeyboardKeyShortcut(string shortcut)
+    {
+        return IsSingleKeyboardKeyShortcut(Parse(shortcut));
+    }
+
+    public static bool IsSingleKeyboardKeyShortcut(IReadOnlyList<int> shortcutKeys)
+    {
+        return shortcutKeys.Count == 1 && IsKeyboardShortcutKey(shortcutKeys[0]);
+    }
+
+    public static bool IsKeyboardShortcutKey(int virtualKey)
+    {
+        var normalized = NormalizeVirtualKey(virtualKey);
+        return normalized > 0 &&
+               normalized is not NativeMethods.VK_XBUTTON1 and not NativeMethods.VK_XBUTTON2 &&
+               !IsModifierKey(normalized);
+    }
+
     private static string GetDisplayName(int virtualKey)
     {
         return virtualKey switch
@@ -75,6 +103,7 @@ public static class ShortcutGesture
             NativeMethods.VK_CONTROL => "Ctrl",
             NativeMethods.VK_SHIFT => "Shift",
             NativeMethods.VK_MENU => "Alt",
+            NativeMethods.VK_LWIN => "Win",
             NativeMethods.VK_XBUTTON1 => "Mouse4",
             NativeMethods.VK_XBUTTON2 => "Mouse5",
             _ => KeyNameDisplayRules.GetName(KeyInterop.KeyFromVirtualKey(virtualKey))

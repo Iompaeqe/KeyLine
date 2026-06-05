@@ -38,6 +38,10 @@
                     <entryBlocks:OptionsPillBlock x:Name="ShortcutTogglePill"
                                                   Text="on"
                                                   ToolTip="{x:Static ui:TooltipNotes.MacroShortcutToggle}" />
+
+                    <entryBlocks:OptionsPillBlock x:Name="ShortcutRemapPill"
+                                                  Text="Remap off"
+                                                  ToolTip="{x:Static ui:TooltipNotes.MacroShortcutRemap}" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="2"

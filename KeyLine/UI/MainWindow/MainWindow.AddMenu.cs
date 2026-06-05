@@ -20,6 +20,9 @@ public partial class MainWindow
         SaveUndoSnapshot();
         var timeline = _document.AddTimeline();
         ApplyDefaultSettingsToTimeline(timeline, _settings);
+        if (IsRemapShortcutMode())
+            timeline.LoopCount = 1;
+
         SelectTimeline(timeline);
         RefreshTimeline();
         ScheduleSaveState();

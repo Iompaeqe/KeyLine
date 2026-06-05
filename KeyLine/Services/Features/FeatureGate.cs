@@ -16,6 +16,7 @@ public sealed class FeatureGate
             FeatureId.Profiles => _config.Profiles,
             FeatureId.RepeatBlocks => _config.RepeatBlocks,
             FeatureId.ConditionBlocks => _config.ConditionBlocks,
+            FeatureId.ShortcutRemap => _config.ShortcutRemap,
             _ => FeatureState.DisabledHidden
         };
     }
@@ -47,6 +48,7 @@ public sealed class FeatureGate
             FeatureId.Profiles => "Profiles are not available.",
             FeatureId.RepeatBlocks => "Repeat Blocks are not available.",
             FeatureId.ConditionBlocks => "Condition Blocks are not available.",
+            FeatureId.ShortcutRemap => "Shortcut remap is not available.",
             _ => "This feature is not available."
         };
     }

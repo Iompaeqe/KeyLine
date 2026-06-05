@@ -294,8 +294,9 @@ public static class MacroStateStore
             LoopMode = GetPersistedLoopMode(persistedWorkspace),
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = GetPersistedDelayMs(persistedWorkspace.BaseDelayMs),
-            ShortcutKeys = persistedWorkspace.ShortcutKeys,
-            ShortcutsEnabled = persistedWorkspace.ShortcutsEnabled,
+            ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(persistedWorkspace.ShortcutTriggerBehavior),
+            ShortcutKeys = GetSafeShortcutKeys(persistedWorkspace.ShortcutKeys, persistedWorkspace.ShortcutTriggerBehavior),
+            ShortcutsEnabled = GetSafeShortcutsEnabled(persistedWorkspace.ShortcutsEnabled, persistedWorkspace.ShortcutKeys, persistedWorkspace.ShortcutTriggerBehavior),
             TargetWindowSearchName = persistedWorkspace.TargetWindowSearchName,
             TargetWindowHandle = Math.Max(0, persistedWorkspace.TargetWindowHandle),
             TargetWindowTitle = persistedWorkspace.TargetWindowTitle,
@@ -448,8 +449,9 @@ public static class MacroStateStore
             LoopMode = workspace.LoopMode,
             TimerMs = GetPersistedDelayMs(workspace.TimerMs),
             BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
-            ShortcutKeys = workspace.ShortcutKeys,
-            ShortcutsEnabled = workspace.ShortcutsEnabled,
+            ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(workspace.ShortcutTriggerBehavior),
+            ShortcutKeys = GetSafeShortcutKeys(workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
+            ShortcutsEnabled = GetSafeShortcutsEnabled(workspace.ShortcutsEnabled, workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
             TargetWindowSearchName = workspace.TargetWindowSearchName,
             TargetWindowHandle = Math.Max(0, workspace.TargetWindowHandle),
             TargetWindowTitle = workspace.TargetWindowTitle,
@@ -589,6 +591,27 @@ public static class MacroStateStore
         return Enum.IsDefined(loopMode) ? loopMode : MacroLoopMode.Async;
     }
 
+    private static ShortcutTriggerBehavior GetSafeShortcutTriggerBehavior(ShortcutTriggerBehavior behavior) =>
+        Enum.IsDefined(behavior) ? behavior : ShortcutTriggerBehavior.PassThrough;
+
+    private static string GetSafeShortcutKeys(string shortcutKeys, ShortcutTriggerBehavior behavior)
+    {
+        return GetSafeShortcutTriggerBehavior(behavior) == ShortcutTriggerBehavior.RemapConsume &&
+               !ShortcutGesture.IsSingleKeyboardKeyShortcut(shortcutKeys)
+            ? ""
+            : shortcutKeys;
+    }
+
+    private static bool GetSafeShortcutsEnabled(
+        bool shortcutsEnabled,
+        string shortcutKeys,
+        ShortcutTriggerBehavior behavior)
+    {
+        return shortcutsEnabled &&
+               (GetSafeShortcutTriggerBehavior(behavior) != ShortcutTriggerBehavior.RemapConsume ||
+                ShortcutGesture.IsSingleKeyboardKeyShortcut(shortcutKeys));
+    }
+
     private static PersistedStep ToPersistedStep(MacroNode node)
     {
         return new PersistedStep
@@ -657,6 +680,7 @@ public static class MacroStateStore
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
         public bool ShortcutsEnabled { get; set; }
+        public ShortcutTriggerBehavior ShortcutTriggerBehavior { get; set; } = ShortcutTriggerBehavior.PassThrough;
         public string TargetWindowSearchName { get; set; } = "";
         public long TargetWindowHandle { get; set; }
         public string TargetWindowTitle { get; set; } = "";

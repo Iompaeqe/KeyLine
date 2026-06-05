@@ -42,12 +42,17 @@ internal static class NativeMethods
     public const int VK_MENU = 0x12;
     public const int VK_XBUTTON1 = 0x05;
     public const int VK_XBUTTON2 = 0x06;
+    public const int VK_LWIN = 0x5B;
+    public const int VK_RWIN = 0x5C;
     public const int VK_LSHIFT = 0xA0;
     public const int VK_RSHIFT = 0xA1;
     public const int VK_LCONTROL = 0xA2;
     public const int VK_RCONTROL = 0xA3;
     public const int VK_LMENU = 0xA4;
     public const int VK_RMENU = 0xA5;
+    public const uint LLKHF_INJECTED = 0x10;
+    public const uint LLKHF_LOWER_IL_INJECTED = 0x02;
+    public const uint GA_ROOT = 2;
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -93,6 +98,12 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
 
     [DllImport("user32.dll")]
     public static extern bool GetCursorPos(out POINT lpPoint);

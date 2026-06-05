@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using KeyLine.Domain;
 using KeyLine.Interop;
+using KeyLine.Services.Features;
 using KeyLine.Services.Input;
 using KeyLine.Services.Timeline;
 using KeyLine.UI.Inspector;
@@ -99,6 +100,10 @@ public partial class MainWindow
             ShortcutPill.PreviewMouseUp += ShortcutTextBlock_PreviewMouseUp;
             ShortcutPill.LostKeyboardFocus += ShortcutTextBlock_LostKeyboardFocus;
             ShortcutTogglePill.MouseLeftButtonDown += ShortcutToggleTextBlock_MouseLeftButtonDown;
+            ShortcutRemapPill.MouseLeftButtonDown += ShortcutRemapTextBlock_MouseLeftButtonDown;
+            ShortcutRemapPill.Visibility = _featureGate.IsVisible(FeatureId.ShortcutRemap)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             LoopModeComboBox.ItemsSource = LoopModeOptions;
             LoopModeComboBox.SelectionChanged += LoopModeComboBox_SelectionChanged;
@@ -120,6 +125,7 @@ public partial class MainWindow
 
             ResetShortcutOptionState();
             UpdateShortcutText();
+            UpdateShortcutRemapText();
         }
 
         private void CaptureMacroOptionsToWorkspace(MacroWorkspace workspace)
@@ -372,6 +378,50 @@ public partial class MainWindow
             e.Handled = true;
         }
 
+        private void ShortcutRemapTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+
+            if (!_featureGate.IsEnabled(FeatureId.ShortcutRemap))
+            {
+                ShowLockedFeatureStatus(FeatureId.ShortcutRemap);
+                return;
+            }
+
+            if (IsShortcutCaptureActive())
+                CancelShortcutCapture();
+
+            if (_activeWorkspace.ShortcutTriggerBehavior == ShortcutTriggerBehavior.RemapConsume)
+            {
+                _activeWorkspace.ShortcutTriggerBehavior = ShortcutTriggerBehavior.PassThrough;
+                UpdateShortcutRemapText();
+                ApplyShortcutHookState();
+                ScheduleSaveState();
+                return;
+            }
+
+            _activeWorkspace.ShortcutTriggerBehavior = ShortcutTriggerBehavior.RemapConsume;
+            _activeWorkspace.ShortcutKeys = "";
+            _activeWorkspace.ShortcutsEnabled = false;
+            ApplyRemapLoopDefault();
+            UpdateShortcutText();
+            UpdateShortcutRemapText();
+            ApplyShortcutHookState();
+            ScheduleSaveState();
+            SetWarningStatus("Remap mode: loops set to 1; record a single-key shortcut");
+            BeginShortcutCapture();
+        }
+
+        private void ApplyRemapLoopDefault()
+        {
+            foreach (var timeline in _document.Timelines)
+                timeline.LoopCount = 1;
+
+            _activeWorkspace.LoopCount = 1;
+            RefreshTimeline();
+            RefreshInspector();
+        }
+
         private void ShortcutTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (IsShortcutCaptureActive())
@@ -466,6 +516,12 @@ public partial class MainWindow
             if (virtualKey <= 0)
                 return;
 
+            if (IsRemapShortcutMode() && !CanCaptureRemapShortcutKey(virtualKey))
+            {
+                RejectRemapShortcutCapture();
+                return;
+            }
+
             _shortcutCaptureDownKeys.Add(virtualKey);
 
             if (!_capturedShortcutKeys.Contains(virtualKey) &&
@@ -509,6 +565,13 @@ public partial class MainWindow
                 return;
 
             e.Handled = true;
+
+            if (IsRemapShortcutMode())
+            {
+                RejectRemapShortcutCapture();
+                return;
+            }
+
             _shortcutCaptureDownKeys.Add(virtualKey);
 
             if (!_capturedShortcutKeys.Contains(virtualKey) &&
@@ -561,7 +624,7 @@ public partial class MainWindow
             _capturedShortcutKeys.Clear();
             _shortcutCaptureDownKeys.Clear();
 
-            ShortcutTextBlock.Text = "press shortcut";
+            ShortcutTextBlock.Text = IsRemapShortcutMode() ? "press single key" : "press shortcut";
             ShortcutTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
             ShortcutPill.Focus();
             Mouse.Capture(ShortcutPill);
@@ -569,9 +632,24 @@ public partial class MainWindow
 
         private void CommitShortcutCapture(IEnumerable<int> virtualKeys)
         {
-            if (virtualKeys.Any())
+            var keys = virtualKeys
+                .Select(ShortcutGesture.NormalizeVirtualKey)
+                .Where(key => key > 0)
+                .Distinct()
+                .Take(ShortcutGesture.MaxKeyCount)
+                .ToArray();
+
+            if (IsRemapShortcutMode() &&
+                keys.Length > 0 &&
+                !ShortcutGesture.IsSingleKeyboardKeyShortcut(keys))
             {
-                _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(virtualKeys);
+                RejectRemapShortcutCapture();
+                return;
+            }
+
+            if (keys.Any())
+            {
+                _activeWorkspace.ShortcutKeys = ShortcutGesture.Serialize(keys);
 
                 if (!_activeWorkspace.ShortcutsEnabled)
                 {
@@ -661,11 +739,69 @@ public partial class MainWindow
             }
         }
 
+        private void UpdateShortcutRemapText()
+        {
+            if (ShortcutRemapTextBlock == null)
+                return;
+
+            if (!_featureGate.IsVisible(FeatureId.ShortcutRemap))
+            {
+                ShortcutRemapPill.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var isRemap = _activeWorkspace.ShortcutTriggerBehavior == ShortcutTriggerBehavior.RemapConsume;
+            ShortcutRemapPill.Visibility = Visibility.Visible;
+            ShortcutRemapTextBlock.Text = isRemap ? "Remap on" : "Remap off";
+
+            if (isRemap)
+            {
+                ShortcutRemapTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
+            }
+            else
+            {
+                ShortcutRemapTextBlock.ClearValue(ForegroundProperty);
+            }
+        }
+
         private void UpdateShortcutCaptureText()
         {
             ShortcutTextBlock.Text = _capturedShortcutKeys.Count == 0
-                ? "press shortcut"
+                ? (IsRemapShortcutMode() ? "press single key" : "press shortcut")
                 : ShortcutGesture.Format(_capturedShortcutKeys);
+        }
+
+        private bool IsRemapShortcutMode()
+        {
+            return _activeWorkspace.ShortcutTriggerBehavior == ShortcutTriggerBehavior.RemapConsume;
+        }
+
+        private bool CanCaptureRemapShortcutKey(int virtualKey)
+        {
+            if (!ShortcutGesture.IsKeyboardShortcutKey(virtualKey))
+                return false;
+
+            if (Keyboard.Modifiers != ModifierKeys.None)
+                return false;
+
+            return _capturedShortcutKeys.Count == 0 ||
+                   (_capturedShortcutKeys.Count == 1 &&
+                    _capturedShortcutKeys.Contains(ShortcutGesture.NormalizeVirtualKey(virtualKey)));
+        }
+
+        private void RejectRemapShortcutCapture()
+        {
+            _capturedShortcutKeys.Clear();
+            _shortcutCaptureDownKeys.Clear();
+            _activeWorkspace.ShortcutKeys = "";
+            _activeWorkspace.ShortcutsEnabled = false;
+            ApplyShortcutHookState();
+            UpdateShortcutToggleText();
+            ScheduleSaveState();
+
+            ShortcutTextBlock.Text = "single key only";
+            ShortcutTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(253, 230, 138));
+            SetWarningStatus("Remap mode only supports single-key shortcuts.");
         }
 
         private static int GetVirtualKeyFromKeyEvent(KeyEventArgs e)

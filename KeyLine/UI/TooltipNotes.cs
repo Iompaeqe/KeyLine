@@ -9,6 +9,7 @@ public static class TooltipNotes
     public const string TargetWindowSearchName = "Window title text used to automatically find a target when this macro has no selected target.";
     public const string MacroShortcutCapture = "Left-click to set. Right-click to clear.";
     public const string MacroShortcutToggle = "Enable or disable the shortcut for this macro.";
+    public const string MacroShortcutRemap = "Remap replaces the shortcut key.\nPressing it starts this macro and blocks the original key from the target window.\nSingle-key shortcuts only.";
     public const string MacroLoopMode = "Choose how multiple timelines are scheduled.";
     public const string MacroLoopModeAsync = "Async: all runnable timelines start together. Each timeline repeats independently until its own loop count is reached.";
     public const string MacroLoopModeSync = "Sync: all runnable timelines start each pass together. Timelines with fewer loops drop out after they reach their count.";

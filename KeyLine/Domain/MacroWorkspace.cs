@@ -8,6 +8,12 @@ public enum MacroLoopMode
     Chain
 }
 
+public enum ShortcutTriggerBehavior
+{
+    PassThrough,
+    RemapConsume
+}
+
 public sealed class MacroWorkspace
 {
     public string ProfileId { get; set; } = MacroProfile.NoProfileId;
@@ -27,6 +33,8 @@ public sealed class MacroWorkspace
     public string ShortcutKeys { get; set; } = "";
 
     public bool ShortcutsEnabled { get; set; }
+
+    public ShortcutTriggerBehavior ShortcutTriggerBehavior { get; set; } = ShortcutTriggerBehavior.PassThrough;
 
     public string TargetWindowSearchName { get; set; } = "";
 

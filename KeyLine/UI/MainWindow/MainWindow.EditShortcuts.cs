@@ -91,6 +91,8 @@ public partial class MainWindow
         target.BaseDelayMs = snapshot.BaseDelayMs;
         target.LoopMode = snapshot.LoopMode;
         target.ShortcutKeys = snapshot.ShortcutKeys;
+        target.ShortcutsEnabled = snapshot.ShortcutsEnabled;
+        target.ShortcutTriggerBehavior = snapshot.ShortcutTriggerBehavior;
         target.TargetWindowSearchName = snapshot.TargetWindowSearchName;
         target.TargetWindowHandle = snapshot.TargetWindowHandle;
         target.TargetWindowTitle = snapshot.TargetWindowTitle;

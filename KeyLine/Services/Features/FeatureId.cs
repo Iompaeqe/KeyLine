@@ -4,5 +4,6 @@ public enum FeatureId
 {
     Profiles,
     RepeatBlocks,
-    ConditionBlocks
+    ConditionBlocks,
+    ShortcutRemap
 }

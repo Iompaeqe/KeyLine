@@ -17,6 +17,7 @@ public static class MacroCloneService
             LoopMode = source.LoopMode,
             ShortcutKeys = source.ShortcutKeys,
             ShortcutsEnabled = source.ShortcutsEnabled,
+            ShortcutTriggerBehavior = source.ShortcutTriggerBehavior,
             TargetWindowSearchName = source.TargetWindowSearchName,
             TargetWindowHandle = 0,
             TargetWindowTitle = "",

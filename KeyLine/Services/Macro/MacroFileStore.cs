@@ -100,8 +100,9 @@ public static class MacroFileStore
             LoopMode = workspace.LoopMode,
             TimerMs = GetPersistedDelayMs(workspace.TimerMs),
             BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
-            ShortcutKeys = workspace.ShortcutKeys,
-            ShortcutsEnabled = workspace.ShortcutsEnabled,
+            ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(workspace.ShortcutTriggerBehavior),
+            ShortcutKeys = GetSafeShortcutKeys(workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
+            ShortcutsEnabled = GetSafeShortcutsEnabled(workspace.ShortcutsEnabled, workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
             TargetWindowSearchName = workspace.TargetWindowSearchName,
             Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
         };
@@ -178,8 +179,9 @@ public static class MacroFileStore
             LoopMode = GetPersistedLoopMode(persisted),
             TimerMs = GetPersistedTimerMs(persisted),
             BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs),
-            ShortcutKeys = persisted.ShortcutKeys,
-            ShortcutsEnabled = persisted.ShortcutsEnabled,
+            ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(persisted.ShortcutTriggerBehavior),
+            ShortcutKeys = GetSafeShortcutKeys(persisted.ShortcutKeys, persisted.ShortcutTriggerBehavior),
+            ShortcutsEnabled = GetSafeShortcutsEnabled(persisted.ShortcutsEnabled, persisted.ShortcutKeys, persisted.ShortcutTriggerBehavior),
             TargetWindowSearchName = persisted.TargetWindowSearchName
         };
 
@@ -303,6 +305,27 @@ public static class MacroFileStore
     private static MacroConditionLoopMode GetPersistedConditionLoopMode(MacroConditionLoopMode mode) =>
         Enum.IsDefined(mode) ? mode : MacroConditionLoopMode.FirstLoop;
 
+    private static ShortcutTriggerBehavior GetSafeShortcutTriggerBehavior(ShortcutTriggerBehavior behavior) =>
+        Enum.IsDefined(behavior) ? behavior : ShortcutTriggerBehavior.PassThrough;
+
+    private static string GetSafeShortcutKeys(string shortcutKeys, ShortcutTriggerBehavior behavior)
+    {
+        return GetSafeShortcutTriggerBehavior(behavior) == ShortcutTriggerBehavior.RemapConsume &&
+               !ShortcutGesture.IsSingleKeyboardKeyShortcut(shortcutKeys)
+            ? ""
+            : shortcutKeys;
+    }
+
+    private static bool GetSafeShortcutsEnabled(
+        bool shortcutsEnabled,
+        string shortcutKeys,
+        ShortcutTriggerBehavior behavior)
+    {
+        return shortcutsEnabled &&
+               (GetSafeShortcutTriggerBehavior(behavior) != ShortcutTriggerBehavior.RemapConsume ||
+                ShortcutGesture.IsSingleKeyboardKeyShortcut(shortcutKeys));
+    }
+
     private sealed class MacroFile
     {
         public int Version { get; set; } = 1;
@@ -325,6 +348,7 @@ public static class MacroFileStore
         public int BaseDelayMs { get; set; } = 50;
         public string ShortcutKeys { get; set; } = "";
         public bool ShortcutsEnabled { get; set; }
+        public ShortcutTriggerBehavior ShortcutTriggerBehavior { get; set; } = ShortcutTriggerBehavior.PassThrough;
         public string TargetWindowSearchName { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
     }

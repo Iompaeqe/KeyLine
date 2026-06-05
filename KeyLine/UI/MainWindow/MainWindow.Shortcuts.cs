@@ -1,4 +1,7 @@
+using System.Text;
 using KeyLine.Domain;
+using KeyLine.Interop;
+using KeyLine.Services.Features;
 using KeyLine.Services.Input;
 
 namespace KeyLine;
@@ -17,6 +20,8 @@ public partial class MainWindow
             getWorkspaces: GetActiveProfileWorkspaces,
             areMacroShortcutsEnabled: AnyActiveProfileMacroShortcutEnabled,
             toggleMacroFromShortcut: ToggleMacroFromShortcut,
+            canRunRemapMacroFromShortcut: CanRunRemapMacroFromShortcut,
+            startRemapMacroFromShortcut: StartRemapMacroFromShortcut,
             emergencyStop: StopAllPlaybackFromGlobalShortcut,
             pauseResumeAll: PauseResumeAllPlaybackFromGlobalShortcut);
     }
@@ -86,7 +91,109 @@ public partial class MainWindow
     private static bool HasEnabledMacroShortcut(MacroWorkspace workspace)
     {
         return workspace.ShortcutsEnabled &&
-               !string.IsNullOrWhiteSpace(workspace.ShortcutKeys);
+               !string.IsNullOrWhiteSpace(workspace.ShortcutKeys) &&
+               (workspace.ShortcutTriggerBehavior != ShortcutTriggerBehavior.RemapConsume ||
+                ShortcutGesture.IsSingleKeyboardKeyShortcut(workspace.ShortcutKeys));
+    }
+
+    private bool CanRunRemapMacroFromShortcut(int profileWorkspaceIndex)
+    {
+        if (!_featureGate.IsEnabled(FeatureId.ShortcutRemap) ||
+            IsShortcutCaptureActive() ||
+            _recorder.IsRecording)
+        {
+            return false;
+        }
+
+        var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(profileWorkspaceIndex);
+        if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
+            return false;
+
+        var workspace = _workspaces[workspaceIndex];
+        if (!IsWorkspaceInProfile(workspace, _activeProfileId) ||
+            !HasEnabledMacroShortcut(workspace) ||
+            workspace.ShortcutTriggerBehavior != ShortcutTriggerBehavior.RemapConsume ||
+            IsWorkspaceRunning(workspace))
+        {
+            return false;
+        }
+
+        if (!workspace.Document.Timelines.Any(timeline => timeline.Nodes.Count > 0))
+            return false;
+
+        if (!_macroFeatureValidator.ValidateWorkspace(workspace).CanRun)
+            return false;
+
+        return IsWorkspaceTargetFocused(workspace);
+    }
+
+    private void StartRemapMacroFromShortcut(int profileWorkspaceIndex)
+    {
+        if (!CanRunRemapMacroFromShortcut(profileWorkspaceIndex))
+            return;
+
+        var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(profileWorkspaceIndex);
+        if (workspaceIndex < 0)
+            return;
+
+        CaptureActiveWorkspaceState();
+        StartWorkspacePlaybackFromShortcut(workspaceIndex);
+    }
+
+    private static bool IsWorkspaceTargetFocused(MacroWorkspace workspace)
+    {
+        var foregroundWindow = NativeMethods.GetForegroundWindow();
+        if (foregroundWindow == IntPtr.Zero)
+            return false;
+
+        if (IsWorkspaceTargetHandleFocused(workspace, foregroundWindow))
+            return true;
+
+        var foregroundTitle = GetWindowTitle(foregroundWindow);
+        if (string.IsNullOrWhiteSpace(foregroundTitle))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(workspace.TargetWindowTitle) &&
+            string.Equals(foregroundTitle, workspace.TargetWindowTitle, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(workspace.TargetWindowSearchName) &&
+               foregroundTitle.Contains(workspace.TargetWindowSearchName.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsWorkspaceTargetHandleFocused(MacroWorkspace workspace, IntPtr foregroundWindow)
+    {
+        if (workspace.TargetWindowHandle > 0)
+        {
+            var targetWindow = new IntPtr(workspace.TargetWindowHandle);
+            if (NativeMethods.IsWindow(targetWindow) &&
+                GetRootWindow(targetWindow) == foregroundWindow)
+            {
+                return true;
+            }
+        }
+
+        if (workspace.TargetChildWindowHandle <= 0)
+            return false;
+
+        var targetChildWindow = new IntPtr(workspace.TargetChildWindowHandle);
+        return NativeMethods.IsWindow(targetChildWindow) &&
+               GetRootWindow(targetChildWindow) == foregroundWindow;
+    }
+
+    private static IntPtr GetRootWindow(IntPtr window)
+    {
+        var root = NativeMethods.GetAncestor(window, NativeMethods.GA_ROOT);
+        return root == IntPtr.Zero ? window : root;
+    }
+
+    private static string GetWindowTitle(IntPtr window)
+    {
+        var builder = new StringBuilder(256);
+        NativeMethods.GetWindowText(window, builder, builder.Capacity);
+        return builder.ToString().Trim();
     }
 
     private void StopPlaybackFromShortcut(MacroWorkspace workspace)

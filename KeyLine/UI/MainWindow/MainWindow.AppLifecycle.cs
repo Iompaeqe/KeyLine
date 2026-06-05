@@ -43,8 +43,10 @@ public partial class MainWindow
         private Border ShortcutBorder => MacroOptionsPanel.ShortcutBorderControl;
         private OptionsPillBlock ShortcutPill => MacroOptionsPanel.ShortcutPillControl;
         private OptionsPillBlock ShortcutTogglePill => MacroOptionsPanel.ShortcutTogglePillControl;
+        private OptionsPillBlock ShortcutRemapPill => MacroOptionsPanel.ShortcutRemapPillControl;
         private TextBlock ShortcutTextBlock => MacroOptionsPanel.ShortcutText;
         private TextBlock ShortcutToggleTextBlock => MacroOptionsPanel.ShortcutToggleText;
+        private TextBlock ShortcutRemapTextBlock => MacroOptionsPanel.ShortcutRemapText;
         private ComboBox LoopModeComboBox => MacroOptionsPanel.LoopModeSelector;
 
         private OptionsPillBlock TargetWindowSearchPill => TargetWindowPanel.SearchPill;
