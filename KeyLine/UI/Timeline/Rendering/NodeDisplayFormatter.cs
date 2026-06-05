@@ -1,6 +1,7 @@
 using KeyLine.Domain;
 using KeyLine.Services.Input;
 using KeyLine.UI.Config;
+using System.IO;
 
 namespace KeyLine.UI.Timeline;
 
@@ -57,6 +58,8 @@ public static class NodeDisplayFormatter
             MacroNodeType.MouseUp => "Mouse Up",
             MacroNodeType.MouseScrollUp => "Mouse Scroll Up",
             MacroNodeType.MouseScrollDown => "Mouse Scroll Down",
+            MacroNodeType.SystemOpenLaunch => "Open/Launch",
+            MacroNodeType.SystemVolumeControl => "Volume Control",
             MacroNodeType.CursorMove => "Move Cursor",
             MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
             MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
@@ -138,5 +141,102 @@ public static class NodeDisplayFormatter
         return string.Equals(inputText, "no input", StringComparison.Ordinal)
             ? "If Input Held"
             : $"If {inputText} Held";
+    }
+
+    public static string GetSystemLaunchActionText(MacroNode node) =>
+        node.SystemLaunchKind switch
+        {
+            SystemLaunchKind.File => "OPEN FILE",
+            SystemLaunchKind.Folder => "OPEN FOLDER",
+            SystemLaunchKind.Url => "OPEN URL",
+            _ => "LAUNCH APP"
+        };
+
+    public static string GetSystemLaunchKindText(SystemLaunchKind kind) =>
+        kind switch
+        {
+            SystemLaunchKind.Application => "Application",
+            SystemLaunchKind.File => "File",
+            SystemLaunchKind.Folder => "Folder",
+            SystemLaunchKind.Url => "URL",
+            _ => kind.ToString()
+        };
+
+    public static string GetSystemLaunchTargetSummary(MacroNode node)
+    {
+        var target = node.SystemLaunchTarget?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(target))
+            return "set target";
+
+        if (node.SystemLaunchKind == SystemLaunchKind.Url &&
+            Uri.TryCreate(target, UriKind.Absolute, out var uri) &&
+            !string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        try
+        {
+            if (node.SystemLaunchKind is SystemLaunchKind.Application or SystemLaunchKind.File)
+            {
+                var fileName = Path.GetFileName(target);
+                if (!string.IsNullOrWhiteSpace(fileName))
+                    return fileName;
+            }
+
+            if (node.SystemLaunchKind == SystemLaunchKind.Folder)
+            {
+                var folderName = new DirectoryInfo(target).Name;
+                if (!string.IsNullOrWhiteSpace(folderName))
+                    return folderName;
+            }
+        }
+        catch
+        {
+        }
+
+        return target;
+    }
+
+    public static string GetSystemVolumeActionText(MacroNode node) =>
+        node.SystemVolumeAction switch
+        {
+            SystemVolumeAction.VolumeDown => "VOL DOWN",
+            SystemVolumeAction.MuteToggle => "MUTE TOG",
+            SystemVolumeAction.Mute => "MUTE",
+            SystemVolumeAction.Unmute => "UNMUTE",
+            SystemVolumeAction.SetVolumePercent => "SET VOL",
+            _ => "VOL UP"
+        };
+
+    public static string GetSystemVolumeActionLabel(SystemVolumeAction action) =>
+        action switch
+        {
+            SystemVolumeAction.VolumeUp => "Volume Up",
+            SystemVolumeAction.VolumeDown => "Volume Down",
+            SystemVolumeAction.MuteToggle => "Mute Toggle",
+            SystemVolumeAction.Mute => "Mute",
+            SystemVolumeAction.Unmute => "Unmute",
+            SystemVolumeAction.SetVolumePercent => "Set Volume %",
+            _ => action.ToString()
+        };
+
+    public static string GetSystemVolumeDetailText(MacroNode node) =>
+        node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent
+            ? $"{Math.Clamp(node.SystemVolumePercent, 0, 100)}%"
+            : "system volume";
+
+    public static string GetSystemNodeTooltip(MacroNode node)
+    {
+        return node.Type switch
+        {
+            MacroNodeType.SystemOpenLaunch =>
+                $"{GetSystemLaunchKindText(node.SystemLaunchKind)}: {GetSystemLaunchTargetSummary(node)}",
+            MacroNodeType.SystemVolumeControl =>
+                node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent
+                    ? $"Set system volume to {Math.Clamp(node.SystemVolumePercent, 0, 100)}%"
+                    : GetSystemVolumeActionLabel(node.SystemVolumeAction),
+            _ => GetNodeTypeText(node)
+        };
     }
 }

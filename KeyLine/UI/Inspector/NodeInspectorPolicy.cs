@@ -10,6 +10,8 @@ public sealed class NodeInspectorPolicy
     public bool CanEditMousePosition { get; init; }
     public bool CanPickMousePosition { get; init; }
     public bool CanEditMouseButton { get; init; }
+    public bool CanEditSystemLaunch { get; init; }
+    public bool CanEditVolumeControl { get; init; }
     public bool CanEditRepeatCount { get; init; }
     public bool CanEditCondition { get; init; }
 
@@ -73,6 +75,16 @@ public sealed class NodeInspectorPolicy
             MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown => new NodeInspectorPolicy
             {
                 HasInspector = false
+            },
+
+            MacroNodeType.SystemOpenLaunch => new NodeInspectorPolicy
+            {
+                CanEditSystemLaunch = true
+            },
+
+            MacroNodeType.SystemVolumeControl => new NodeInspectorPolicy
+            {
+                CanEditVolumeControl = true
             },
 
             MacroNodeType.RepeatStart => new NodeInspectorPolicy

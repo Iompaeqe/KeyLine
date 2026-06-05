@@ -19,7 +19,27 @@ public enum MacroNodeType
     ConditionStart,
     ConditionEnd,
     MouseScrollUp,
-    MouseScrollDown
+    MouseScrollDown,
+    SystemOpenLaunch,
+    SystemVolumeControl
+}
+
+public enum SystemLaunchKind
+{
+    Application,
+    File,
+    Folder,
+    Url
+}
+
+public enum SystemVolumeAction
+{
+    VolumeUp,
+    VolumeDown,
+    MuteToggle,
+    Mute,
+    Unmute,
+    SetVolumePercent
 }
 
 public enum MacroConditionType
@@ -62,6 +82,14 @@ public sealed class MacroNode
     public int MouseButton { get; set; } = 1;
 
     public int MouseWheelDelta { get; set; }
+
+    public SystemLaunchKind SystemLaunchKind { get; set; } = SystemLaunchKind.Application;
+
+    public string SystemLaunchTarget { get; set; } = "";
+
+    public SystemVolumeAction SystemVolumeAction { get; set; } = SystemVolumeAction.VolumeUp;
+
+    public int SystemVolumePercent { get; set; } = 50;
 
     public bool IsRecordedDelay { get; set; }
 

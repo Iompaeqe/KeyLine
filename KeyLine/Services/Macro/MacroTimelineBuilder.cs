@@ -54,6 +54,8 @@ public static class MacroTimelineBuilder
                 or MacroNodeType.BackgroundMouseDown
                 or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick
+                or MacroNodeType.SystemOpenLaunch
+                or MacroNodeType.SystemVolumeControl
                 or MacroNodeType.RepeatStart
                 or MacroNodeType.RepeatEnd
                 or MacroNodeType.ConditionStart

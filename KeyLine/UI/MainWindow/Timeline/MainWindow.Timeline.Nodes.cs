@@ -32,6 +32,7 @@ public partial class MainWindow
                 CreateForegroundMouseNode(timeline, node),
             MacroNodeType.CursorMove or MacroNodeType.BackgroundMouseDown or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick => CreateMouseNode(timeline, node),
+            MacroNodeType.SystemOpenLaunch or MacroNodeType.SystemVolumeControl => CreateSystemNode(timeline, node),
             MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
             MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd or
                 MacroNodeType.ConditionStart or MacroNodeType.ConditionEnd => CreateBlockNode(timeline, node),
@@ -119,6 +120,19 @@ public partial class MainWindow
             SelectTimeline(timeline);
             _selection.SelectNode(timeline, node);
             await PickMouseCoordinatesForNodeAsync(node);
+        };
+
+        AttachNodeMouseHandlers(control, timeline, node);
+        return control;
+    }
+
+    private UIElement CreateSystemNode(MacroTimeline timeline, MacroNode node)
+    {
+        var control = new SystemNode
+        {
+            Node = node,
+            IsSelected = IsStepSelected(timeline, node),
+            Tag = node
         };
 
         AttachNodeMouseHandlers(control, timeline, node);

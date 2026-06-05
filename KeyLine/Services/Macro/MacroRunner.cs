@@ -1,6 +1,7 @@
 using KeyLine.Domain;
 using KeyLine.Interop;
 using KeyLine.Services.Input;
+using KeyLine.Services.SystemActions;
 using KeyLine.Services.Timeline;
 
 namespace KeyLine.Services.Macro;
@@ -437,6 +438,14 @@ public sealed class MacroRunner
 
             case MacroNodeType.BackgroundMouseClick:
                 InputMessageSender.SendMouseClick(hwnd, node.MouseX, node.MouseY);
+                break;
+
+            case MacroNodeType.SystemOpenLaunch:
+                SystemLaunchService.TryOpen(node);
+                break;
+
+            case MacroNodeType.SystemVolumeControl:
+                SystemVolumeService.TryExecute(node);
                 break;
         }
     }

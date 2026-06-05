@@ -377,6 +377,10 @@ public static class MacroStateStore
             MouseY = persistedStep.MouseY,
             MouseButton = mouseButton,
             MouseWheelDelta = GetPersistedMouseWheelDelta(type, persistedStep.MouseWheelDelta),
+            SystemLaunchKind = GetPersistedSystemLaunchKind(persistedStep.SystemLaunchKind),
+            SystemLaunchTarget = persistedStep.SystemLaunchTarget,
+            SystemVolumeAction = GetPersistedSystemVolumeAction(persistedStep.SystemVolumeAction),
+            SystemVolumePercent = Math.Clamp(persistedStep.SystemVolumePercent, 0, 100),
             IsRecordedDelay = persistedStep.IsRecordedDelay,
             RepeatBlockId = persistedStep.RepeatBlockId,
             RepeatCount = Math.Max(0, persistedStep.RepeatCount),
@@ -421,6 +425,12 @@ public static class MacroStateStore
 
         return 0;
     }
+
+    private static SystemLaunchKind GetPersistedSystemLaunchKind(SystemLaunchKind kind) =>
+        Enum.IsDefined(kind) ? kind : SystemLaunchKind.Application;
+
+    private static SystemVolumeAction GetPersistedSystemVolumeAction(SystemVolumeAction action) =>
+        Enum.IsDefined(action) ? action : SystemVolumeAction.VolumeUp;
 
     private static MacroNodeType GetPersistedNodeType(string type)
     {
@@ -646,6 +656,10 @@ public static class MacroStateStore
             MouseY = node.MouseY,
             MouseButton = Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
             MouseWheelDelta = GetPersistedMouseWheelDelta(node.Type, node.MouseWheelDelta),
+            SystemLaunchKind = GetPersistedSystemLaunchKind(node.SystemLaunchKind),
+            SystemLaunchTarget = node.SystemLaunchTarget,
+            SystemVolumeAction = GetPersistedSystemVolumeAction(node.SystemVolumeAction),
+            SystemVolumePercent = Math.Clamp(node.SystemVolumePercent, 0, 100),
             IsRecordedDelay = node.IsRecordedDelay,
             RepeatBlockId = node.RepeatBlockId,
             RepeatCount = Math.Max(0, node.RepeatCount),
@@ -741,6 +755,10 @@ public static class MacroStateStore
         public int MouseY { get; set; }
         public int MouseButton { get; set; } = 1;
         public int MouseWheelDelta { get; set; }
+        public SystemLaunchKind SystemLaunchKind { get; set; } = SystemLaunchKind.Application;
+        public string SystemLaunchTarget { get; set; } = "";
+        public SystemVolumeAction SystemVolumeAction { get; set; } = SystemVolumeAction.VolumeUp;
+        public int SystemVolumePercent { get; set; } = 50;
         public bool IsRecordedDelay { get; set; }
         public string RepeatBlockId { get; set; } = "";
         public int RepeatCount { get; set; } = 2;

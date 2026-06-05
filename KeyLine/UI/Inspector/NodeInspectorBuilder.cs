@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -9,6 +10,7 @@ using KeyLine.Services.Timeline;
 using KeyLine.State;
 using KeyLine.UI.Common.EntryBlocks;
 using KeyLine.UI.Timeline;
+using Microsoft.Win32;
 
 namespace KeyLine.UI.Inspector;
 
@@ -30,6 +32,24 @@ public sealed class NodeInspectorBuilder
         new("First repeat", MacroConditionLoopMode.FirstRepeat),
         new("Last repeat", MacroConditionLoopMode.LastRepeat),
         new("Every N repeats", MacroConditionLoopMode.EveryNRepeats)
+    ];
+
+    private static readonly IReadOnlyList<InspectorOption<SystemLaunchKind>> SystemLaunchKindOptions =
+    [
+        new("Application", SystemLaunchKind.Application),
+        new("File", SystemLaunchKind.File),
+        new("Folder", SystemLaunchKind.Folder),
+        new("URL", SystemLaunchKind.Url)
+    ];
+
+    private static readonly IReadOnlyList<InspectorOption<SystemVolumeAction>> SystemVolumeActionOptions =
+    [
+        new("Volume Up", SystemVolumeAction.VolumeUp),
+        new("Volume Down", SystemVolumeAction.VolumeDown),
+        new("Mute Toggle", SystemVolumeAction.MuteToggle),
+        new("Mute", SystemVolumeAction.Mute),
+        new("Unmute", SystemVolumeAction.Unmute),
+        new("Set Volume %", SystemVolumeAction.SetVolumePercent)
     ];
 
     private readonly TimelineSelectionState _selection;
@@ -189,6 +209,16 @@ public sealed class NodeInspectorBuilder
 
             case MacroNodeType.MouseClick:
                 section.Children.Add(CreateReadonlyRow("Button", "Left"));
+                break;
+
+            case MacroNodeType.SystemOpenLaunch:
+                section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
+                AddSystemLaunchConfigurationRows(section, node, policy.CanEditSystemLaunch);
+                break;
+
+            case MacroNodeType.SystemVolumeControl:
+                section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
+                AddSystemVolumeConfigurationRows(section, node, policy.CanEditVolumeControl);
                 break;
         }
 
@@ -350,6 +380,50 @@ public sealed class NodeInspectorBuilder
                         isEnabled: isEnabled));
                 }
                 break;
+        }
+    }
+
+    private void AddSystemLaunchConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
+    {
+        section.Children.Add(CreateOptionRow(
+            "Kind",
+            SystemLaunchKindOptions,
+            node.SystemLaunchKind,
+            value => _commitNodeChange(() =>
+            {
+                node.SystemLaunchKind = value;
+                node.SystemLaunchTarget = node.SystemLaunchTarget?.Trim() ?? "";
+            }),
+            tooltip: "Choose what this node opens.",
+            isEnabled: isEnabled));
+
+        section.Children.Add(CreateLaunchTargetRow(node, isEnabled));
+    }
+
+    private void AddSystemVolumeConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
+    {
+        section.Children.Add(CreateOptionRow(
+            "Action",
+            SystemVolumeActionOptions,
+            node.SystemVolumeAction,
+            value => _commitNodeChange(() =>
+            {
+                node.SystemVolumeAction = value;
+                node.SystemVolumePercent = Math.Clamp(node.SystemVolumePercent, 0, 100);
+            }),
+            tooltip: "Choose the volume operation to run.",
+            isEnabled: isEnabled));
+
+        if (node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent)
+        {
+            section.Children.Add(CreateNumberRow(
+                "Volume",
+                Math.Clamp(node.SystemVolumePercent, 0, 100),
+                value => _commitNodeValueChange(() => node.SystemVolumePercent = Math.Clamp(value, 0, 100)),
+                suffix: "%",
+                max: 100,
+                tooltip: "Set the system output volume percentage.",
+                isEnabled: isEnabled));
         }
     }
 
@@ -730,6 +804,81 @@ public sealed class NodeInspectorBuilder
         return grid;
     }
 
+    private UIElement CreateLaunchTargetRow(MacroNode node, bool isEnabled)
+    {
+        var canEdit = CanEditOption(isEnabled);
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(0, 4, 0, 0),
+            ToolTip = "Target path, executable, folder, or URL."
+        };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Target",
+            Foreground = new SolidColorBrush(Color.FromRgb(142, 160, 182)),
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 5)
+        });
+
+        var textBox = new TextBox
+        {
+            Text = node.SystemLaunchTarget,
+            Height = 24,
+            IsEnabled = canEdit,
+            ToolTip = GetLaunchTargetTooltip(node.SystemLaunchKind)
+        };
+
+        void CommitTargetText()
+        {
+            if (_isRefreshing())
+                return;
+
+            var target = textBox.Text.Trim();
+            if (!string.Equals(target, node.SystemLaunchTarget, StringComparison.Ordinal))
+                _commitNodeChange(() => node.SystemLaunchTarget = target);
+        }
+
+        textBox.LostFocus += (_, _) => CommitTargetText();
+        textBox.KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Enter)
+                return;
+
+            CommitTargetText();
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        };
+
+        panel.Children.Add(textBox);
+
+        if (node.SystemLaunchKind != SystemLaunchKind.Url)
+        {
+            var browseButton = new Button
+            {
+                Content = "Browse",
+                Height = 22,
+                Margin = new Thickness(0, 5, 0, 0),
+                IsEnabled = canEdit,
+                ToolTip = "Pick a local application, file, or folder."
+            };
+
+            browseButton.Click += (_, _) =>
+            {
+                var target = BrowseSystemLaunchTarget(node);
+                if (string.IsNullOrWhiteSpace(target))
+                    return;
+
+                _commitNodeChange(() => node.SystemLaunchTarget = target);
+            };
+
+            panel.Children.Add(browseButton);
+        }
+
+        return panel;
+    }
+
     private UIElement CreateNumberRow(
         string label,
         int value,
@@ -1064,6 +1213,48 @@ public sealed class NodeInspectorBuilder
             MacroConditionType.LoopContext => "Loop rule",
             _ => "Condition"
         };
+
+    private static string GetLaunchTargetTooltip(SystemLaunchKind kind) =>
+        kind switch
+        {
+            SystemLaunchKind.Application => "Executable path or application command.",
+            SystemLaunchKind.File => "File path to open with the default application.",
+            SystemLaunchKind.Folder => "Folder path to open in Explorer.",
+            SystemLaunchKind.Url => "URL to open in the default browser.",
+            _ => "Target to open."
+        };
+
+    private static string? BrowseSystemLaunchTarget(MacroNode node)
+    {
+        if (node.SystemLaunchKind == SystemLaunchKind.Folder)
+        {
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select folder to open",
+                UseDescriptionForTitle = true,
+                SelectedPath = Directory.Exists(node.SystemLaunchTarget) ? node.SystemLaunchTarget : ""
+            };
+
+            return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
+                ? dialog.SelectedPath
+                : null;
+        }
+
+        var fileDialog = new OpenFileDialog
+        {
+            CheckFileExists = true,
+            Multiselect = false,
+            FileName = File.Exists(node.SystemLaunchTarget) ? node.SystemLaunchTarget : ""
+        };
+
+        fileDialog.Filter = node.SystemLaunchKind == SystemLaunchKind.Application
+            ? "Applications (*.exe)|*.exe|All files (*.*)|*.*"
+            : "All files (*.*)|*.*";
+
+        return fileDialog.ShowDialog() == true
+            ? fileDialog.FileName
+            : null;
+    }
 
     private static void NormalizeRandomDelay(MacroNode node)
     {

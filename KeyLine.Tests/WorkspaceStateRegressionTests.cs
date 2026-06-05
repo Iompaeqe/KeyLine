@@ -45,6 +45,23 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void CloneSteps_PreservesSystemNodeConfiguration()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.SystemOpenLaunch,
+            SystemLaunchKind = SystemLaunchKind.Url,
+            SystemLaunchTarget = "https://example.com"
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.SystemOpenLaunch, clone.Type);
+        Assert.Equal(SystemLaunchKind.Url, clone.SystemLaunchKind);
+        Assert.Equal("https://example.com", clone.SystemLaunchTarget);
+    }
+
+    [Fact]
     public void SaveAndLoad_PreservesLoopMode()
     {
         var profile = new MacroProfile
@@ -98,6 +115,43 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         var loadedNode = Assert.Single(snapshot.Workspaces[0].Document.ActiveTimeline.Nodes);
         Assert.Equal(MacroNodeType.MouseScrollUp, loadedNode.Type);
         Assert.Equal(240, loadedNode.MouseWheelDelta);
+    }
+
+    [Fact]
+    public void SaveAndLoad_PreservesSystemNodes()
+    {
+        var workspace = CreateWorkspace("State System", MacroLoopMode.Async);
+        var timeline = workspace.Document.ActiveTimeline;
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemOpenLaunch,
+            SystemLaunchKind = SystemLaunchKind.Folder,
+            SystemLaunchTarget = @"C:\Temp"
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemVolumeControl,
+            SystemVolumeAction = SystemVolumeAction.SetVolumePercent,
+            SystemVolumePercent = 37
+        });
+
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.SystemOpenLaunch, loadedNodes[0].Type);
+        Assert.Equal(SystemLaunchKind.Folder, loadedNodes[0].SystemLaunchKind);
+        Assert.Equal(@"C:\Temp", loadedNodes[0].SystemLaunchTarget);
+        Assert.Equal(MacroNodeType.SystemVolumeControl, loadedNodes[1].Type);
+        Assert.Equal(SystemVolumeAction.SetVolumePercent, loadedNodes[1].SystemVolumeAction);
+        Assert.Equal(37, loadedNodes[1].SystemVolumePercent);
     }
 
     [Fact]
@@ -168,6 +222,40 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         var loadedNode = Assert.Single(imported[0].Document.ActiveTimeline.Nodes);
         Assert.Equal(MacroNodeType.MouseScrollDown, loadedNode.Type);
         Assert.Equal(-240, loadedNode.MouseWheelDelta);
+    }
+
+    [Fact]
+    public void ExportAndImport_PreservesSystemNodes()
+    {
+        var workspace = CreateWorkspace("Export System", MacroLoopMode.Async);
+        var timeline = workspace.Document.ActiveTimeline;
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemOpenLaunch,
+            SystemLaunchKind = SystemLaunchKind.File,
+            SystemLaunchTarget = @"C:\Temp\readme.txt"
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.SystemVolumeControl,
+            SystemVolumeAction = SystemVolumeAction.MuteToggle,
+            SystemVolumePercent = 50
+        });
+        var exportPath = Path.Combine(_appDataRoot, "system.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+
+        MacroFileStore.Export(exportPath, new[] { workspace });
+
+        var imported = MacroFileStore.Import(exportPath);
+
+        Assert.Single(imported);
+        var loadedNodes = imported[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(2, loadedNodes.Count);
+        Assert.Equal(MacroNodeType.SystemOpenLaunch, loadedNodes[0].Type);
+        Assert.Equal(SystemLaunchKind.File, loadedNodes[0].SystemLaunchKind);
+        Assert.Equal(@"C:\Temp\readme.txt", loadedNodes[0].SystemLaunchTarget);
+        Assert.Equal(MacroNodeType.SystemVolumeControl, loadedNodes[1].Type);
+        Assert.Equal(SystemVolumeAction.MuteToggle, loadedNodes[1].SystemVolumeAction);
     }
 
     [Fact]

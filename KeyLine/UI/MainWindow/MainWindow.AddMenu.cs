@@ -274,6 +274,42 @@ public partial class MainWindow
     private void MouseClickMenuButton_Click(object sender, RoutedEventArgs e) =>
         AddMouseStep(MacroNodeType.BackgroundMouseClick);
 
+    private void SystemOpenLaunchMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddConfigurableSystemStep(new MacroNode
+        {
+            Type = MacroNodeType.SystemOpenLaunch,
+            SystemLaunchKind = SystemLaunchKind.Application,
+            SystemLaunchTarget = ""
+        });
+    }
+
+    private void SystemVolumeControlMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddConfigurableSystemStep(new MacroNode
+        {
+            Type = MacroNodeType.SystemVolumeControl,
+            SystemVolumeAction = SystemVolumeAction.VolumeUp,
+            SystemVolumePercent = 50
+        });
+    }
+
+    private void AddConfigurableSystemStep(MacroNode step)
+    {
+        AddPopup.IsOpen = false;
+
+        SaveDocumentUndoSnapshot();
+        var timeline = GetPopupTimeline();
+        InsertPopupSteps(timeline, new[] { step });
+
+        MergeAdjacentDelayNodesIfEnabled(timeline);
+        SelectTimeline(timeline, refreshInspector: false);
+        _selection.SelectNode(timeline, step);
+        RefreshTimeline();
+        OpenInspectorFromSelection();
+        ScheduleSaveState();
+    }
+
     private void AddMouseStep(MacroNodeType type)
     {
         AddPopup.IsOpen = false;
