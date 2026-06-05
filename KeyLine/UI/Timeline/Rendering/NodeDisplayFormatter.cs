@@ -58,8 +58,13 @@ public static class NodeDisplayFormatter
             MacroNodeType.MouseUp => "Mouse Up",
             MacroNodeType.MouseScrollUp => "Mouse Scroll Up",
             MacroNodeType.MouseScrollDown => "Mouse Scroll Down",
+            MacroNodeType.MouseScrollLeft => "Mouse Scroll Left",
+            MacroNodeType.MouseScrollRight => "Mouse Scroll Right",
             MacroNodeType.SystemOpenLaunch => "Open/Launch",
             MacroNodeType.SystemVolumeControl => "Volume Control",
+            MacroNodeType.SystemWaitUntilWindowOpens => "Wait Until Window Opens",
+            MacroNodeType.SystemSelectTargetWindow => "Set Target Window",
+            MacroNodeType.SystemFocusWindow => "Focus Window",
             MacroNodeType.CursorMove => "Move Cursor",
             MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
             MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
@@ -226,6 +231,43 @@ public static class NodeDisplayFormatter
             ? $"{Math.Clamp(node.SystemVolumePercent, 0, 100)}%"
             : "system volume";
 
+    public static string GetSystemWindowWaitActionText(MacroNode node) => "WAIT WINDOW";
+
+    public static string GetSystemWindowWaitDetailText(MacroNode node) =>
+        GetWindowReferenceSummary(node);
+
+    public static string GetSystemFocusWindowActionText(MacroNode node) => "FOCUS WINDOW";
+
+    public static string GetSystemFocusWindowDetailText(MacroNode node) =>
+        GetWindowReferenceSummary(node);
+
+    public static string GetSystemTargetWindowActionText(MacroNode node) => "SET TARGET";
+
+    public static string GetSystemTargetWindowDetailText(MacroNode node) =>
+        GetWindowReferenceSummary(node);
+
+    public static string GetWindowReferenceSummary(MacroNode node)
+    {
+        var reference = node.GetEffectiveWindowReference();
+        return reference.Type switch
+        {
+            WindowReferenceType.SelectedTarget => "Selected Target Window",
+            WindowReferenceType.FocusedWindow => "Focused Window",
+            WindowReferenceType.LastLaunchedWindow => "Last Launched Window",
+            WindowReferenceType.LastFoundWindow => "Last Found Window",
+            WindowReferenceType.CustomTitle => GetCustomWindowTitleSummary(reference.CustomTitle),
+            _ => "Window"
+        };
+    }
+
+    private static string GetCustomWindowTitleSummary(string title)
+    {
+        title = title?.Trim() ?? "";
+        return string.IsNullOrWhiteSpace(title)
+            ? "Custom title"
+            : $"Custom \"{title}\"";
+    }
+
     public static string GetSystemNodeTooltip(MacroNode node)
     {
         return node.Type switch
@@ -236,6 +278,12 @@ public static class NodeDisplayFormatter
                 node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent
                     ? $"Set system volume to {Math.Clamp(node.SystemVolumePercent, 0, 100)}%"
                     : GetSystemVolumeActionLabel(node.SystemVolumeAction),
+            MacroNodeType.SystemWaitUntilWindowOpens =>
+                $"Wait for: {GetSystemWindowWaitDetailText(node)}",
+            MacroNodeType.SystemFocusWindow =>
+                $"Focus: {GetSystemFocusWindowDetailText(node)}",
+            MacroNodeType.SystemSelectTargetWindow =>
+                $"Set target: {GetSystemTargetWindowDetailText(node)}",
             _ => GetNodeTypeText(node)
         };
     }

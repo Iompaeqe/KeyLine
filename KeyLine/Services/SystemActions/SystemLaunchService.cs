@@ -5,25 +5,61 @@ namespace KeyLine.Services.SystemActions;
 
 public static class SystemLaunchService
 {
-    public static bool TryOpen(MacroNode node)
+    public static SystemLaunchResult TryOpen(MacroNode node)
     {
         var target = NormalizeTarget(node);
         if (string.IsNullOrWhiteSpace(target))
-            return false;
+            return SystemLaunchResult.Failed;
 
         try
         {
-            Process.Start(new ProcessStartInfo
+            var process = Process.Start(new ProcessStartInfo
             {
                 FileName = target,
                 UseShellExecute = true
             });
 
-            return true;
+            return new SystemLaunchResult
+            {
+                Succeeded = true,
+                ProcessId = TryGetProcessId(process),
+                WindowHandle = TryGetMainWindowHandle(process)
+            };
         }
         catch
         {
-            return false;
+            return SystemLaunchResult.Failed;
+        }
+    }
+
+    private static int? TryGetProcessId(Process? process)
+    {
+        if (process == null)
+            return null;
+
+        try
+        {
+            return process.Id;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static nint TryGetMainWindowHandle(Process? process)
+    {
+        if (process == null)
+            return 0;
+
+        try
+        {
+            process.Refresh();
+            return process.MainWindowHandle;
+        }
+        catch
+        {
+            return 0;
         }
     }
 
@@ -40,4 +76,15 @@ public static class SystemLaunchService
             ? target
             : "https://" + target;
     }
+}
+
+public sealed class SystemLaunchResult
+{
+    public static SystemLaunchResult Failed { get; } = new();
+
+    public bool Succeeded { get; init; }
+
+    public int? ProcessId { get; init; }
+
+    public nint WindowHandle { get; init; }
 }

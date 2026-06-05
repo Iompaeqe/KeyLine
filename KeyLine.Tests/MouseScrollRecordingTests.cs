@@ -16,7 +16,8 @@ public sealed class MouseScrollRecordingTests
         Assert.Single(nodes);
         Assert.Equal(MacroNodeType.MouseScrollUp, nodes[0].Type);
         Assert.Equal("Wheel Up", nodes[0].KeyName);
-        Assert.Equal(240, nodes[0].MouseWheelDelta);
+        Assert.Equal(120, nodes[0].MouseWheelDelta);
+        Assert.Equal(2, nodes[0].MouseScrollAmount);
     }
 
     [Fact]
@@ -31,5 +32,6 @@ public sealed class MouseScrollRecordingTests
         Assert.Equal(MacroNodeType.MouseScrollDown, nodes[0].Type);
         Assert.Equal("Wheel Down", nodes[0].KeyName);
         Assert.Equal(-120, nodes[0].MouseWheelDelta);
+        Assert.Equal(1, nodes[0].MouseScrollAmount);
     }
 }

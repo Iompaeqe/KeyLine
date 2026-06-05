@@ -21,12 +21,21 @@ public partial class MouseNode : NodeBase
         ActionTextBlock.Text = step.Type switch
         {
             MacroNodeType.MouseClick => "CLICK",
-            MacroNodeType.MouseScrollUp => "SCROLL UP",
-            MacroNodeType.MouseScrollDown => "SCROLL DN",
+            MacroNodeType.MouseScrollUp => GetScrollText("SCR UP", step),
+            MacroNodeType.MouseScrollDown => GetScrollText("SCR DN", step),
+            MacroNodeType.MouseScrollLeft => GetScrollText("SCR LT", step),
+            MacroNodeType.MouseScrollRight => GetScrollText("SCR RT", step),
             MacroNodeType.MouseDown => $"M{NormalizeMouseButton(step.MouseButton)}↓",
             MacroNodeType.MouseUp => $"M{NormalizeMouseButton(step.MouseButton)}↑",
             _ => "M"
         };
+
+        RootBorder.ToolTip = step.Type is MacroNodeType.MouseScrollUp or
+            MacroNodeType.MouseScrollDown or
+            MacroNodeType.MouseScrollLeft or
+            MacroNodeType.MouseScrollRight
+            ? $"Amount: {NormalizeScrollAmount(step.MouseScrollAmount)}"
+            : null;
 
         RootBorder.Background = new SolidColorBrush(IsSelected
             ? Color.FromRgb(37, 70, 72)
@@ -41,4 +50,12 @@ public partial class MouseNode : NodeBase
     }
 
     private static int NormalizeMouseButton(int mouseButton) => Math.Clamp(mouseButton, 1, 5);
+
+    private static int NormalizeScrollAmount(int amount) => Math.Clamp(amount <= 0 ? 1 : amount, 1, 100);
+
+    private static string GetScrollText(string label, MacroNode step)
+    {
+        var amount = NormalizeScrollAmount(step.MouseScrollAmount);
+        return amount == 1 ? label : $"{label} x{amount}";
+    }
 }

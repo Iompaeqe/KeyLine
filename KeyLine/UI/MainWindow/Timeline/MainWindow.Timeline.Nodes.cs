@@ -28,11 +28,19 @@ public partial class MainWindow
             MacroNodeType.Delay or MacroNodeType.RandomDelay => CreateDelayNode(timeline, node),
             MacroNodeType.Text => CreateTextNode(timeline, node),
             MacroNodeType.MouseDown or MacroNodeType.MouseUp => CreateKeyNode(timeline, node),
-            MacroNodeType.MouseClick or MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown =>
+            MacroNodeType.MouseClick or
+                MacroNodeType.MouseScrollUp or
+                MacroNodeType.MouseScrollDown or
+                MacroNodeType.MouseScrollLeft or
+                MacroNodeType.MouseScrollRight =>
                 CreateForegroundMouseNode(timeline, node),
             MacroNodeType.CursorMove or MacroNodeType.BackgroundMouseDown or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick => CreateMouseNode(timeline, node),
-            MacroNodeType.SystemOpenLaunch or MacroNodeType.SystemVolumeControl => CreateSystemNode(timeline, node),
+            MacroNodeType.SystemOpenLaunch or
+                MacroNodeType.SystemVolumeControl or
+                MacroNodeType.SystemWaitUntilWindowOpens or
+                MacroNodeType.SystemSelectTargetWindow or
+                MacroNodeType.SystemFocusWindow => CreateSystemNode(timeline, node),
             MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
             MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd or
                 MacroNodeType.ConditionStart or MacroNodeType.ConditionEnd => CreateBlockNode(timeline, node),

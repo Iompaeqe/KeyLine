@@ -22,6 +22,9 @@ public partial class SystemNode : NodeBase
         {
             MacroNodeType.SystemOpenLaunch => NodeDisplayFormatter.GetSystemLaunchActionText(step),
             MacroNodeType.SystemVolumeControl => NodeDisplayFormatter.GetSystemVolumeActionText(step),
+            MacroNodeType.SystemWaitUntilWindowOpens => NodeDisplayFormatter.GetSystemWindowWaitActionText(step),
+            MacroNodeType.SystemSelectTargetWindow => NodeDisplayFormatter.GetSystemTargetWindowActionText(step),
+            MacroNodeType.SystemFocusWindow => NodeDisplayFormatter.GetSystemFocusWindowActionText(step),
             _ => "SYSTEM"
         };
 
@@ -29,6 +32,9 @@ public partial class SystemNode : NodeBase
         {
             MacroNodeType.SystemOpenLaunch => NodeDisplayFormatter.GetSystemLaunchTargetSummary(step),
             MacroNodeType.SystemVolumeControl => NodeDisplayFormatter.GetSystemVolumeDetailText(step),
+            MacroNodeType.SystemWaitUntilWindowOpens => NodeDisplayFormatter.GetSystemWindowWaitDetailText(step),
+            MacroNodeType.SystemSelectTargetWindow => NodeDisplayFormatter.GetSystemTargetWindowDetailText(step),
+            MacroNodeType.SystemFocusWindow => NodeDisplayFormatter.GetSystemFocusWindowDetailText(step),
             _ => ""
         };
 

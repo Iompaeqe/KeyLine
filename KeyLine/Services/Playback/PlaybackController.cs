@@ -129,10 +129,12 @@ public sealed class PlaybackController
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
-        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
+        Action<string>? onPlaybackFailure = null)
     {
         StopRequested = false;
         var tasks = new List<Task>();
+        var runContext = new MacroRunContext(targetHwnd);
 
         for (var i = 0; i < runnableTimelines.Count; i++)
         {
@@ -159,7 +161,9 @@ public sealed class PlaybackController
                         useStandardDelay,
                         standardDelayMs,
                         useTextInputMode,
-                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex));
+                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex),
+                        runContext,
+                        onPlaybackFailure);
                 }
                 finally
                 {
@@ -175,10 +179,12 @@ public sealed class PlaybackController
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
-        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
+        Action<string>? onPlaybackFailure = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
+        var runContext = new MacroRunContext(targetHwnd);
 
         while (!StopRequested)
         {
@@ -219,7 +225,9 @@ public sealed class PlaybackController
                         useStandardDelay,
                         standardDelayMs,
                         useTextInputMode,
-                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex));
+                        onRunnerLoopCompleted == null ? null : () => onRunnerLoopCompleted(runnerIndex),
+                        runContext,
+                        onPlaybackFailure);
 
                     onTimelineStatusChanged?.Invoke(
                         runnerIndex,
@@ -246,10 +254,12 @@ public sealed class PlaybackController
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
-        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
+        Action<string>? onPlaybackFailure = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
+        var runContext = new MacroRunContext(targetHwnd);
 
         while (!StopRequested)
         {
@@ -282,7 +292,9 @@ public sealed class PlaybackController
                     0,
                     useStandardDelay,
                     standardDelayMs,
-                    useTextInputMode)).ConfigureAwait(false);
+                    useTextInputMode,
+                    runContext: runContext,
+                    reportFailure: onPlaybackFailure)).ConfigureAwait(false);
 
                 if (StopRequested)
                     break;
@@ -310,10 +322,12 @@ public sealed class PlaybackController
         nint targetHwnd,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
-        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
+        Action<string>? onPlaybackFailure = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
+        var runContext = new MacroRunContext(targetHwnd);
 
         for (var i = 0; i < runnableTimelines.Count; i++)
         {
@@ -350,7 +364,9 @@ public sealed class PlaybackController
                 {
                     completedLoops[runnerIndex]++;
                     onRunnerLoopCompleted?.Invoke(runnerIndex);
-                })).ConfigureAwait(false);
+                },
+                runContext,
+                onPlaybackFailure)).ConfigureAwait(false);
 
             if (StopRequested)
                 break;
@@ -422,4 +438,3 @@ public sealed class PlaybackController
         }
     }
 }
-

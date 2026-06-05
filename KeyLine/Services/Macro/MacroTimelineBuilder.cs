@@ -50,12 +50,17 @@ public static class MacroTimelineBuilder
                 or MacroNodeType.MouseClick
                 or MacroNodeType.MouseScrollUp
                 or MacroNodeType.MouseScrollDown
+                or MacroNodeType.MouseScrollLeft
+                or MacroNodeType.MouseScrollRight
                 or MacroNodeType.CursorMove
                 or MacroNodeType.BackgroundMouseDown
                 or MacroNodeType.BackgroundMouseUp
                 or MacroNodeType.BackgroundMouseClick
                 or MacroNodeType.SystemOpenLaunch
                 or MacroNodeType.SystemVolumeControl
+                or MacroNodeType.SystemWaitUntilWindowOpens
+                or MacroNodeType.SystemSelectTargetWindow
+                or MacroNodeType.SystemFocusWindow
                 or MacroNodeType.RepeatStart
                 or MacroNodeType.RepeatEnd
                 or MacroNodeType.ConditionStart

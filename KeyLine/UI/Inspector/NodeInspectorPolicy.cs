@@ -10,8 +10,12 @@ public sealed class NodeInspectorPolicy
     public bool CanEditMousePosition { get; init; }
     public bool CanPickMousePosition { get; init; }
     public bool CanEditMouseButton { get; init; }
+    public bool CanEditMouseScrollAmount { get; init; }
     public bool CanEditSystemLaunch { get; init; }
     public bool CanEditVolumeControl { get; init; }
+    public bool CanEditSystemWindowWait { get; init; }
+    public bool CanEditSystemTargetWindow { get; init; }
+    public bool CanEditSystemFocusWindow { get; init; }
     public bool CanEditRepeatCount { get; init; }
     public bool CanEditCondition { get; init; }
 
@@ -72,9 +76,12 @@ public sealed class NodeInspectorPolicy
                 HasInspector = false
             },
 
-            MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown => new NodeInspectorPolicy
+            MacroNodeType.MouseScrollUp or
+            MacroNodeType.MouseScrollDown or
+            MacroNodeType.MouseScrollLeft or
+            MacroNodeType.MouseScrollRight => new NodeInspectorPolicy
             {
-                HasInspector = false
+                CanEditMouseScrollAmount = true
             },
 
             MacroNodeType.SystemOpenLaunch => new NodeInspectorPolicy
@@ -85,6 +92,21 @@ public sealed class NodeInspectorPolicy
             MacroNodeType.SystemVolumeControl => new NodeInspectorPolicy
             {
                 CanEditVolumeControl = true
+            },
+
+            MacroNodeType.SystemWaitUntilWindowOpens => new NodeInspectorPolicy
+            {
+                CanEditSystemWindowWait = true
+            },
+
+            MacroNodeType.SystemSelectTargetWindow => new NodeInspectorPolicy
+            {
+                CanEditSystemTargetWindow = true
+            },
+
+            MacroNodeType.SystemFocusWindow => new NodeInspectorPolicy
+            {
+                CanEditSystemFocusWindow = true
             },
 
             MacroNodeType.RepeatStart => new NodeInspectorPolicy

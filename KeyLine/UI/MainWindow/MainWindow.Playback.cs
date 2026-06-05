@@ -81,7 +81,8 @@ public partial class MainWindow
             workspace,
             runnableTimelines,
             CreateRunnerLoopCompletedCallback(workspace),
-            CreateTimelineStatusCallback(workspace, runnableTimelines));
+            CreateTimelineStatusCallback(workspace, runnableTimelines),
+            CreatePlaybackFailureCallback(workspace));
 
         _playback.UnmarkShortcutStarting(workspace);
         SetWorkspaceStoppedStatus(workspace, _restoreInputsOnStop);
@@ -219,7 +220,8 @@ public partial class MainWindow
             workspace,
             runnableTimelines,
             CreateRunnerLoopCompletedCallback(workspace),
-            onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines));
+            onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines),
+            onPlaybackFailure: CreatePlaybackFailureCallback(workspace));
 
         PlayMacroSound();
 
@@ -255,7 +257,8 @@ public partial class MainWindow
         MacroWorkspace workspace,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
-        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null)
+        Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
+        Action<string>? onPlaybackFailure = null)
     {
         return workspace.LoopMode switch
         {
@@ -263,22 +266,26 @@ public partial class MainWindow
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
-                onTimelineStatusChanged),
+                onTimelineStatusChanged,
+                onPlaybackFailure),
             MacroLoopMode.Cycle => _playback.RunCyclePlayback(
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
-                onTimelineStatusChanged),
+                onTimelineStatusChanged,
+                onPlaybackFailure),
             MacroLoopMode.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
-                onTimelineStatusChanged),
+                onTimelineStatusChanged,
+                onPlaybackFailure),
             _ => _playback.RunAsyncPlayback(
                 targetHwnd,
                 runnableTimelines,
                 onRunnerLoopCompleted,
-                onTimelineStatusChanged)
+                onTimelineStatusChanged,
+                onPlaybackFailure)
         };
     }
 
@@ -369,8 +376,16 @@ public partial class MainWindow
         RecordStopButtonHost.IsHitTestVisible = false;
 
         SetTimelineEditingEnabled(true);
-        StatusText.Text = "Stopped";
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+        if (string.IsNullOrWhiteSpace(_activeWorkspace.ErrorMessage))
+        {
+            StatusText.Text = "Stopped";
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(61, 84, 112));
+        }
+        else
+        {
+            StatusText.Text = _activeWorkspace.ErrorMessage;
+            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+        }
         SetCountdownRunningStyle(false);
         SyncOptionsFromActiveTimeline();
         RefreshMacroTabs();
@@ -638,6 +653,19 @@ public partial class MainWindow
                 _timelinePlaybackStatusWorkspace = workspace;
                 _timelinePlaybackStatuses[timeline] = status;
                 UpdateTimelineHeaderPlaybackStatus(timeline);
+            }), DispatcherPriority.Background);
+        };
+    }
+
+    private Action<string> CreatePlaybackFailureCallback(MacroWorkspace workspace)
+    {
+        return message =>
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SetMacroError(workspace, message);
+                StopWorkspaceRunners(workspace);
+                RefreshTimelineHeaderStatuses();
             }), DispatcherPriority.Background);
         };
     }

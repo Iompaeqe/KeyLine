@@ -3,6 +3,7 @@ using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.SystemActions;
 using KeyLine.Services.Timeline;
+using KeyLine.Services.Windows;
 
 namespace KeyLine.Services.Macro;
 
@@ -12,6 +13,7 @@ public sealed class MacroRunner
 
     private CancellationTokenSource? _cts;
     private TaskCompletionSource? _pauseGate;
+    private Action<string>? _reportFailure;
 
     public bool IsRunning => _cts != null;
     public bool IsPaused => _pauseGate != null;
@@ -25,14 +27,18 @@ public sealed class MacroRunner
         bool useStandardDelay,
         int standardDelayMs,
         bool useTextInputMode,
-        Action? loopCompleted = null)
+        Action? loopCompleted = null,
+        MacroRunContext? runContext = null,
+        Action<string>? reportFailure = null)
     {
         if (_cts != null)
             return;
 
         _cts = new CancellationTokenSource();
         _pauseGate = null;
+        _reportFailure = reportFailure;
         var token = _cts.Token;
+        var context = runContext ?? new MacroRunContext(targetHwnd);
 
         var executionSteps = BuildExecutionSteps(sourceSteps, useStandardDelay, standardDelayMs);
         var minimumDelayMs = loopCount == 0 ? InfiniteLoopMinimumDelayMs : 0;
@@ -46,7 +52,7 @@ public sealed class MacroRunner
             while (!token.IsCancellationRequested)
             {
                 var didDelayThisLoop = await RunExecutionPassAsync(
-                    targetHwnd,
+                    context,
                     executionSteps,
                     safeBaseDelayMs,
                     minimumDelayMs,
@@ -71,6 +77,7 @@ public sealed class MacroRunner
         }
         finally
         {
+            _reportFailure = null;
             _cts = null;
             _pauseGate = null;
         }
@@ -172,7 +179,7 @@ public sealed class MacroRunner
     }
 
     private async Task<bool> RunExecutionPassAsync(
-        nint targetHwnd,
+        MacroRunContext context,
         IReadOnlyList<MacroNode> executionSteps,
         int safeBaseDelayMs,
         int minimumDelayMs,
@@ -214,13 +221,13 @@ public sealed class MacroRunner
                 if (repeatStack.Count == 0 || repeatStack.Peek().EndIndex != i)
                     continue;
 
-                var context = repeatStack.Pop();
-                context.RemainingIterations--;
+                var repeatContext = repeatStack.Pop();
+                repeatContext.RemainingIterations--;
 
-                if (context.RemainingIterations > 0)
+                if (repeatContext.RemainingIterations > 0)
                 {
-                    repeatStack.Push(context);
-                    i = context.BodyStartIndex - 1;
+                    repeatStack.Push(repeatContext);
+                    i = repeatContext.BodyStartIndex - 1;
                 }
 
                 continue;
@@ -231,7 +238,7 @@ public sealed class MacroRunner
                 if (!conditionPairs.TryGetValue(i, out var endIndex))
                     continue;
 
-                if (!EvaluateCondition(step, targetHwnd, currentLoop, loopCount, repeatStack))
+                if (!EvaluateCondition(step, context.CurrentTargetWindowHandle, currentLoop, loopCount, repeatStack))
                     i = endIndex;
 
                 continue;
@@ -240,7 +247,7 @@ public sealed class MacroRunner
             if (step.Type == MacroNodeType.ConditionEnd)
                 continue;
 
-            await ExecuteStep(targetHwnd, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
+            await ExecuteStep(context, step, minimumDelayMs, heldModifierKeys, useTextInputMode, token);
 
             didDelayThisPass |= IsDelayNode(step);
 
@@ -364,13 +371,15 @@ public sealed class MacroRunner
     }
 
     private async Task ExecuteStep(
-        nint hwnd,
+        MacroRunContext context,
         MacroNode node,
         int minimumDelayMs,
         ISet<int> heldModifierKeys,
         bool useTextInputMode,
         CancellationToken token)
     {
+        var hwnd = context.CurrentTargetWindowHandle;
+
         switch (node.Type)
         {
             case MacroNodeType.KeyDown:
@@ -421,7 +430,12 @@ public sealed class MacroRunner
 
             case MacroNodeType.MouseScrollUp:
             case MacroNodeType.MouseScrollDown:
-                InputMessageSender.SendForegroundMouseWheel(GetMouseWheelDelta(node));
+                SendMouseWheelScroll(node);
+                break;
+
+            case MacroNodeType.MouseScrollLeft:
+            case MacroNodeType.MouseScrollRight:
+                SendMouseHorizontalWheelScroll(node);
                 break;
 
             case MacroNodeType.CursorMove:
@@ -441,14 +455,245 @@ public sealed class MacroRunner
                 break;
 
             case MacroNodeType.SystemOpenLaunch:
-                SystemLaunchService.TryOpen(node);
+                CaptureLaunchResult(context, SystemLaunchService.TryOpen(node));
                 break;
 
             case MacroNodeType.SystemVolumeControl:
                 SystemVolumeService.TryExecute(node);
                 break;
+
+            case MacroNodeType.SystemWaitUntilWindowOpens:
+                await WaitUntilWindowOpens(node, context, token);
+                break;
+
+            case MacroNodeType.SystemFocusWindow:
+                FocusWindow(node, context, token);
+                break;
+
+            case MacroNodeType.SystemSelectTargetWindow:
+                SetTargetWindow(node, context, token);
+                break;
         }
     }
+
+    private static void CaptureLaunchResult(MacroRunContext context, SystemLaunchResult result)
+    {
+        context.LastLaunchedProcessId = result.Succeeded ? result.ProcessId : null;
+        context.LastLaunchedWindowHandle = result.Succeeded ? result.WindowHandle : 0;
+    }
+
+    private async Task WaitUntilWindowOpens(MacroNode node, MacroRunContext context, CancellationToken token)
+    {
+        var reference = node.GetEffectiveWindowReference();
+        var pollIntervalMs = Math.Clamp(node.SystemWaitPollIntervalMs <= 0 ? 250 : node.SystemWaitPollIntervalMs, 50, 10_000);
+
+        while (!token.IsCancellationRequested)
+        {
+            await WaitIfPaused(token);
+
+            var handle = ResolveWindowReferenceForWait(reference, context, out var failureMessage, out var shouldKeepWaiting);
+            if (IsValidWindow(handle))
+            {
+                context.LastFoundWindowHandle = handle;
+                return;
+            }
+
+            if (!shouldKeepWaiting)
+                FailPlayback(failureMessage, token);
+
+            await DelayWithPause(pollIntervalMs, token);
+        }
+    }
+
+    private void FocusWindow(MacroNode node, MacroRunContext context, CancellationToken token)
+    {
+        var handle = ResolveWindowReference(node, context, out var failureMessage);
+        if (!IsValidWindow(handle))
+            FailPlayback(failureMessage, token);
+
+        NativeMethods.SetForegroundWindow(handle);
+        context.LastFoundWindowHandle = handle;
+        context.CurrentTargetWindowHandle = handle;
+    }
+
+    private void SetTargetWindow(MacroNode node, MacroRunContext context, CancellationToken token)
+    {
+        var handle = ResolveWindowReference(node, context, out var failureMessage);
+        if (!IsValidWindow(handle))
+            FailPlayback(failureMessage, token);
+
+        context.LastFoundWindowHandle = handle;
+        context.CurrentTargetWindowHandle = handle;
+    }
+
+    private nint ResolveWindowReferenceForWait(
+        WindowReference reference,
+        MacroRunContext context,
+        out string failureMessage,
+        out bool shouldKeepWaiting)
+    {
+        shouldKeepWaiting = false;
+        failureMessage = GetWindowReferenceFailureMessage(reference);
+
+        switch (reference.Type)
+        {
+            case WindowReferenceType.CustomTitle:
+                var title = reference.CustomTitle?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    failureMessage = "No custom window title is configured.";
+                    return 0;
+                }
+
+                shouldKeepWaiting = true;
+                failureMessage = $"No window found matching title: {title}.";
+                return FindWindowByTitleContains(title);
+
+            case WindowReferenceType.LastLaunchedWindow:
+                var launchedHandle = ResolveLastLaunchedWindow(context);
+                if (IsValidWindow(launchedHandle))
+                    return launchedHandle;
+
+                if (context.LastLaunchedProcessId is > 0)
+                {
+                    shouldKeepWaiting = true;
+                    return 0;
+                }
+
+                failureMessage = "Could not resolve Last Launched Window.";
+                return 0;
+
+            case WindowReferenceType.SelectedTarget:
+            case WindowReferenceType.FocusedWindow:
+            case WindowReferenceType.LastFoundWindow:
+                return ResolveWindowReference(reference, context, out failureMessage);
+
+            default:
+                failureMessage = "Could not resolve window reference.";
+                return 0;
+        }
+    }
+
+    private static nint ResolveWindowReference(
+        MacroNode node,
+        MacroRunContext context,
+        out string failureMessage)
+    {
+        return ResolveWindowReference(node.GetEffectiveWindowReference(), context, out failureMessage);
+    }
+
+    private static nint ResolveWindowReference(
+        WindowReference reference,
+        MacroRunContext context,
+        out string failureMessage)
+    {
+        failureMessage = GetWindowReferenceFailureMessage(reference);
+
+        switch (reference.Type)
+        {
+            case WindowReferenceType.SelectedTarget:
+                if (context.HasValidSelectedTargetWindow)
+                    return context.SelectedTargetWindowHandle;
+
+                failureMessage = "Selected Target Window is no longer available.";
+                return 0;
+
+            case WindowReferenceType.FocusedWindow:
+                var focused = NativeMethods.GetForegroundWindow();
+                if (IsValidWindow(focused))
+                    return focused;
+
+                failureMessage = "Could not resolve Focused Window.";
+                return 0;
+
+            case WindowReferenceType.LastLaunchedWindow:
+                var launched = ResolveLastLaunchedWindow(context);
+                if (IsValidWindow(launched))
+                    return launched;
+
+                failureMessage = "Could not resolve Last Launched Window.";
+                return 0;
+
+            case WindowReferenceType.LastFoundWindow:
+                if (IsValidWindow(context.LastFoundWindowHandle))
+                    return context.LastFoundWindowHandle;
+
+                failureMessage = "Could not resolve Last Found Window.";
+                return 0;
+
+            case WindowReferenceType.CustomTitle:
+                var title = reference.CustomTitle?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    failureMessage = "No custom window title is configured.";
+                    return 0;
+                }
+
+                var match = FindWindowByTitleContains(title);
+                if (IsValidWindow(match))
+                    return match;
+
+                failureMessage = $"No window found matching title: {title}.";
+                return 0;
+
+            default:
+                failureMessage = "Could not resolve window reference.";
+                return 0;
+        }
+    }
+
+    private static nint ResolveLastLaunchedWindow(MacroRunContext context)
+    {
+        if (IsValidWindow(context.LastLaunchedWindowHandle))
+            return context.LastLaunchedWindowHandle;
+
+        if (context.LastLaunchedProcessId is not > 0)
+            return 0;
+
+        var handle = WindowEnumerator.GetVisibleWindowsForProcess(context.LastLaunchedProcessId.Value)
+            .FirstOrDefault()
+            ?.Handle ?? 0;
+
+        if (IsValidWindow(handle))
+            context.LastLaunchedWindowHandle = handle;
+
+        return handle;
+    }
+
+    private static nint FindWindowByTitleContains(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return 0;
+
+        return WindowEnumerator.GetVisibleWindows()
+            .FirstOrDefault(window => window.Title.Contains(title.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?.Handle ?? 0;
+    }
+
+    private static string GetWindowReferenceFailureMessage(WindowReference reference)
+    {
+        return reference.Type switch
+        {
+            WindowReferenceType.SelectedTarget => "Selected Target Window is no longer available.",
+            WindowReferenceType.FocusedWindow => "Could not resolve Focused Window.",
+            WindowReferenceType.LastLaunchedWindow => "Could not resolve Last Launched Window.",
+            WindowReferenceType.LastFoundWindow => "Could not resolve Last Found Window.",
+            WindowReferenceType.CustomTitle => string.IsNullOrWhiteSpace(reference.CustomTitle)
+                ? "No custom window title is configured."
+                : $"No window found matching title: {reference.CustomTitle.Trim()}.",
+            _ => "Could not resolve window reference."
+        };
+    }
+
+    private void FailPlayback(string message, CancellationToken token)
+    {
+        _reportFailure?.Invoke(message);
+        _cts?.Cancel();
+        throw new OperationCanceledException(message, token);
+    }
+
+    private static bool IsValidWindow(nint handle) =>
+        handle != 0 && NativeMethods.IsWindow(handle);
 
     private static int GetMouseWheelDelta(MacroNode node)
     {
@@ -458,6 +703,34 @@ public sealed class MacroRunner
         return node.Type == MacroNodeType.MouseScrollDown
             ? -NativeMethods.WHEEL_DELTA
             : NativeMethods.WHEEL_DELTA;
+    }
+
+    private static void SendMouseWheelScroll(MacroNode node)
+    {
+        var delta = Math.Sign(GetMouseWheelDelta(node)) * NativeMethods.WHEEL_DELTA;
+        var amount = GetMouseScrollAmount(node);
+
+        for (var i = 0; i < amount; i++)
+            InputMessageSender.SendForegroundMouseWheel(delta);
+    }
+
+    private static void SendMouseHorizontalWheelScroll(MacroNode node)
+    {
+        var delta = node.Type == MacroNodeType.MouseScrollLeft
+            ? -NativeMethods.WHEEL_DELTA
+            : NativeMethods.WHEEL_DELTA;
+        var amount = GetMouseScrollAmount(node);
+
+        for (var i = 0; i < amount; i++)
+            InputMessageSender.SendForegroundMouseHorizontalWheel(delta);
+    }
+
+    private static int GetMouseScrollAmount(MacroNode node)
+    {
+        if (node.MouseScrollAmount > 0)
+            return Math.Clamp(node.MouseScrollAmount, 1, 100);
+
+        return Math.Clamp(Math.Abs(node.MouseWheelDelta) / NativeMethods.WHEEL_DELTA, 1, 100);
     }
 
     private async Task DelayWithPause(int milliseconds, CancellationToken token)

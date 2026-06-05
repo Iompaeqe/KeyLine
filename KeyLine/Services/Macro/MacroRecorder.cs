@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using KeyLine.Domain;
+using KeyLine.Interop;
 using KeyLine.Services.Input;
 
 namespace KeyLine.Services.Recording;
@@ -133,7 +134,8 @@ public sealed class MacroRecorder
         {
             Type = wheelDelta > 0 ? MacroNodeType.MouseScrollUp : MacroNodeType.MouseScrollDown,
             KeyName = wheelDelta > 0 ? "Wheel Up" : "Wheel Down",
-            MouseWheelDelta = wheelDelta
+            MouseWheelDelta = wheelDelta > 0 ? NativeMethods.WHEEL_DELTA : -NativeMethods.WHEEL_DELTA,
+            MouseScrollAmount = Math.Max(1, Math.Abs(wheelDelta) / NativeMethods.WHEEL_DELTA)
         };
 
         _lastInputTimeUtc = DateTime.UtcNow;

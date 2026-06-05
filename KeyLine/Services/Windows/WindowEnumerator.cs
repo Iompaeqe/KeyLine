@@ -27,7 +27,8 @@ public static class WindowEnumerator
                 result.Add(new TargetWindowInfo
                 {
                     Handle = hWnd,
-                    Title = title
+                    Title = title,
+                    ProcessId = GetWindowProcessId(hWnd)
                 });
             }
 
@@ -35,5 +36,21 @@ public static class WindowEnumerator
         }, IntPtr.Zero);
 
         return result;
+    }
+
+    public static List<TargetWindowInfo> GetVisibleWindowsForProcess(int processId)
+    {
+        if (processId <= 0)
+            return new List<TargetWindowInfo>();
+
+        return GetVisibleWindows()
+            .Where(window => window.ProcessId == processId)
+            .ToList();
+    }
+
+    private static int GetWindowProcessId(nint handle)
+    {
+        NativeMethods.GetWindowThreadProcessId(handle, out var processId);
+        return processId > int.MaxValue ? 0 : (int)processId;
     }
 }

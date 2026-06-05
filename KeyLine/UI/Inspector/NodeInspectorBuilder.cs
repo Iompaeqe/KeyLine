@@ -52,6 +52,15 @@ public sealed class NodeInspectorBuilder
         new("Set Volume %", SystemVolumeAction.SetVolumePercent)
     ];
 
+    private static readonly IReadOnlyList<InspectorOption<WindowReferenceType>> WindowReferenceTypeOptions =
+    [
+        new("Selected Target Window", WindowReferenceType.SelectedTarget),
+        new("Focused Window", WindowReferenceType.FocusedWindow),
+        new("Last Launched Window", WindowReferenceType.LastLaunchedWindow),
+        new("Last Found Window", WindowReferenceType.LastFoundWindow),
+        new("Custom Window Title", WindowReferenceType.CustomTitle)
+    ];
+
     private readonly TimelineSelectionState _selection;
     private readonly Func<bool> _canEdit;
     private readonly Func<bool> _isRefreshing;
@@ -211,6 +220,20 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateReadonlyRow("Button", "Left"));
                 break;
 
+            case MacroNodeType.MouseScrollUp:
+            case MacroNodeType.MouseScrollDown:
+            case MacroNodeType.MouseScrollLeft:
+            case MacroNodeType.MouseScrollRight:
+                section.Children.Add(CreateNumberRow(
+                    "Amount",
+                    Math.Clamp(node.MouseScrollAmount <= 0 ? 1 : node.MouseScrollAmount, 1, 100),
+                    value => _commitNodeValueChange(() => node.MouseScrollAmount = Math.Clamp(value, 1, 100)),
+                    min: 1,
+                    max: 100,
+                    tooltip: "How many scroll notches this node sends.",
+                    isEnabled: policy.CanEditMouseScrollAmount));
+                break;
+
             case MacroNodeType.SystemOpenLaunch:
                 section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
                 AddSystemLaunchConfigurationRows(section, node, policy.CanEditSystemLaunch);
@@ -219,6 +242,21 @@ public sealed class NodeInspectorBuilder
             case MacroNodeType.SystemVolumeControl:
                 section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
                 AddSystemVolumeConfigurationRows(section, node, policy.CanEditVolumeControl);
+                break;
+
+            case MacroNodeType.SystemWaitUntilWindowOpens:
+                section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
+                AddSystemWindowWaitConfigurationRows(section, node, policy.CanEditSystemWindowWait);
+                break;
+
+            case MacroNodeType.SystemSelectTargetWindow:
+                section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
+                AddSystemTargetWindowConfigurationRows(section, node, policy.CanEditSystemTargetWindow);
+                break;
+
+            case MacroNodeType.SystemFocusWindow:
+                section.Children.Add(CreateReadonlyRow("Summary", NodeDisplayFormatter.GetSystemNodeTooltip(node)));
+                AddSystemFocusWindowConfigurationRows(section, node, policy.CanEditSystemFocusWindow);
                 break;
         }
 
@@ -427,6 +465,48 @@ public sealed class NodeInspectorBuilder
         }
     }
 
+    private void AddSystemWindowWaitConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
+    {
+        AddWindowReferenceRows(section, node, isEnabled, "Window source to wait for.");
+        section.Children.Add(CreateDelayRow(
+            "Interval",
+            () => Math.Clamp(node.SystemWaitPollIntervalMs <= 0 ? 250 : node.SystemWaitPollIntervalMs, 50, 10_000),
+            value => _commitNodeValueChange(() => node.SystemWaitPollIntervalMs = Math.Clamp(value, 50, 10_000)),
+            "How often KeyLine checks for the window title.",
+            isEnabled));
+    }
+
+    private void AddSystemTargetWindowConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
+    {
+        AddWindowReferenceRows(section, node, isEnabled, "Window source to use as the runtime playback target.");
+    }
+
+    private void AddSystemFocusWindowConfigurationRows(StackPanel section, MacroNode node, bool isEnabled)
+    {
+        AddWindowReferenceRows(section, node, isEnabled, "Window source to focus and use for following input nodes.");
+    }
+
+    private void AddWindowReferenceRows(StackPanel section, MacroNode node, bool isEnabled, string tooltip)
+    {
+        var reference = node.GetEffectiveWindowReference();
+        section.Children.Add(CreateOptionRow(
+            "Window Source",
+            WindowReferenceTypeOptions,
+            reference.Type,
+            value => _commitNodeChange(() =>
+            {
+                var updated = node.GetEffectiveWindowReference();
+                updated.Type = value;
+                node.WindowReference = updated;
+                node.NormalizeWindowReference();
+            }),
+            tooltip,
+            isEnabled));
+
+        if (reference.Type == WindowReferenceType.CustomTitle)
+            section.Children.Add(CreateWindowReferenceCustomTitleRow(node, isEnabled));
+    }
+
     private bool TryGetSelectedRepeatBlock(
         MacroTimeline timeline,
         out MacroNode repeatStart,
@@ -553,7 +633,7 @@ public sealed class NodeInspectorBuilder
             SelectedValuePath = nameof(InspectorOption<T>.Value),
             SelectedValue = currentValue,
             Padding = new Thickness(-5,0,-5,0),
-            Width = 118,
+            Width = 156,
             Height = 24,
             IsEnabled = canEdit,
             ToolTip = rowTooltip
@@ -876,6 +956,64 @@ public sealed class NodeInspectorBuilder
             panel.Children.Add(browseButton);
         }
 
+        return panel;
+    }
+
+    private UIElement CreateWindowReferenceCustomTitleRow(MacroNode node, bool isEnabled)
+    {
+        var canEdit = CanEditOption(isEnabled);
+        var reference = node.GetEffectiveWindowReference();
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(0, 4, 0, 0),
+            ToolTip = "Partial window title to match. Matching uses the same contains behavior as AutoTarget."
+        };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Title contains",
+            Foreground = new SolidColorBrush(Color.FromRgb(142, 160, 182)),
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 5)
+        });
+
+        var textBox = new TextBox
+        {
+            Text = reference.CustomTitle,
+            Height = 24,
+            IsEnabled = canEdit,
+            ToolTip = "Partial window title to match."
+        };
+
+        void CommitWindowText()
+        {
+            if (_isRefreshing())
+                return;
+
+            var title = textBox.Text.Trim();
+            if (string.Equals(title, node.GetEffectiveWindowReference().CustomTitle, StringComparison.Ordinal))
+                return;
+
+            _commitNodeChange(() =>
+            {
+                node.WindowReference = WindowReference.Custom(title);
+                node.NormalizeWindowReference();
+            });
+        }
+
+        textBox.LostFocus += (_, _) => CommitWindowText();
+        textBox.KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Enter)
+                return;
+
+            CommitWindowText();
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        };
+
+        panel.Children.Add(textBox);
         return panel;
     }
 

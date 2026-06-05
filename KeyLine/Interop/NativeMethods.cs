@@ -35,6 +35,7 @@ internal static class NativeMethods
     public const uint MOUSEEVENTF_XDOWN = 0x0080;
     public const uint MOUSEEVENTF_XUP = 0x0100;
     public const uint MOUSEEVENTF_WHEEL = 0x0800;
+    public const uint MOUSEEVENTF_HWHEEL = 0x1000;
     public const int WHEEL_DELTA = 120;
     public const uint XBUTTON1 = 0x0001;
     public const uint XBUTTON2 = 0x0002;
@@ -71,6 +72,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
     [DllImport("user32.dll")]
     public static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);

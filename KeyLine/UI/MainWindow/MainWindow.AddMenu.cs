@@ -50,6 +50,7 @@ public partial class MainWindow
     {
         ApplyFeatureAddMenuButtonState(RepeatBlockMenuButton, FeatureId.RepeatBlocks, "Repeat block");
         ApplyFeatureAddMenuButtonState(ConditionBlockMenuButton, FeatureId.ConditionBlocks, "Condition block");
+        ApplySystemAddMenuState();
     }
 
     private void ApplyFeatureAddMenuButtonState(Button button, FeatureId feature, string label)
@@ -73,6 +74,25 @@ public partial class MainWindow
         button.Content = $"{label} (locked)";
         button.Opacity = 0.55;
         button.ToolTip = _featureGate.GetLockedFeatureMessage(feature);
+    }
+
+    private void ApplySystemAddMenuState()
+    {
+        if (SystemAddMenuExpander == null)
+            return;
+
+        if (_featureGate.IsHidden(FeatureId.SystemNodes))
+        {
+            SystemAddMenuExpander.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SystemAddMenuExpander.Visibility = Visibility.Visible;
+        ApplyFeatureAddMenuButtonState(SystemOpenLaunchMenuButton, FeatureId.SystemNodes, "Open/Launch");
+        ApplyFeatureAddMenuButtonState(SystemVolumeControlMenuButton, FeatureId.SystemNodes, "Volume control");
+        ApplyFeatureAddMenuButtonState(SystemWaitUntilWindowOpensMenuButton, FeatureId.SystemNodes, "Wait until window opens");
+        ApplyFeatureAddMenuButtonState(SystemFocusWindowMenuButton, FeatureId.SystemNodes, "Focus window");
+        ApplyFeatureAddMenuButtonState(SystemSelectTargetWindowMenuButton, FeatureId.SystemNodes, "Set target window");
     }
 
     private void UpdateExperimentalAddMenuVisibility()
@@ -294,9 +314,44 @@ public partial class MainWindow
         });
     }
 
+    private void SystemWaitUntilWindowOpensMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddConfigurableSystemStep(new MacroNode
+        {
+            Type = MacroNodeType.SystemWaitUntilWindowOpens,
+            SystemWaitWindowTitle = "",
+            SystemWaitPollIntervalMs = 250,
+            WindowReference = WindowReference.Custom("")
+        });
+    }
+
+    private void SystemFocusWindowMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddConfigurableSystemStep(new MacroNode
+        {
+            Type = MacroNodeType.SystemFocusWindow,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.SelectedTarget
+            }
+        });
+    }
+
+    private void SystemSelectTargetWindowMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddConfigurableSystemStep(new MacroNode
+        {
+            Type = MacroNodeType.SystemSelectTargetWindow,
+            SystemTargetWindowTitle = "",
+            WindowReference = WindowReference.Custom("")
+        });
+    }
+
     private void AddConfigurableSystemStep(MacroNode step)
     {
         AddPopup.IsOpen = false;
+        if (!TryUseFeature(FeatureId.SystemNodes))
+            return;
 
         SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
@@ -309,6 +364,18 @@ public partial class MainWindow
         OpenInspectorFromSelection();
         ScheduleSaveState();
     }
+
+    private void MouseScrollUpMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseScrollStep(MacroNodeType.MouseScrollUp);
+
+    private void MouseScrollDownMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseScrollStep(MacroNodeType.MouseScrollDown);
+
+    private void MouseScrollLeftMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseScrollStep(MacroNodeType.MouseScrollLeft);
+
+    private void MouseScrollRightMenuButton_Click(object sender, RoutedEventArgs e) =>
+        AddMouseScrollStep(MacroNodeType.MouseScrollRight);
 
     private void AddMouseStep(MacroNodeType type)
     {
@@ -329,6 +396,37 @@ public partial class MainWindow
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
         RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private void AddMouseScrollStep(MacroNodeType type)
+    {
+        AddPopup.IsOpen = false;
+
+        SaveDocumentUndoSnapshot();
+        var timeline = GetPopupTimeline();
+        var step = new MacroNode
+        {
+            Type = type,
+            KeyName = type switch
+            {
+                MacroNodeType.MouseScrollLeft => "Wheel Left",
+                MacroNodeType.MouseScrollRight => "Wheel Right",
+                MacroNodeType.MouseScrollDown => "Wheel Down",
+                _ => "Wheel Up"
+            },
+            MouseWheelDelta = type is MacroNodeType.MouseScrollDown or MacroNodeType.MouseScrollLeft
+                ? -KeyLine.Interop.NativeMethods.WHEEL_DELTA
+                : KeyLine.Interop.NativeMethods.WHEEL_DELTA,
+            MouseScrollAmount = 1
+        };
+
+        InsertPopupSteps(timeline, new[] { step });
+        MergeAdjacentDelayNodesIfEnabled(timeline);
+        SelectTimeline(timeline, refreshInspector: false);
+        _selection.SelectNode(timeline, step);
+        RefreshTimeline();
+        OpenInspectorFromSelection();
         ScheduleSaveState();
     }
 
