@@ -73,6 +73,19 @@ public sealed class TimelineSelectionState
         if (!ReferenceEquals(SelectedTimeline, timeline) || SelectedNodes.Count == 0)
             return false;
 
-        return _selectedNodeSet.Contains(node);
+        return _selectedNodeSet.Contains(node) ||
+               SelectedNodes.Any(selectedNode => IsSameSelectionNode(node, selectedNode));
+    }
+
+    private static bool IsSameSelectionNode(MacroNode node, MacroNode selectedNode)
+    {
+        if (ReferenceEquals(node, selectedNode))
+            return true;
+
+        if (node.IsSyntheticDisplayNode)
+            return node.SourceNodes.Contains(selectedNode) ||
+                   (selectedNode.IsSyntheticDisplayNode && node.SourceNodes.SequenceEqual(selectedNode.SourceNodes));
+
+        return selectedNode.IsSyntheticDisplayNode && selectedNode.SourceNodes.Contains(node);
     }
 }

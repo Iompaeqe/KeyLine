@@ -78,7 +78,7 @@ public partial class MainWindow
         if (addedSteps.Count == 0)
             return;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
 
         var insertIndex = GetRecordingInsertIndex(timeline);
         for (var i = 0; i < addedSteps.Count; i++)

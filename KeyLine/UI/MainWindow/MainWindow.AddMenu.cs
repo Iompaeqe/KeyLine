@@ -17,7 +17,7 @@ public partial class MainWindow
 
     private void AddTimelineButton_Click(object sender, RoutedEventArgs e)
     {
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = _document.AddTimeline();
         ApplyDefaultSettingsToTimeline(timeline, _settings);
         if (IsRemapShortcutMode())
@@ -138,7 +138,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         InsertPopupSteps(timeline, new[]
         {
@@ -161,7 +161,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         InsertPopupSteps(timeline, new[]
         {
@@ -191,7 +191,7 @@ public partial class MainWindow
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.ResultText))
             return;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         InsertPopupSteps(timeline, new[]
         {
             new MacroNode
@@ -213,7 +213,7 @@ public partial class MainWindow
         if (!TryUseFeature(FeatureId.RepeatBlocks))
             return;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         var (repeatStart, repeatEnd) = TimelineBlockService.CreateRepeatBlock();
 
@@ -232,7 +232,7 @@ public partial class MainWindow
         if (!TryUseFeature(FeatureId.ConditionBlocks))
             return;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         var (conditionStart, conditionEnd) = TimelineBlockService.CreateConditionBlock();
 
@@ -249,7 +249,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         var step = new MacroNode
         {
@@ -278,7 +278,7 @@ public partial class MainWindow
     {
         AddPopup.IsOpen = false;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
         var timeline = GetPopupTimeline();
         InsertPopupSteps(timeline, new[]
         {

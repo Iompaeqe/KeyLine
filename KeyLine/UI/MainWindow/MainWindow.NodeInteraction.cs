@@ -80,7 +80,7 @@ public partial class MainWindow
                     }
 
                     CancelTimelineDragState();
-                    SaveUndoSnapshot();
+                    SaveDocumentUndoSnapshot();
                     _isDelayValueMouseEditPending = inlineEditorActivation == InlineEditorActivationMode.SuppressMouseUp;
                     _isMouseNodeEditPending = inlineEditorActivation == InlineEditorActivationMode.AllowMouseUp;
                     focusInlineEditor(originalSource);
@@ -549,7 +549,7 @@ public partial class MainWindow
 
             if (_drag.IsDraggingNode && _drag.DraggedNodeTimeline != null && _drag.DraggedNode != null)
             {
-                SaveUndoSnapshot();
+                SaveDocumentUndoSnapshot();
                 CaptureDroppedGhostPositionForAnimation();
 
                 dropTimeline = _drag.DraggedNodeTimeline;
@@ -818,7 +818,7 @@ public partial class MainWindow
         {
             ResetTimelineDeleteConfirmation();
 
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             if (TryGetTimelineRunner(timeline, out var runner))
                 runner.Stop();
 
@@ -854,7 +854,7 @@ public partial class MainWindow
         {
             ResetTimelineDeleteConfirmation();
 
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             var stepsToRemove = TimelineNodeMutationService.GetStepsToRemoveForDelete(timeline, node);
             if (timeline.UseStandardDelay && stepsToRemove.Any(TimelineNodeMutationService.IsDelayCleanupActionStep))
                 TimelineNodeMutationService.AddStandardDelayCleanupSteps(timeline, stepsToRemove);
@@ -890,7 +890,7 @@ public partial class MainWindow
             if (stepsToRemove.Count == 0)
                 return;
 
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             foreach (var stepToRemove in stepsToRemove.OrderByDescending(timeline.Nodes.IndexOf))
                 timeline.Nodes.Remove(stepToRemove);
 
@@ -909,7 +909,7 @@ public partial class MainWindow
             if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.ResultText))
                 return;
 
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             node.Text = dialog.ResultText;
             SelectTimeline(timeline);
             RefreshTimeline();
@@ -982,7 +982,7 @@ public partial class MainWindow
         {
             ResetTimelineDeleteConfirmation();
 
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             if (TryGetTimelineRunner(timeline, out var runner))
                 runner.Stop();
 

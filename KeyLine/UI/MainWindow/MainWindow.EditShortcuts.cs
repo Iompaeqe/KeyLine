@@ -10,7 +10,7 @@ namespace KeyLine;
 
 public partial class MainWindow
 {
-    private readonly WorkspaceHistoryController _workspaceHistory = new();
+    private readonly MacroDocumentHistoryController _macroDocumentHistory = new();
     private readonly EditClipboardController _editClipboard = new();
 
     private bool TryHandleEditingShortcut(KeyEventArgs e)
@@ -63,45 +63,66 @@ public partial class MainWindow
         return true;
     }
 
-    private void SaveUndoSnapshot()
+    private void SaveDocumentUndoSnapshot()
     {
-        CaptureActiveWorkspaceState();
-        _workspaceHistory.SaveSnapshot(_activeWorkspace);
+        if (!CanRecordDocumentHistoryForActiveMacro())
+            return;
+
+        _activeWorkspace.Document = _document;
+        _macroDocumentHistory.SaveSnapshot(_activeWorkspace);
+    }
+
+    private bool CanRecordDocumentHistoryForActiveMacro()
+    {
+        if (_isSwitchingWorkspace)
+            return false;
+
+        if (_activeWorkspaceIndex < 0 || _activeWorkspaceIndex >= _workspaces.Count)
+            return false;
+
+        return ReferenceEquals(_workspaces[_activeWorkspaceIndex], _activeWorkspace) &&
+               ReferenceEquals(_activeWorkspace.Document, _document);
     }
 
     private void UndoActiveWorkspace()
     {
-        if (_workspaceHistory.TryUndo(_activeWorkspace, out var snapshot))
-            RestoreWorkspaceSnapshot(_activeWorkspace, snapshot);
+        CaptureActiveDocumentState();
+        if (_macroDocumentHistory.TryUndo(_activeWorkspace, out var snapshot))
+            RestoreActiveMacroDocumentSnapshot(snapshot);
     }
 
     private void RedoActiveWorkspace()
     {
-        if (_workspaceHistory.TryRedo(_activeWorkspace, out var snapshot))
-            RestoreWorkspaceSnapshot(_activeWorkspace, snapshot);
+        CaptureActiveDocumentState();
+        if (_macroDocumentHistory.TryRedo(_activeWorkspace, out var snapshot))
+            RestoreActiveMacroDocumentSnapshot(snapshot);
     }
 
-    private void RestoreWorkspaceSnapshot(MacroWorkspace target, MacroWorkspace snapshot)
+    private void CaptureActiveDocumentState()
     {
-        target.ProfileId = snapshot.ProfileId;
-        target.Name = snapshot.Name;
-        target.Document = MacroCloneService.CloneDocument(snapshot.Document);
-        target.LoopCount = snapshot.LoopCount;
-        target.TimerMs = snapshot.TimerMs;
-        target.BaseDelayMs = snapshot.BaseDelayMs;
-        target.LoopMode = snapshot.LoopMode;
-        target.ShortcutKeys = snapshot.ShortcutKeys;
-        target.ShortcutsEnabled = snapshot.ShortcutsEnabled;
-        target.ShortcutTriggerBehavior = snapshot.ShortcutTriggerBehavior;
-        target.TargetWindowSearchName = snapshot.TargetWindowSearchName;
-        target.TargetWindowHandle = snapshot.TargetWindowHandle;
-        target.TargetWindowTitle = snapshot.TargetWindowTitle;
-        target.TargetChildWindowHandle = snapshot.TargetChildWindowHandle;
-        target.TargetChildWindowTitle = snapshot.TargetChildWindowTitle;
+        if (!_isSwitchingWorkspace && CanRecordDocumentHistoryForActiveMacro())
+            _activeWorkspace.Document = _document;
+    }
 
+    private void RestoreActiveMacroDocumentSnapshot(MacroDocument snapshot)
+    {
+        if (_activeWorkspaceIndex < 0 || _activeWorkspaceIndex >= _workspaces.Count)
+            return;
+
+        var target = _workspaces[_activeWorkspaceIndex];
+        if (!ReferenceEquals(target, _activeWorkspace))
+            return;
+
+        target.Document = MacroCloneService.CloneDocument(snapshot);
         _document = target.Document;
         _selection.Clear();
-        ActivateWorkspace(_activeWorkspaceIndex, false);
+
+        _activeWorkspace.LoopCount = _document.ActiveTimeline.LoopCount;
+        _activeWorkspace.BaseDelayMs = _document.ActiveTimeline.BaseDelayMs;
+
+        RefreshTimeline();
+        RefreshInspector();
+        RefreshActiveWorkspacePlaybackUi();
         ScheduleSaveState();
     }
 
@@ -180,7 +201,8 @@ public partial class MainWindow
 
     private bool SelectStepRange(MacroTimeline timeline, MacroNode node)
     {
-        if (_selection.AnchorNode == null)
+        var anchorNode = _selection.AnchorNode;
+        if (anchorNode == null)
             return false;
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
@@ -188,18 +210,20 @@ public partial class MainWindow
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
-        var start = visibleSteps.IndexOf(_selection.AnchorNode);
-        var end = visibleSteps.IndexOf(node);
+        var start = visibleSteps.FindIndex(visibleStep => IsSameSelectedStep(visibleStep, anchorNode));
+        var end = visibleSteps.FindIndex(visibleStep => IsSameSelectedStep(visibleStep, node));
         if (start < 0 || end < 0)
             return false;
 
         if (start > end)
             (start, end) = (end, start);
 
-        var mergedSelection = _selection.SelectedNodes
-            .Concat(visibleSteps.Skip(start).Take(end - start + 1))
-            .Distinct()
-            .ToList();
+        var mergedSelection = _selection.SelectedNodes.ToList();
+        foreach (var visibleStep in visibleSteps.Skip(start).Take(end - start + 1))
+        {
+            if (!mergedSelection.Any(selectedStep => IsSameSelectedStep(visibleStep, selectedStep)))
+                mergedSelection.Add(visibleStep);
+        }
 
         _selection.SelectNodes(
             timeline,
@@ -253,14 +277,14 @@ public partial class MainWindow
         if (!CanPasteClipboard(clipboard))
             return;
 
-        SaveUndoSnapshot();
-
         switch (clipboard.Kind)
         {
             case EditClipboardKind.Nodes:
+                SaveDocumentUndoSnapshot();
                 PasteSteps(clipboard.Nodes);
                 break;
             case EditClipboardKind.Timelines:
+                SaveDocumentUndoSnapshot();
                 PasteTimelines(clipboard.Timelines);
                 break;
             case EditClipboardKind.Workspaces:
@@ -382,7 +406,7 @@ public partial class MainWindow
         if (!TryUseFeaturesRequiredByTimeline(source))
             return;
 
-        SaveUndoSnapshot();
+        SaveDocumentUndoSnapshot();
 
         var clone = MacroCloneService.CloneTimeline(source);
         _document.Timelines.Insert(sourceIndex + 1, clone);

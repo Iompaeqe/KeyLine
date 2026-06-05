@@ -136,14 +136,16 @@ public sealed class MacroRunner
 
         var result = new List<MacroNode>();
 
-        foreach (var step in sourceSteps)
+        for (var i = 0; i < sourceSteps.Count; i++)
         {
+            var step = sourceSteps[i];
             if (IsDelayNode(step))
                 continue;
 
             result.Add(step);
 
-            if (!TimelineBlockService.IsControlNode(step))
+            if (!TimelineBlockService.IsControlNode(step) &&
+                HasLaterExecutableStep(sourceSteps, i + 1))
             {
                 result.Add(new MacroNode
                 {
@@ -154,6 +156,18 @@ public sealed class MacroRunner
         }
 
         return result;
+    }
+
+    private static bool HasLaterExecutableStep(IReadOnlyList<MacroNode> sourceSteps, int startIndex)
+    {
+        for (var i = startIndex; i < sourceSteps.Count; i++)
+        {
+            var step = sourceSteps[i];
+            if (!IsDelayNode(step) && !TimelineBlockService.IsControlNode(step))
+                return true;
+        }
+
+        return false;
     }
 
     private async Task<bool> RunExecutionPassAsync(

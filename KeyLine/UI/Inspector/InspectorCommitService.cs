@@ -1,4 +1,4 @@
-﻿using System.Windows.Controls;
+using System.Windows.Controls;
 using KeyLine.Domain;
 using KeyLine.Services.Timeline;
 using KeyLine.State;
@@ -22,7 +22,7 @@ public sealed class InspectorCommitService
     public InspectorCommitService(
         TimelineSelectionState selection,
         Func<bool> canEdit,
-        Action saveUndoSnapshot,
+        Action saveDocumentUndoSnapshot,
         Action refreshTimeline,
         Action refreshTimelineWithoutInspector,
         Action refreshInspector,
@@ -31,7 +31,7 @@ public sealed class InspectorCommitService
     {
         _selection = selection;
         _canEdit = canEdit;
-        _saveUndoSnapshot = saveUndoSnapshot;
+        _saveUndoSnapshot = saveDocumentUndoSnapshot;
         _refreshTimeline = refreshTimeline;
         _refreshTimelineWithoutInspector = refreshTimelineWithoutInspector;
         _refreshInspector = refreshInspector;
@@ -92,10 +92,13 @@ public sealed class InspectorCommitService
             return false;
 
         var trimmedName = string.IsNullOrWhiteSpace(name) ? timeline.Name : name.Trim();
+        if (string.Equals(timeline.Name, trimmedName, StringComparison.Ordinal))
+            return false;
 
         _isCommittingTimelineName = true;
         try
         {
+            _saveUndoSnapshot();
             timeline.Name = trimmedName;
             _selection.SelectTimeline(timeline);
             _refreshTimeline();
@@ -109,7 +112,7 @@ public sealed class InspectorCommitService
         }
     }
 
-    public static void CommitNumberText(
+    public static int CommitNumberText(
         TextBox textBox,
         int originalValue,
         Action<int> commit,
@@ -118,7 +121,7 @@ public sealed class InspectorCommitService
         bool isRefreshing)
     {
         if (isRefreshing)
-            return;
+            return originalValue;
 
         if (!int.TryParse(textBox.Text, out var value))
             value = min;
@@ -127,10 +130,14 @@ public sealed class InspectorCommitService
         if (max.HasValue)
             value = Math.Min(max.Value, value);
 
-        textBox.Text = value.ToString();
+        var normalizedText = value.ToString();
+        if (textBox.Text != normalizedText)
+            textBox.Text = normalizedText;
 
         if (value != originalValue)
             commit(value);
+
+        return value;
     }
 
     public static void CommitDelayText(TimeEntryBlock entry, int originalValue, Action<int> commit)

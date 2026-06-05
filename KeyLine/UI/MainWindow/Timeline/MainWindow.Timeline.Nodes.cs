@@ -114,7 +114,7 @@ public partial class MainWindow
 
         control.TargetPickRequested += async (_, _) =>
         {
-            SaveUndoSnapshot();
+            SaveDocumentUndoSnapshot();
             SelectTimeline(timeline);
             _selection.SelectNode(timeline, node);
             await PickMouseCoordinatesForNodeAsync(node);

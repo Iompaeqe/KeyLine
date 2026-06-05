@@ -206,6 +206,7 @@ public partial class MainWindow
 
             var activeWorkspace = _activeWorkspace;
             _workspaces.RemoveAt(index);
+            _macroDocumentHistory.Clear(workspace);
 
             var nextWorkspaceIndex = ReferenceEquals(workspace, activeWorkspace)
                 ? IndexOfFirstWorkspaceInProfile(_activeProfileId)

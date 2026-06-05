@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -46,7 +46,7 @@ public sealed class NodeInspectorBuilder
         TimelineSelectionState selection,
         Func<bool> canEdit,
         Func<bool> isRefreshing,
-        Action saveUndoSnapshot,
+        Action saveDocumentUndoSnapshot,
         Action<Action> commitNodeChange,
         Action<Action> commitNodeValueChange,
         Action refreshInspector,
@@ -56,7 +56,7 @@ public sealed class NodeInspectorBuilder
         _selection = selection;
         _canEdit = canEdit;
         _isRefreshing = isRefreshing;
-        _saveUndoSnapshot = saveUndoSnapshot;
+        _saveUndoSnapshot = saveDocumentUndoSnapshot;
         _commitNodeChange = commitNodeChange;
         _commitNodeValueChange = commitNodeValueChange;
         _refreshInspector = refreshInspector;
@@ -133,7 +133,7 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "Count",
                     Math.Max(0, node.RepeatCount),
-                    value => _commitNodeChange(() => node.RepeatCount = Math.Max(1, value)),
+                    value => _commitNodeValueChange(() => node.RepeatCount = Math.Max(1, value)),
                     min: 1,
                     tooltip: TooltipNotes.RepeatCount,
                     isEnabled: policy.CanEditRepeatCount));
@@ -159,13 +159,13 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "X",
                     node.MouseX,
-                    value => _commitNodeChange(() => node.MouseX = value),
+                    value => _commitNodeValueChange(() => node.MouseX = value),
                     isEnabled: policy.CanEditMousePosition));
 
                 section.Children.Add(CreateNumberRow(
                     "Y",
                     node.MouseY,
-                    value => _commitNodeChange(() => node.MouseY = value),
+                    value => _commitNodeValueChange(() => node.MouseY = value),
                     isEnabled: policy.CanEditMousePosition));
 
                 section.Children.Add(CreatePickPointButton(node, policy.CanPickMousePosition));
@@ -176,7 +176,7 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "Button",
                     Math.Clamp(node.MouseButton <= 0 ? 1 : node.MouseButton, 1, 5),
-                    value => _commitNodeChange(() => node.MouseButton = Math.Clamp(value, 1, 5)),
+                    value => _commitNodeValueChange(() => node.MouseButton = Math.Clamp(value, 1, 5)),
                     min: 1,
                     max: 5,
                     isEnabled: policy.CanEditMouseButton));
@@ -203,7 +203,7 @@ public sealed class NodeInspectorBuilder
         section.Children.Add(CreateNumberRow(
             "Count",
             Math.Max(1, repeatStart.RepeatCount),
-            value => _commitNodeChange(() => repeatStart.RepeatCount = Math.Max(1, value)),
+            value => _commitNodeValueChange(() => repeatStart.RepeatCount = Math.Max(1, value)),
             min: 1,
             tooltip: TooltipNotes.RepeatCount,
             isEnabled: true));
@@ -307,7 +307,7 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "Tolerance",
                     Math.Clamp(node.ConditionPixelTolerance, 0, 255),
-                    value => _commitNodeChange(() => node.ConditionPixelTolerance = Math.Clamp(value, 0, 255)),
+                    value => _commitNodeValueChange(() => node.ConditionPixelTolerance = Math.Clamp(value, 0, 255)),
                     max: 255,
                     tooltip: TooltipNotes.ConditionPixelTolerance,
                     isEnabled: isEnabled));
@@ -318,7 +318,7 @@ public sealed class NodeInspectorBuilder
                 section.Children.Add(CreateNumberRow(
                     "Chance",
                     Math.Clamp(node.ConditionChancePercent, 0, 100),
-                    value => _commitNodeChange(() => node.ConditionChancePercent = Math.Clamp(value, 0, 100)),
+                    value => _commitNodeValueChange(() => node.ConditionChancePercent = Math.Clamp(value, 0, 100)),
                     suffix: "%",
                     max: 100,
                     tooltip: TooltipNotes.ConditionChance,
@@ -343,7 +343,7 @@ public sealed class NodeInspectorBuilder
                     section.Children.Add(CreateNumberRow(
                         "Every",
                         Math.Max(1, node.ConditionLoopInterval),
-                        value => _commitNodeChange(() => node.ConditionLoopInterval = Math.Max(1, value)),
+                        value => _commitNodeValueChange(() => node.ConditionLoopInterval = Math.Max(1, value)),
                         suffix: node.ConditionLoopMode == MacroConditionLoopMode.EveryNRepeats ? "repeats" : "loops",
                         min: 1,
                         tooltip: TooltipNotes.ConditionLoopInterval,
@@ -779,16 +779,41 @@ public sealed class NodeInspectorBuilder
             });
         }
 
+        var committedValue = value;
+        var isCommittingText = false;
+
+        void CommitText()
+        {
+            if (isCommittingText)
+                return;
+
+            isCommittingText = true;
+            try
+            {
+                committedValue = InspectorCommitService.CommitNumberText(
+                    textBox,
+                    committedValue,
+                    commit,
+                    min,
+                    max,
+                    _isRefreshing());
+            }
+            finally
+            {
+                isCommittingText = false;
+            }
+        }
+
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
         textBox.GotKeyboardFocus += (_, _) => textBox.SelectAll();
-        textBox.LostFocus += (_, _) =>
-            InspectorCommitService.CommitNumberText(textBox, value, commit, min, max, _isRefreshing());
+        textBox.LostFocus += (_, _) => CommitText();
+        textBox.TextChanged += (_, _) => CommitText();
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
                 return;
 
-            InspectorCommitService.CommitNumberText(textBox, value, commit, min, max, _isRefreshing());
+            CommitText();
             Keyboard.ClearFocus();
             e.Handled = true;
         };

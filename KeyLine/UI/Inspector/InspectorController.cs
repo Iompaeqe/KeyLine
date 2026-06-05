@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using KeyLine.Domain;
 using KeyLine.State;
 
@@ -23,7 +23,7 @@ public sealed class InspectorController
         TimelineSelectionState selection,
         Func<MacroTimeline> getCurrentTimeline,
         Func<bool> canEdit,
-        Action saveUndoSnapshot,
+        Action saveDocumentUndoSnapshot,
         Action refreshTimeline,
         Action refreshTimelineWithoutInspector,
         Action scheduleSaveState,
@@ -39,7 +39,7 @@ public sealed class InspectorController
         _commitService = new InspectorCommitService(
             selection: selection,
             canEdit: canEdit,
-            saveUndoSnapshot: saveUndoSnapshot,
+            saveDocumentUndoSnapshot: saveDocumentUndoSnapshot,
             refreshTimeline: refreshTimeline,
             refreshTimelineWithoutInspector: refreshTimelineWithoutInspector,
             refreshInspector: Refresh,
@@ -50,7 +50,7 @@ public sealed class InspectorController
             selection: selection,
             canEdit: canEdit,
             isRefreshing: () => _isRefreshing,
-            saveUndoSnapshot: saveUndoSnapshot,
+            saveDocumentUndoSnapshot: saveDocumentUndoSnapshot,
             commitNodeChange: _commitService.CommitNodeChange,
             commitNodeValueChange: _commitService.CommitNodeValueChange,
             refreshInspector: Refresh,

@@ -25,7 +25,7 @@ public partial class MainWindow
                 selection: _selection,
                 getCurrentTimeline: () => _selection.SelectedTimeline ?? _document.ActiveTimeline,
                 canEdit: () => _isTimelineEditingEnabled,
-                saveUndoSnapshot: SaveUndoSnapshot,
+                saveDocumentUndoSnapshot: SaveDocumentUndoSnapshot,
                 refreshTimeline: () => RefreshTimeline(),
                 refreshTimelineWithoutInspector: RefreshTimelineWithoutInspector,
                 scheduleSaveState: ScheduleSaveState,
@@ -414,6 +414,9 @@ public partial class MainWindow
 
         private void ApplyRemapLoopDefault()
         {
+            if (_document.Timelines.Any(timeline => timeline.LoopCount != 1))
+                SaveDocumentUndoSnapshot();
+
             foreach (var timeline in _document.Timelines)
                 timeline.LoopCount = 1;
 

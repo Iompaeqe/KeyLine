@@ -3,17 +3,17 @@ using KeyLine.Services.Macro;
 
 namespace KeyLine.Services.Edit;
 
-public sealed class WorkspaceHistoryController
+public sealed class MacroDocumentHistoryController
 {
-    private const int MaxUndoSnapshots = 30;
+    private const int MaxUndoSnapshots = 50;
 
-    private readonly Dictionary<MacroWorkspace, Stack<MacroWorkspace>> _undoStacks = new();
-    private readonly Dictionary<MacroWorkspace, Stack<MacroWorkspace>> _redoStacks = new();
+    private readonly Dictionary<MacroWorkspace, Stack<MacroDocument>> _undoStacks = new();
+    private readonly Dictionary<MacroWorkspace, Stack<MacroDocument>> _redoStacks = new();
 
     public void SaveSnapshot(MacroWorkspace workspace)
     {
         var stack = GetUndoStack(workspace);
-        stack.Push(MacroCloneService.CloneWorkspace(workspace));
+        stack.Push(MacroCloneService.CloneDocument(workspace.Document));
 
         while (stack.Count > MaxUndoSnapshots)
             TrimOldest(stack);
@@ -21,7 +21,7 @@ public sealed class WorkspaceHistoryController
         GetRedoStack(workspace).Clear();
     }
 
-    public bool TryUndo(MacroWorkspace workspace, out MacroWorkspace snapshot)
+    public bool TryUndo(MacroWorkspace workspace, out MacroDocument snapshot)
     {
         var undoStack = GetUndoStack(workspace);
         if (undoStack.Count == 0)
@@ -30,12 +30,12 @@ public sealed class WorkspaceHistoryController
             return false;
         }
 
-        GetRedoStack(workspace).Push(MacroCloneService.CloneWorkspace(workspace));
+        GetRedoStack(workspace).Push(MacroCloneService.CloneDocument(workspace.Document));
         snapshot = undoStack.Pop();
         return true;
     }
 
-    public bool TryRedo(MacroWorkspace workspace, out MacroWorkspace snapshot)
+    public bool TryRedo(MacroWorkspace workspace, out MacroDocument snapshot)
     {
         var redoStack = GetRedoStack(workspace);
         if (redoStack.Count == 0)
@@ -44,7 +44,7 @@ public sealed class WorkspaceHistoryController
             return false;
         }
 
-        GetUndoStack(workspace).Push(MacroCloneService.CloneWorkspace(workspace));
+        GetUndoStack(workspace).Push(MacroCloneService.CloneDocument(workspace.Document));
         snapshot = redoStack.Pop();
         return true;
     }
@@ -55,32 +55,35 @@ public sealed class WorkspaceHistoryController
         _redoStacks.Remove(workspace);
     }
 
-    private Stack<MacroWorkspace> GetUndoStack(MacroWorkspace workspace)
+    private Stack<MacroDocument> GetUndoStack(MacroWorkspace workspace)
     {
         if (_undoStacks.TryGetValue(workspace, out var stack))
             return stack;
 
-        stack = new Stack<MacroWorkspace>();
+        stack = new Stack<MacroDocument>();
         _undoStacks[workspace] = stack;
         return stack;
     }
 
-    private Stack<MacroWorkspace> GetRedoStack(MacroWorkspace workspace)
+    private Stack<MacroDocument> GetRedoStack(MacroWorkspace workspace)
     {
         if (_redoStacks.TryGetValue(workspace, out var stack))
             return stack;
 
-        stack = new Stack<MacroWorkspace>();
+        stack = new Stack<MacroDocument>();
         _redoStacks[workspace] = stack;
         return stack;
     }
 
     private static void TrimOldest<T>(Stack<T> stack)
     {
-        var items = stack.Reverse().Skip(1).Reverse().ToArray();
+        var items = stack.ToArray();
         stack.Clear();
 
-        foreach (var item in items)
+        for (var i = items.Length - 2; i >= 0; i--)
+        {
+            var item = items[i];
             stack.Push(item);
+        }
     }
 }

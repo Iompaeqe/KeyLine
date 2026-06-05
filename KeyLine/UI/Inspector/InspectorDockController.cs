@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
@@ -33,7 +33,7 @@ public sealed class InspectorDockController
         TimelineSelectionState selection,
         Func<MacroTimeline> getCurrentTimeline,
         Func<bool> canEdit,
-        Action saveUndoSnapshot,
+        Action saveDocumentUndoSnapshot,
         Action refreshTimeline,
         Action refreshTimelineWithoutInspector,
         Action scheduleSaveState,
@@ -45,7 +45,7 @@ public sealed class InspectorDockController
         _selection = selection;
         _getCurrentTimeline = getCurrentTimeline;
         _canEdit = canEdit;
-        _saveUndoSnapshot = saveUndoSnapshot;
+        _saveUndoSnapshot = saveDocumentUndoSnapshot;
         _refreshTimeline = refreshTimeline;
         _refreshTimelineWithoutInspector = refreshTimelineWithoutInspector;
         _scheduleSaveState = scheduleSaveState;
@@ -191,7 +191,7 @@ public sealed class InspectorDockController
             selection: _selection,
             getCurrentTimeline: _getCurrentTimeline,
             canEdit: _canEdit,
-            saveUndoSnapshot: _saveUndoSnapshot,
+            saveDocumentUndoSnapshot: _saveUndoSnapshot,
             refreshTimeline: _refreshTimeline,
             refreshTimelineWithoutInspector: _refreshTimelineWithoutInspector,
             scheduleSaveState: _scheduleSaveState,
