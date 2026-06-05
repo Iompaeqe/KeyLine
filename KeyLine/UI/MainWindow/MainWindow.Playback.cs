@@ -31,6 +31,8 @@ public partial class MainWindow
         public int[] RunnerCompletedLoops { get; init; } = Array.Empty<int>();
         public int[] RunnerTargetLoops { get; init; } = Array.Empty<int>();
         public int RemainingLoopCount { get; set; }
+        public bool UsesFocusedWindowTarget { get; init; }
+        public string TargetTitle { get; init; } = "";
     }
 
     private async void StartStopButton_Click(object sender, RoutedEventArgs e)
@@ -58,7 +60,7 @@ public partial class MainWindow
         var timerMs = GetTimerMs();
 
         var workspace = _activeWorkspace;
-        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines);
+        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
         _restoreInputsOnStop = false;
         _playback.PrepareManualStart();
         _playback.MarkShortcutStarting(workspace);
@@ -196,7 +198,7 @@ public partial class MainWindow
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
-        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines);
+        InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
 
         if (workspaceIndex == _activeWorkspaceIndex)
         {
@@ -395,7 +397,8 @@ public partial class MainWindow
     private void InitializeWorkspacePlaybackState(
         MacroWorkspace workspace,
         int timerMs,
-        IReadOnlyList<MacroTimeline> runnableTimelines)
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        TargetWindowInfo? target = null)
     {
         var state = new WorkspacePlaybackStatusState
         {
@@ -403,7 +406,9 @@ public partial class MainWindow
             RunnerCompletedLoops = new int[runnableTimelines.Count],
             RunnerTargetLoops = runnableTimelines
                 .Select(timeline => Math.Max(0, timeline.LoopCount))
-                .ToArray()
+                .ToArray(),
+            UsesFocusedWindowTarget = target?.IsFocusedWindowFallback == true,
+            TargetTitle = target?.Title ?? ""
         };
 
         state.RemainingLoopCount = GetDisplayedRemainingLoopCount(state);
@@ -687,7 +692,7 @@ public partial class MainWindow
 
         StatusText.Text = paused
             ? $"Paused; {remainingText} remaining"
-            : $"Running... {remainingText} remaining";
+            : GetRunningStatusText(remainingText);
 
         StatusText.Foreground = new SolidColorBrush(paused
             ? Color.FromRgb(253, 230, 138)
@@ -710,6 +715,21 @@ public partial class MainWindow
             remaining = TimeSpan.Zero;
 
         return FormatRemainingTime(remaining);
+    }
+
+    private string GetRunningStatusText(string remainingText)
+    {
+        if (!_workspacePlaybackStates.TryGetValue(_activeWorkspace, out var state) ||
+            !state.UsesFocusedWindowTarget)
+        {
+            return $"Running... {remainingText} remaining";
+        }
+
+        var target = string.IsNullOrWhiteSpace(state.TargetTitle)
+            ? "focused window"
+            : state.TargetTitle;
+
+        return $"Running on focused window ({target}); {remainingText} remaining";
     }
 
     private WorkspacePlaybackStatusState GetOrCreateWorkspacePlaybackState(MacroWorkspace workspace, int timerMs)

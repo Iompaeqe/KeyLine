@@ -160,6 +160,9 @@ public partial class MainWindow
         if (foregroundWindow == IntPtr.Zero)
             return false;
 
+        if (!HasSelectedTarget(workspace) && string.IsNullOrWhiteSpace(workspace.TargetWindowSearchName))
+            return true;
+
         if (IsWorkspaceTargetHandleFocused(workspace, foregroundWindow))
             return true;
 

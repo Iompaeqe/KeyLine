@@ -35,6 +35,7 @@ KeyLine is not meant to be a huge automation framework. It is designed to be sim
 * Full backup export/import for moving KeyLine data between PCs
 * Tray support
 * Auto target window matching
+* Focused-window playback when no target window is selected
 * Experimental background mouse input
 
 ---
@@ -100,6 +101,9 @@ Full export includes profiles, macros, and settings. Full import intentionally r
 KeyLine can send keyboard input to selected windows using WinAPI window messages.
 
 This can allow macros to run on compatible background windows, but support depends on the target application.
+
+If no target window is selected and no auto target text is set, playback uses the window that is focused when the macro starts.
+If auto target text is set, that target must be found before playback starts; misses do not fall back to the focused window.
 
 Some apps accept background input. Some ignore it. Some games or protected applications may block it completely.
 

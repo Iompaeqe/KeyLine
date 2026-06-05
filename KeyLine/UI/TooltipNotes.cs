@@ -4,9 +4,9 @@ public static class TooltipNotes
 {
     public const string ToggleInspector = "Toggle Inspector";
     public const string OpenSettings = "Settings";
-    public const string TargetTopLevelWindow = "Target top-level window used for playback.";
+    public const string TargetTopLevelWindow = "Target top-level window used for playback. Leave unset, with no auto target, to run on the window focused when playback starts.";
     public const string TargetChildWindow = "Specific part of the target window used for playback.";
-    public const string TargetWindowSearchName = "Window title text used to automatically find a target when this macro has no selected target.";
+    public const string TargetWindowSearchName = "Window title text used to automatically find a target. If set and no matching window is found, playback will not start.";
     public const string MacroShortcutCapture = "Left-click to set. Right-click to clear.";
     public const string MacroShortcutToggle = "Enable or disable the shortcut for this macro.";
     public const string MacroShortcutRemap = "Remap replaces the shortcut key.\nPressing it starts this macro and blocks the original key from the target window.\nSingle-key shortcuts only.";

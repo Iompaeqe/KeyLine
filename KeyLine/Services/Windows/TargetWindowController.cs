@@ -11,7 +11,7 @@ namespace KeyLine.Services.Windows;
 
 public sealed class TargetWindowController
 {
-    private const string SelectWindowPlaceholderTitle = "Select target window";
+    private const string SelectWindowPlaceholderTitle = "Focused window (no target selected)";
     private const string ParentWindowTitle = "[Parent Window]";
 
     private readonly ComboBox _windowComboBox;
@@ -121,6 +121,17 @@ public sealed class TargetWindowController
     public TargetWindowInfo? GetPlaybackTarget(MacroWorkspace workspace, bool updateSelection)
     {
         var activeWorkspace = _getActiveWorkspace();
+
+        if (!string.IsNullOrWhiteSpace(workspace.TargetWindowSearchName))
+        {
+            if (!TryResolveTargetWindowSearchName(workspace, updateSelection))
+                return null;
+
+            return ReferenceEquals(workspace, activeWorkspace)
+                ? GetTargetHandle()
+                : ResolveSavedTargetWindow(workspace);
+        }
+
         var target = ReferenceEquals(workspace, activeWorkspace)
             ? GetTargetHandle()
             : ResolveSavedTargetWindow(workspace);
@@ -131,15 +142,9 @@ public sealed class TargetWindowController
             return target;
         }
 
-        if (string.IsNullOrWhiteSpace(workspace.TargetWindowSearchName))
-            return null;
-
-        if (!TryResolveTargetWindowSearchName(workspace, updateSelection))
-            return null;
-
-        return ReferenceEquals(workspace, activeWorkspace)
-            ? GetTargetHandle()
-            : ResolveSavedTargetWindow(workspace);
+        return HasSelectedTarget(workspace)
+            ? null
+            : ResolveFocusedWindowForPlayback(workspace);
     }
 
     public void CaptureSelectedTargetWindow(MacroWorkspace workspace)
@@ -277,6 +282,23 @@ public sealed class TargetWindowController
     {
         var matches = FindTargetWindowSearchMatches(workspace.TargetWindowSearchName);
         return matches.Count == 1 ? matches[0] : null;
+    }
+
+    private TargetWindowInfo? ResolveFocusedWindowForPlayback(MacroWorkspace workspace)
+    {
+        var handle = NativeMethods.GetForegroundWindow();
+        if (handle == IntPtr.Zero || !NativeMethods.IsWindow(handle))
+            return null;
+
+        _clearMacroError(workspace);
+
+        var title = GetWindowTitle(handle);
+        return new TargetWindowInfo
+        {
+            Handle = handle,
+            Title = string.IsNullOrWhiteSpace(title) ? "Focused window" : title,
+            IsFocusedWindowFallback = true
+        };
     }
 
     private static TargetWindowInfo? ResolveWindowHandle(long handleValue, string fallbackTitle)
