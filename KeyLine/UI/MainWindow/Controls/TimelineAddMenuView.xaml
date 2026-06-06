@@ -156,6 +156,10 @@
                         <!-- <Button Content="Scroll Down" -->
                         <!--         Style="{StaticResource MouseAddMenuButton}" -->
                         <!--         Click="MouseScrollDownMenuButton_Click" /> -->
+                        
+                        <Button Content=""
+                                Style="{StaticResource MouseAddMenuButton}"
+                                Visibility="Hidden"/>
 
                         <Button Content="Scroll Left"
                                 Style="{StaticResource MouseAddMenuButton}"
