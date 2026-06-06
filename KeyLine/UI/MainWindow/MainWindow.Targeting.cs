@@ -25,9 +25,21 @@ public partial class MainWindow
             TargetWindowSelection.LoadWindows();
         }
 
-        private void WindowComboBox_DropDownOpened(object? sender, EventArgs e)
+        private Task LoadWindowsAsync()
         {
-            TargetWindowSelection.LoadWindows();
+            return TargetWindowSelection.LoadWindowsAsync();
+        }
+
+        private async void WindowComboBox_DropDownOpened(object? sender, EventArgs e)
+        {
+            try
+            {
+                await LoadWindowsAsync();
+            }
+            catch
+            {
+                // Window enumeration is opportunistic; keep the existing list if it fails.
+            }
         }
 
         private void WindowComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -65,9 +77,19 @@ public partial class MainWindow
             TargetWindowSelection.RestoreTargetWindowSelection(workspace);
         }
 
+        private Task RestoreTargetWindowSelectionAsync(MacroWorkspace workspace)
+        {
+            return TargetWindowSelection.RestoreTargetWindowSelectionAsync(workspace);
+        }
+
         private bool TryResolveTargetWindowSearchName(MacroWorkspace workspace, bool updateSelection)
         {
             return TargetWindowSelection.TryResolveTargetWindowSearchName(workspace, updateSelection);
+        }
+
+        private Task<bool> TryResolveTargetWindowSearchNameAsync(MacroWorkspace workspace, bool updateSelection)
+        {
+            return TargetWindowSelection.TryResolveTargetWindowSearchNameAsync(workspace, updateSelection);
         }
 
         private static bool HasSelectedTarget(MacroWorkspace workspace) =>

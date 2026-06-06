@@ -23,6 +23,7 @@ public sealed class TargetWindowController
     private readonly Action<bool> _setRestoringWindowSelection;
 
     private bool _isRestoringWindowSelection;
+    private int _windowLoadVersion;
 
     public TargetWindowController(
         ComboBox windowComboBox,
@@ -50,19 +51,43 @@ public sealed class TargetWindowController
 
     public void LoadWindows()
     {
-        var selectedHandle = _windowComboBox.SelectedItem is TargetWindowInfo currentTargetHandle
-            ? currentTargetHandle.Handle
-            : 0;
-        var selectedTitle = _windowComboBox.SelectedItem is TargetWindowInfo currentTargetTitle
-            ? currentTargetTitle.Title
-            : string.Empty;
+        _windowLoadVersion++;
+        var (selectedHandle, selectedTitle) = GetSelectedWindowSnapshot();
+        ApplyWindowItems(CreateWindowItems(), selectedHandle, selectedTitle);
+    }
 
+    public async Task LoadWindowsAsync()
+    {
+        var requestVersion = ++_windowLoadVersion;
+        var (selectedHandle, selectedTitle) = GetSelectedWindowSnapshot();
+        var windows = await Task.Run(CreateWindowItems);
+
+        if (requestVersion != _windowLoadVersion)
+            return;
+
+        ApplyWindowItems(windows, selectedHandle, selectedTitle);
+    }
+
+    private (nint Handle, string Title) GetSelectedWindowSnapshot()
+    {
+        return _windowComboBox.SelectedItem is TargetWindowInfo selected
+            ? (selected.Handle, selected.Title)
+            : (0, string.Empty);
+    }
+
+    private static List<TargetWindowInfo> CreateWindowItems()
+    {
         var windows = new List<TargetWindowInfo>
         {
             new() { Handle = 0, Title = SelectWindowPlaceholderTitle }
         };
         windows.AddRange(WindowEnumerator.GetVisibleWindows());
 
+        return windows;
+    }
+
+    private void ApplyWindowItems(List<TargetWindowInfo> windows, nint selectedHandle, string selectedTitle)
+    {
         _windowComboBox.ItemsSource = windows;
 
         if (!SelectComboBoxItemByHandle(_windowComboBox, selectedHandle) &&
@@ -74,6 +99,9 @@ public sealed class TargetWindowController
 
     public void WindowSelectionChanged()
     {
+        if (_isRestoringWindowSelection)
+            return;
+
         if (_windowComboBox.SelectedItem is not TargetWindowInfo target)
             return;
 
@@ -99,6 +127,9 @@ public sealed class TargetWindowController
 
     public void HandleSelectionChanged()
     {
+        if (_isRestoringWindowSelection)
+            return;
+
         var activeWorkspace = _getActiveWorkspace();
 
         if (!_isRestoringWindowSelection)
@@ -175,38 +206,96 @@ public sealed class TargetWindowController
 
     public void RestoreTargetWindowSelection(MacroWorkspace workspace)
     {
+        var windows = CreateWindowItems();
+        var target = FindWindowSelection(windows, workspace.TargetWindowHandle, workspace.TargetWindowTitle);
+        var children = target == null
+            ? null
+            : ChildWindowFinder.GetChildWindows(target.Handle);
+
         SetRestoringWindowSelection(true);
 
         try
         {
-            LoadWindows();
-
-            if (workspace.TargetWindowHandle <= 0 && string.IsNullOrWhiteSpace(workspace.TargetWindowTitle))
-            {
-                _windowComboBox.SelectedIndex = 0;
-                _handleComboBox.Visibility = Visibility.Collapsed;
-                _handleComboBox.ItemsSource = null;
-                return;
-            }
-
-            if (!SelectComboBoxItemByHandle(_windowComboBox, new IntPtr(workspace.TargetWindowHandle)))
-                SelectComboBoxItemByTitle(_windowComboBox, workspace.TargetWindowTitle);
-
-            if (_windowComboBox.SelectedItem is TargetWindowInfo target)
-            {
-                LoadChildWindows(target);
-
-                if (_handleComboBox.Visibility == Visibility.Visible)
-                {
-                    if (!SelectComboBoxItemByHandle(_handleComboBox, new IntPtr(workspace.TargetChildWindowHandle)))
-                        SelectComboBoxItemByTitle(_handleComboBox, workspace.TargetChildWindowTitle);
-                }
-            }
+            ApplyRestoredWindowSelection(
+                workspace.TargetWindowHandle,
+                workspace.TargetWindowTitle,
+                workspace.TargetChildWindowHandle,
+                workspace.TargetChildWindowTitle,
+                windows,
+                target,
+                children);
         }
         finally
         {
             SetRestoringWindowSelection(false);
         }
+    }
+
+    public async Task RestoreTargetWindowSelectionAsync(MacroWorkspace workspace)
+    {
+        var targetWindowHandle = workspace.TargetWindowHandle;
+        var targetWindowTitle = workspace.TargetWindowTitle;
+        var targetChildWindowHandle = workspace.TargetChildWindowHandle;
+        var targetChildWindowTitle = workspace.TargetChildWindowTitle;
+
+        var windows = await Task.Run(CreateWindowItems);
+        var target = FindWindowSelection(windows, targetWindowHandle, targetWindowTitle);
+        var children = target == null
+            ? null
+            : await Task.Run(() => ChildWindowFinder.GetChildWindows(target.Handle));
+
+        if (!ReferenceEquals(workspace, _getActiveWorkspace()))
+            return;
+
+        SetRestoringWindowSelection(true);
+
+        try
+        {
+            ApplyRestoredWindowSelection(
+                targetWindowHandle,
+                targetWindowTitle,
+                targetChildWindowHandle,
+                targetChildWindowTitle,
+                windows,
+                target,
+                children);
+        }
+        finally
+        {
+            SetRestoringWindowSelection(false);
+        }
+    }
+
+    private void ApplyRestoredWindowSelection(
+        long targetWindowHandle,
+        string targetWindowTitle,
+        long targetChildWindowHandle,
+        string targetChildWindowTitle,
+        List<TargetWindowInfo> windows,
+        TargetWindowInfo? target,
+        List<TargetWindowInfo>? children)
+    {
+        ApplyWindowItems(windows, 0, string.Empty);
+
+        if (targetWindowHandle <= 0 && string.IsNullOrWhiteSpace(targetWindowTitle))
+        {
+            _windowComboBox.SelectedIndex = 0;
+            ClearChildWindowItems();
+            return;
+        }
+
+        if (target == null)
+        {
+            ClearChildWindowItems();
+            return;
+        }
+
+        _windowComboBox.SelectedItem = target;
+        ApplyChildWindowItems(
+            target,
+            children ?? new List<TargetWindowInfo>(),
+            new IntPtr(targetChildWindowHandle),
+            targetChildWindowTitle);
     }
 
     public bool TryResolveTargetWindowSearchName(MacroWorkspace workspace, bool updateSelection)
@@ -216,6 +305,34 @@ public sealed class TargetWindowController
             return false;
 
         var matches = FindTargetWindowSearchMatches(searchName);
+        return ApplyTargetWindowSearchMatches(workspace, searchName, matches, updateSelection);
+    }
+
+    public async Task<bool> TryResolveTargetWindowSearchNameAsync(MacroWorkspace workspace, bool updateSelection)
+    {
+        var searchName = workspace.TargetWindowSearchName.Trim();
+        if (string.IsNullOrWhiteSpace(searchName))
+            return false;
+
+        var matches = await Task.Run(() => FindTargetWindowSearchMatches(searchName));
+        if (!ReferenceEquals(workspace, _getActiveWorkspace()))
+            return false;
+
+        if (!ApplyTargetWindowSearchMatches(workspace, searchName, matches, updateSelection: false))
+            return false;
+
+        if (updateSelection)
+            await SelectTargetWindowAsync(matches[0]);
+
+        return true;
+    }
+
+    private bool ApplyTargetWindowSearchMatches(
+        MacroWorkspace workspace,
+        string searchName,
+        List<TargetWindowInfo> matches,
+        bool updateSelection)
+    {
         if (matches.Count == 0)
         {
             _setMacroError(workspace, $"No target window found for '{searchName}'");
@@ -320,16 +437,53 @@ public sealed class TargetWindowController
 
     private void SelectTargetWindow(TargetWindowInfo target)
     {
+        var windows = CreateWindowItems();
+        var selectedTarget = FindWindowSelection(windows, target.Handle.ToInt64(), target.Title);
+        var children = selectedTarget == null
+            ? null
+            : ChildWindowFinder.GetChildWindows(selectedTarget.Handle);
+
         SetRestoringWindowSelection(true);
 
         try
         {
-            LoadWindows();
-            if (!SelectComboBoxItemByHandle(_windowComboBox, target.Handle))
-                SelectComboBoxItemByTitle(_windowComboBox, target.Title);
+            ApplyWindowItems(windows, 0, string.Empty);
+            if (selectedTarget == null)
+            {
+                ClearChildWindowItems();
+                return;
+            }
 
-            if (_windowComboBox.SelectedItem is TargetWindowInfo selectedTarget)
-                LoadChildWindows(selectedTarget);
+            _windowComboBox.SelectedItem = selectedTarget;
+            ApplyChildWindowItems(selectedTarget, children ?? new List<TargetWindowInfo>(), 0, string.Empty);
+        }
+        finally
+        {
+            SetRestoringWindowSelection(false);
+        }
+    }
+
+    private async Task SelectTargetWindowAsync(TargetWindowInfo target)
+    {
+        var windows = await Task.Run(CreateWindowItems);
+        var selectedTarget = FindWindowSelection(windows, target.Handle.ToInt64(), target.Title);
+        var children = selectedTarget == null
+            ? null
+            : await Task.Run(() => ChildWindowFinder.GetChildWindows(selectedTarget.Handle));
+
+        SetRestoringWindowSelection(true);
+
+        try
+        {
+            ApplyWindowItems(windows, 0, string.Empty);
+            if (selectedTarget == null)
+            {
+                ClearChildWindowItems();
+                return;
+            }
+
+            _windowComboBox.SelectedItem = selectedTarget;
+            ApplyChildWindowItems(selectedTarget, children ?? new List<TargetWindowInfo>(), 0, string.Empty);
         }
         finally
         {
@@ -339,11 +493,18 @@ public sealed class TargetWindowController
 
     private void LoadChildWindows(TargetWindowInfo target)
     {
-        var children = ChildWindowFinder.GetChildWindows(target.Handle);
+        ApplyChildWindowItems(target, ChildWindowFinder.GetChildWindows(target.Handle), 0, string.Empty);
+    }
+
+    private void ApplyChildWindowItems(
+        TargetWindowInfo target,
+        List<TargetWindowInfo> children,
+        nint selectedHandle,
+        string selectedTitle)
+    {
         if (children.Count == 0)
         {
-            _handleComboBox.Visibility = Visibility.Collapsed;
-            _handleComboBox.ItemsSource = null;
+            ClearChildWindowItems();
             return;
         }
 
@@ -354,8 +515,19 @@ public sealed class TargetWindowController
         handles.AddRange(children);
 
         _handleComboBox.ItemsSource = handles;
-        _handleComboBox.SelectedIndex = 0;
         _handleComboBox.Visibility = Visibility.Visible;
+
+        if (!SelectComboBoxItemByHandle(_handleComboBox, selectedHandle) &&
+            !SelectComboBoxItemByTitle(_handleComboBox, selectedTitle))
+        {
+            _handleComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private void ClearChildWindowItems()
+    {
+        _handleComboBox.Visibility = Visibility.Collapsed;
+        _handleComboBox.ItemsSource = null;
     }
 
     private static List<TargetWindowInfo> FindTargetWindowSearchMatches(string searchName)
@@ -383,6 +555,24 @@ public sealed class TargetWindowController
         }
 
         return false;
+    }
+
+    private static TargetWindowInfo? FindWindowSelection(
+        IReadOnlyList<TargetWindowInfo> windows,
+        long handleValue,
+        string title)
+    {
+        if (handleValue > 0)
+        {
+            var handle = new IntPtr(handleValue);
+            var handleMatch = windows.FirstOrDefault(window => window.Handle == handle);
+            if (handleMatch != null)
+                return handleMatch;
+        }
+
+        return string.IsNullOrWhiteSpace(title)
+            ? null
+            : windows.FirstOrDefault(window => string.Equals(window.Title, title, StringComparison.Ordinal));
     }
 
     private static bool SelectComboBoxItemByHandle(ComboBox comboBox, nint handle)

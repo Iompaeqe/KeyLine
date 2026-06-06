@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private bool _isShortcutClearConfirmationActive;
 
     private bool _didInitialTimelineRefresh;
+    private bool _didCompleteDeferredStartup;
 
     public MainWindow()
     {
@@ -76,7 +77,6 @@ public partial class MainWindow : Window
         InitializeMacroOptions();
         InitializeStatePersistence();
         InitializeShortcuts();
-        ApplyShortcutHookState();
         InitializeGlobalRemapToggle();
         
         MacroTabsScrollViewer.PreviewMouseWheel += MacroTabsScrollViewer_PreviewMouseWheel;
@@ -99,7 +99,7 @@ public partial class MainWindow : Window
         WindowComboBox.SelectionChanged += WindowComboBox_SelectionChanged;
         HandleComboBox.SelectionChanged += HandleComboBox_SelectionChanged;
 
-        ActivateWorkspace(_activeWorkspaceIndex, false);
+        ActivateWorkspace(_activeWorkspaceIndex, false, deferExpensiveWork: true);
 
         Loaded += MainWindow_Loaded;
         SizeChanged += MainWindow_SizeChanged;
@@ -117,28 +117,56 @@ public partial class MainWindow : Window
         Width = Math.Max(MinWidth, savedWidth);
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (_didInitialTimelineRefresh)
             return;
 
         _didInitialTimelineRefresh = true;
 
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Loaded,
-            new Action(() =>
-            {
-                RefreshTimeline();
-                BeginSettingsUpdateCheck();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
 
-                Dispatcher.BeginInvoke(
-                    DispatcherPriority.Render,
-                    new Action(() =>
-                    {
-                        RefreshTimeline();
-                        UpdateTimelineScrollIndicator();
-                    }));
-            }));
+        RefreshTimeline();
+        UpdateTimelineScrollIndicator();
+
+        _ = CompleteDeferredStartupAsync();
+    }
+
+    private async Task CompleteDeferredStartupAsync()
+    {
+        if (_didCompleteDeferredStartup)
+            return;
+
+        _didCompleteDeferredStartup = true;
+
+        var startupWorkspace = _activeWorkspace;
+
+        try
+        {
+            await RestoreTargetWindowSelectionAsync(startupWorkspace);
+
+            if (ReferenceEquals(startupWorkspace, _activeWorkspace) &&
+                !HasResolvedTargetSelection() &&
+                !string.IsNullOrWhiteSpace(startupWorkspace.TargetWindowSearchName))
+            {
+                await TryResolveTargetWindowSearchNameAsync(startupWorkspace, updateSelection: true);
+            }
+        }
+        catch
+        {
+            // Startup should never stay frozen because a window disappeared during async enumeration.
+        }
+
+        try
+        {
+            await Dispatcher.InvokeAsync(ApplyShortcutHookState, DispatcherPriority.Background);
+        }
+        catch
+        {
+            // Keep startup usable even if the OS rejects hook installation.
+        }
+
+        BeginSettingsUpdateCheck();
     }
 
     protected override void OnSourceInitialized(EventArgs e)

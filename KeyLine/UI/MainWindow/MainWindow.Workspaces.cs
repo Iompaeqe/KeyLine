@@ -118,7 +118,17 @@ public partial class MainWindow
             ActivateWorkspace(_workspaces.IndexOf(workspace));
         }
 
-        private void ActivateWorkspace(int index, bool saveCurrent = true)
+        private void ActivateWorkspace(int index)
+        {
+            ActivateWorkspace(index, saveCurrent: true);
+        }
+
+        private void ActivateWorkspace(int index, bool saveCurrent)
+        {
+            ActivateWorkspace(index, saveCurrent, deferExpensiveWork: false);
+        }
+
+        private void ActivateWorkspace(int index, bool saveCurrent, bool deferExpensiveWork)
         {
             if (index < 0 || index >= _workspaces.Count)
                 return;
@@ -148,13 +158,20 @@ public partial class MainWindow
 
                 RefreshMacroTabs();
                 RefreshProfileDropdown();
-                RestoreTargetWindowSelection(_activeWorkspace);
-                if (!HasResolvedTargetSelection() && !string.IsNullOrWhiteSpace(_activeWorkspace.TargetWindowSearchName))
-                    TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
+                if (!deferExpensiveWork)
+                {
+                    RestoreTargetWindowSelection(_activeWorkspace);
+                    if (!HasResolvedTargetSelection() && !string.IsNullOrWhiteSpace(_activeWorkspace.TargetWindowSearchName))
+                        TryResolveTargetWindowSearchName(_activeWorkspace, updateSelection: true);
+                }
+
                 SelectTimeline(_document.ActiveTimeline);
-                RefreshTimeline();
+                if (!deferExpensiveWork)
+                    RefreshTimeline();
+
                 RefreshActiveWorkspacePlaybackUi();
-                ApplyShortcutHookState();
+                if (!deferExpensiveWork)
+                    ApplyShortcutHookState();
             }
             finally
             {
