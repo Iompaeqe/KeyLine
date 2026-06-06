@@ -242,7 +242,7 @@ public sealed class MacroRunner
                 if (!conditionPairs.TryGetValue(i, out var endIndex))
                     continue;
 
-                if (!EvaluateCondition(step, context.CurrentTargetWindowHandle, currentLoop, loopCount, repeatStack))
+                if (!EvaluateCondition(step, context, currentLoop, loopCount, repeatStack))
                     i = endIndex;
 
                 continue;
@@ -291,19 +291,30 @@ public sealed class MacroRunner
 
     private static bool EvaluateCondition(
         MacroNode node,
-        nint targetHwnd,
+        MacroRunContext context,
         int currentLoop,
         int loopCount,
         Stack<RepeatContext> repeatStack)
     {
-        return node.ConditionType switch
+        var result = node.ConditionType switch
         {
             MacroConditionType.KeyState => IsInputCombinationDown(node),
-            MacroConditionType.PixelColor => IsPixelMatch(node, targetHwnd),
+            MacroConditionType.PixelColor => IsPixelMatch(node, context.CurrentTargetWindowHandle),
             MacroConditionType.RandomChance => IsRandomChanceHit(node.ConditionChancePercent),
             MacroConditionType.LoopContext => IsLoopContextMatch(node, currentLoop, loopCount, repeatStack),
+            MacroConditionType.TargetWindowFocused => IsTargetWindowFocused(context),
+            MacroConditionType.WindowExists => DoesWindowExist(node, context),
+            MacroConditionType.MacroRunning => IsMacroRunning(node, context),
+            MacroConditionType.TimePassed => context.HasTimePassed(
+                node,
+                Math.Max(1, node.ConditionTimePassedMs),
+                DateTime.UtcNow),
             _ => true
         };
+
+        return MacroConditionDefinitions.ShouldInvert(node)
+            ? !result
+            : result;
     }
 
     private static bool IsInputCombinationDown(MacroNode node)
@@ -374,6 +385,36 @@ public sealed class MacroRunner
         };
     }
 
+    private static bool IsTargetWindowFocused(MacroRunContext context)
+    {
+        var target = context.CurrentTargetWindowHandle;
+        if (!IsValidWindow(target))
+            return false;
+
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (!IsValidWindow(foreground))
+            return false;
+
+        return GetRootWindow(target) == GetRootWindow(foreground);
+    }
+
+    private static bool DoesWindowExist(MacroNode node, MacroRunContext context)
+    {
+        var handle = ResolveWindowReference(node, context, out _);
+        if (!IsValidWindow(handle))
+            return false;
+
+        context.LastFoundWindowHandle = handle;
+        return true;
+    }
+
+    private static bool IsMacroRunning(MacroNode node, MacroRunContext context)
+    {
+        var macroId = node.ConditionMacroId?.Trim() ?? "";
+        return !string.IsNullOrWhiteSpace(macroId) &&
+               context.RunHost?.IsMacroRunning(macroId, context) == true;
+    }
+
     private async Task ExecuteStep(
         MacroRunContext context,
         MacroNode node,
@@ -387,6 +428,9 @@ public sealed class MacroRunner
         switch (node.Type)
         {
             case MacroNodeType.KeyDown:
+                if (TryExecuteToggleKeyMode(node))
+                    break;
+
                 var isModifierKey = InputMessageSender.IsModifierKey(node.VirtualKey);
                 if (useTextInputMode && !isModifierKey && heldModifierKeys.Count == 0 &&
                     InputMessageSender.TrySendCharacter(hwnd, node.VirtualKey))
@@ -398,6 +442,9 @@ public sealed class MacroRunner
                 break;
 
             case MacroNodeType.KeyUp:
+                if (TryExecuteToggleKeyMode(node))
+                    break;
+
                 if (useTextInputMode && !InputMessageSender.IsModifierKey(node.VirtualKey) && heldModifierKeys.Count == 0)
                     break;
 
@@ -473,7 +520,41 @@ public sealed class MacroRunner
             case MacroNodeType.SystemSelectTargetWindow:
                 SetTargetWindow(node, context, token);
                 break;
+
+            case MacroNodeType.RunMacro:
+                await RunMacroNode(node, context, token);
+                break;
         }
+    }
+
+    private static bool TryExecuteToggleKeyMode(MacroNode node)
+    {
+        if (node.ToggleKeyMode == ToggleKeyMode.Normal ||
+            !ToggleKeyService.IsToggleKey(node.VirtualKey))
+        {
+            return false;
+        }
+
+        ToggleKeyService.Execute(node.VirtualKey, node.ToggleKeyMode);
+        return true;
+    }
+
+    private async Task RunMacroNode(MacroNode node, MacroRunContext context, CancellationToken token)
+    {
+        var macroId = node.RunMacroId?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(macroId))
+        {
+            _reportFailure?.Invoke("Run Macro node has no macro selected.");
+            return;
+        }
+
+        if (context.RunHost == null)
+        {
+            _reportFailure?.Invoke("Run Macro is not available in the current playback context.");
+            return;
+        }
+
+        await context.RunHost.RunMacroAsync(macroId, context, _reportFailure, token);
     }
 
     private static void CaptureLaunchResult(MacroRunContext context, SystemLaunchResult result)
@@ -658,6 +739,12 @@ public sealed class MacroRunner
             context.LastLaunchedWindowHandle = handle;
 
         return handle;
+    }
+
+    private static nint GetRootWindow(nint window)
+    {
+        var root = NativeMethods.GetAncestor(window, NativeMethods.GA_ROOT);
+        return root == 0 ? window : root;
     }
 
     private static nint FindWindowByTitleContains(string title)

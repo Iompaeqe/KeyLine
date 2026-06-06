@@ -13,6 +13,8 @@ public sealed class InspectorDockController
     private readonly Window _owner;
     private readonly TimelineSelectionState _selection;
     private readonly Func<MacroTimeline> _getCurrentTimeline;
+    private readonly Func<MacroWorkspace> _getActiveWorkspace;
+    private readonly Func<IReadOnlyList<MacroWorkspace>> _getActiveProfileWorkspaces;
     private readonly Func<bool> _canEdit;
     private readonly Action _saveUndoSnapshot;
     private readonly Action _refreshTimeline;
@@ -32,6 +34,8 @@ public sealed class InspectorDockController
         Window owner,
         TimelineSelectionState selection,
         Func<MacroTimeline> getCurrentTimeline,
+        Func<MacroWorkspace> getActiveWorkspace,
+        Func<IReadOnlyList<MacroWorkspace>> getActiveProfileWorkspaces,
         Func<bool> canEdit,
         Action saveDocumentUndoSnapshot,
         Action refreshTimeline,
@@ -44,6 +48,8 @@ public sealed class InspectorDockController
         _owner = owner;
         _selection = selection;
         _getCurrentTimeline = getCurrentTimeline;
+        _getActiveWorkspace = getActiveWorkspace;
+        _getActiveProfileWorkspaces = getActiveProfileWorkspaces;
         _canEdit = canEdit;
         _saveUndoSnapshot = saveDocumentUndoSnapshot;
         _refreshTimeline = refreshTimeline;
@@ -190,6 +196,8 @@ public sealed class InspectorDockController
             window: _window,
             selection: _selection,
             getCurrentTimeline: _getCurrentTimeline,
+            getActiveWorkspace: _getActiveWorkspace,
+            getActiveProfileWorkspaces: _getActiveProfileWorkspaces,
             canEdit: _canEdit,
             saveDocumentUndoSnapshot: _saveUndoSnapshot,
             refreshTimeline: _refreshTimeline,

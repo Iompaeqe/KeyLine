@@ -1,0 +1,17 @@
+﻿<UserControl x:Class="KeyLine.UI.Inspector.Nodes.MouseScrollNodeInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout"
+             xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks">
+
+    <Border Background="{StaticResource Surface}">
+        <StackPanel>
+            <layout:InspectorRow x:Name="AmountRow"
+                                 Label="Amount"
+                                 RowToolTip="How many scroll notches this node sends.">
+                <entryBlocks:NumberEntryBlock HorizontalAlignment="Right"
+                                              ToolTip="How many scroll notches this node sends." />
+            </layout:InspectorRow>
+        </StackPanel>
+    </Border>
+</UserControl>

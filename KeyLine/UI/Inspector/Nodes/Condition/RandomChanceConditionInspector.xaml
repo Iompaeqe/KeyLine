@@ -1,0 +1,26 @@
+﻿<UserControl x:Class="KeyLine.UI.Inspector.Nodes.RandomChanceConditionInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:KeyLine.UI"
+             xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout"
+             xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks">
+
+    <Border Background="{StaticResource Surface}">
+        <StackPanel>
+            <layout:InspectorRow x:Name="ChanceRow"
+                                 Label="Chance"
+                                 RowToolTip="{x:Static ui:TooltipNotes.ConditionChance}">
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <entryBlocks:NumberEntryBlock ToolTip="{x:Static ui:TooltipNotes.ConditionChance}" />
+
+                    <TextBlock Text="%"
+                               Margin="6,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               Style="{DynamicResource InspectorValue}" />
+                </StackPanel>
+            </layout:InspectorRow>
+        </StackPanel>
+    </Border>
+</UserControl>

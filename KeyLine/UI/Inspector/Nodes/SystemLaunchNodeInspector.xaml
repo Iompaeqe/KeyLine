@@ -1,0 +1,46 @@
+﻿<UserControl x:Class="KeyLine.UI.Inspector.Nodes.SystemLaunchNodeInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout">
+
+    <Border Background="{StaticResource Surface}">
+        <StackPanel>
+            <layout:InspectorRow x:Name="SummaryRow"
+                                 Label="Summary">
+                <TextBlock TextWrapping="Wrap"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="190"
+                           Style="{DynamicResource InspectorValue}" />
+            </layout:InspectorRow>
+
+            <layout:InspectorRow x:Name="KindRow"
+                                 Label="Kind"
+                                 RowToolTip="Choose what this node opens.">
+                <ComboBox Width="120"
+                          Height="24"
+                          Padding="-5,0,-5,0"
+                          DisplayMemberPath="Label"
+                          SelectedValuePath="Value"
+                          ToolTip="Choose what this node opens." />
+            </layout:InspectorRow>
+
+            <StackPanel x:Name="TargetPanel"
+                        Margin="0,4,0,0"
+                        ToolTip="Target path, executable, folder, or URL.">
+
+                <TextBlock Text="Target"
+                           Style="{DynamicResource InspectorLabel}"
+                           Margin="0,0,0,5" />
+
+                <TextBox x:Name="TargetTextBox"
+                         Height="24" />
+
+                <Button x:Name="BrowseButton"
+                        Content="Browse"
+                        Height="22"
+                        Margin="0,5,0,0"
+                        ToolTip="Pick a local application, file, or folder." />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -9,6 +9,8 @@ public sealed class InspectorController
     private readonly InspectorWindow _window;
     private readonly TimelineSelectionState _selection;
     private readonly Func<MacroTimeline> _getCurrentTimeline;
+    private readonly Func<MacroWorkspace> _getActiveWorkspace;
+    private readonly Func<IReadOnlyList<MacroWorkspace>> _getActiveProfileWorkspaces;
     private readonly Func<bool> _canEdit;
     private readonly InspectorCommitService _commitService;
     private readonly NodeInspectorBuilder _nodeInspectorBuilder;
@@ -22,6 +24,8 @@ public sealed class InspectorController
         InspectorWindow window,
         TimelineSelectionState selection,
         Func<MacroTimeline> getCurrentTimeline,
+        Func<MacroWorkspace> getActiveWorkspace,
+        Func<IReadOnlyList<MacroWorkspace>> getActiveProfileWorkspaces,
         Func<bool> canEdit,
         Action saveDocumentUndoSnapshot,
         Action refreshTimeline,
@@ -34,6 +38,8 @@ public sealed class InspectorController
         _window = window;
         _selection = selection;
         _getCurrentTimeline = getCurrentTimeline;
+        _getActiveWorkspace = getActiveWorkspace;
+        _getActiveProfileWorkspaces = getActiveProfileWorkspaces;
         _canEdit = canEdit;
 
         _commitService = new InspectorCommitService(
@@ -48,6 +54,8 @@ public sealed class InspectorController
 
         _nodeInspectorBuilder = new NodeInspectorBuilder(
             selection: selection,
+            getActiveWorkspace: _getActiveWorkspace,
+            getActiveProfileWorkspaces: _getActiveProfileWorkspaces,
             canEdit: canEdit,
             isRefreshing: () => _isRefreshing,
             saveDocumentUndoSnapshot: saveDocumentUndoSnapshot,

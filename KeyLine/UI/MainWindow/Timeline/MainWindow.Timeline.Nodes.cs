@@ -40,7 +40,8 @@ public partial class MainWindow
                 MacroNodeType.SystemVolumeControl or
                 MacroNodeType.SystemWaitUntilWindowOpens or
                 MacroNodeType.SystemSelectTargetWindow or
-                MacroNodeType.SystemFocusWindow => CreateSystemNode(timeline, node),
+                MacroNodeType.SystemFocusWindow or
+                MacroNodeType.RunMacro => CreateSystemNode(timeline, node),
             MacroNodeType.KeyDown or MacroNodeType.KeyUp => CreateKeyNode(timeline, node),
             MacroNodeType.RepeatStart or MacroNodeType.RepeatEnd or
                 MacroNodeType.ConditionStart or MacroNodeType.ConditionEnd => CreateBlockNode(timeline, node),
@@ -140,6 +141,7 @@ public partial class MainWindow
         {
             Node = node,
             IsSelected = IsStepSelected(timeline, node),
+            ResolveMacroName = ResolveActiveProfileMacroName,
             Tag = node
         };
 

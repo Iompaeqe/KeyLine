@@ -25,6 +25,8 @@ public partial class MainWindow
                 owner: this,
                 selection: _selection,
                 getCurrentTimeline: () => _selection.SelectedTimeline ?? _document.ActiveTimeline,
+                getActiveWorkspace: () => _activeWorkspace,
+                getActiveProfileWorkspaces: GetActiveProfileWorkspaces,
                 canEdit: () => _isTimelineEditingEnabled,
                 saveDocumentUndoSnapshot: SaveDocumentUndoSnapshot,
                 refreshTimeline: () => RefreshTimeline(),

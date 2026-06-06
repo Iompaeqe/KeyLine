@@ -61,6 +61,7 @@ public static class MacroTimelineBuilder
                 or MacroNodeType.SystemWaitUntilWindowOpens
                 or MacroNodeType.SystemSelectTargetWindow
                 or MacroNodeType.SystemFocusWindow
+                or MacroNodeType.RunMacro
                 or MacroNodeType.RepeatStart
                 or MacroNodeType.RepeatEnd
                 or MacroNodeType.ConditionStart
@@ -119,6 +120,7 @@ public static class MacroTimelineBuilder
                 Type = comboKeyDowns.All(IsForegroundMouseStep) ? MacroNodeType.MouseDown : MacroNodeType.KeyDown,
                 KeyName = string.Join("+", comboKeyDowns.Select(GetKeyLikeName)),
                 VirtualKey = comboKeyDowns[0].VirtualKey,
+                ToggleKeyMode = GetSyntheticToggleKeyMode(comboSourceSteps),
                 MouseButton = comboKeyDowns.FirstOrDefault(IsForegroundMouseStep)?.MouseButton ?? 1,
                 IsSyntheticDisplayNode = true,
 
@@ -158,6 +160,14 @@ public static class MacroTimelineBuilder
         IsForegroundMouseStep(node)
             ? $"M{NormalizeMouseButton(node.MouseButton)}"
             : node.KeyName;
+
+    private static ToggleKeyMode GetSyntheticToggleKeyMode(IEnumerable<MacroNode> sourceSteps)
+    {
+        return sourceSteps
+            .Where(step => step.Type is MacroNodeType.KeyDown or MacroNodeType.KeyUp)
+            .Select(step => step.ToggleKeyMode)
+            .FirstOrDefault(mode => mode != ToggleKeyMode.Normal);
+    }
 
     private static int NormalizeMouseButton(int mouseButton) =>
         Math.Clamp(mouseButton <= 0 ? 1 : mouseButton, 1, 5);

@@ -22,6 +22,7 @@ public enum TimelineAddMenuAction
     SystemWaitUntilWindowOpens,
     SystemFocusWindow,
     SystemSelectTargetWindow,
+    RunMacro,
     BackgroundMouseDown,
     BackgroundMouseUp,
     BackgroundMouseClick
@@ -117,6 +118,7 @@ public partial class TimelineAddMenuView : UserControl
         ApplyFeatureAddMenuButtonState(SystemWaitUntilWindowOpensMenuButton, featureGate, FeatureId.SystemNodes, "Wait Window", "Wait until window opens");
         ApplyFeatureAddMenuButtonState(SystemFocusWindowMenuButton, featureGate, FeatureId.SystemNodes, "Focus", "Focus window");
         ApplyFeatureAddMenuButtonState(SystemSelectTargetWindowMenuButton, featureGate, FeatureId.SystemNodes, "Set Target", "Set target window");
+        ApplyFeatureAddMenuButtonState(RunMacroMenuButton, featureGate, FeatureId.SystemNodes, "Run Macro", "Run another macro");
     }
 
     private void Request(TimelineAddMenuAction action)
@@ -168,6 +170,9 @@ public partial class TimelineAddMenuView : UserControl
 
     private void SystemSelectTargetWindowMenuButton_Click(object sender, RoutedEventArgs e) =>
         Request(TimelineAddMenuAction.SystemSelectTargetWindow);
+
+    private void RunMacroMenuButton_Click(object sender, RoutedEventArgs e) =>
+        Request(TimelineAddMenuAction.RunMacro);
 
     private void MouseDownMenuButton_Click(object sender, RoutedEventArgs e) =>
         Request(TimelineAddMenuAction.BackgroundMouseDown);

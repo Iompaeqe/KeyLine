@@ -294,6 +294,20 @@ public partial class MainWindow
             StringComparison.OrdinalIgnoreCase);
     }
 
+    private string? ResolveActiveProfileMacroName(string macroId)
+    {
+        macroId = macroId?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(macroId))
+            return null;
+
+        return GetActiveProfileWorkspaces()
+            .FirstOrDefault(workspace => string.Equals(
+                workspace.Id,
+                macroId,
+                StringComparison.OrdinalIgnoreCase))
+            ?.Name;
+    }
+
     private string GetNextProfileName(MacroProfile? excludedProfile = null)
     {
         var usedNames = _profiles

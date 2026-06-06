@@ -1,4 +1,5 @@
-﻿using KeyLine.Domain;
+using KeyLine.Domain;
+using KeyLine.Services.Input;
 
 public sealed class NodeInspectorPolicy
 {
@@ -17,11 +18,20 @@ public sealed class NodeInspectorPolicy
     public bool CanEditSystemFocusWindow { get; init; }
     public bool CanEditRepeatCount { get; init; }
     public bool CanEditCondition { get; init; }
+    public bool CanEditToggleKeyMode { get; init; }
 
     public static NodeInspectorPolicy For(MacroTimeline timeline, MacroNode node)
     {
         if (node.IsSyntheticDisplayNode)
         {
+            if (HasToggleKey(node))
+            {
+                return new NodeInspectorPolicy
+                {
+                    CanEditToggleKeyMode = true
+                };
+            }
+
             return new NodeInspectorPolicy
             {
                 HasInspector = false
@@ -60,10 +70,15 @@ public sealed class NodeInspectorPolicy
                 HasInspector = false
             },
 
-            MacroNodeType.KeyDown or MacroNodeType.KeyUp => new NodeInspectorPolicy
-            {
-                HasInspector = false
-            },
+            MacroNodeType.KeyDown or MacroNodeType.KeyUp => HasToggleKey(node)
+                ? new NodeInspectorPolicy
+                {
+                    CanEditToggleKeyMode = true
+                }
+                : new NodeInspectorPolicy
+                {
+                    HasInspector = false
+                },
 
             MacroNodeType.MouseClick => new NodeInspectorPolicy
             {
@@ -103,6 +118,8 @@ public sealed class NodeInspectorPolicy
                 CanEditSystemFocusWindow = true
             },
 
+            MacroNodeType.RunMacro => new NodeInspectorPolicy(),
+
             MacroNodeType.RepeatStart => new NodeInspectorPolicy
             {
                 CanEditRepeatCount = true
@@ -123,4 +140,15 @@ public sealed class NodeInspectorPolicy
             }
         };
     }
+
+    private static bool HasToggleKey(MacroNode node)
+    {
+        if (ToggleKeyService.IsToggleKey(node.VirtualKey))
+            return true;
+
+        return node.IsSyntheticDisplayNode &&
+               node.SourceNodes.Any(source => ToggleKeyService.IsToggleKey(source.VirtualKey));
+    }
 }
+
+

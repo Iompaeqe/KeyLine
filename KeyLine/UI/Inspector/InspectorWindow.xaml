@@ -5,7 +5,7 @@
         xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks"
         xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout"
         Title="Inspector"
-        Width="210"
+        Width="242"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -37,6 +37,13 @@
                 <Setter Property="FontSize" Value="10" />
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Margin" Value="0,4,0,3" />
+            </Style>
+            
+            <Style x:Key="InspectorValue" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#E2E8F0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
         </ResourceDictionary>

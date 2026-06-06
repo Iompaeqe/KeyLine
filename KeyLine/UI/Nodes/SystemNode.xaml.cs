@@ -7,6 +7,8 @@ namespace KeyLine.UI.Nodes;
 
 public partial class SystemNode : NodeBase
 {
+    public Func<string, string?>? ResolveMacroName { get; set; }
+
     public SystemNode()
     {
         InitializeComponent();
@@ -25,6 +27,7 @@ public partial class SystemNode : NodeBase
             MacroNodeType.SystemWaitUntilWindowOpens => NodeDisplayFormatter.GetSystemWindowWaitActionText(step),
             MacroNodeType.SystemSelectTargetWindow => NodeDisplayFormatter.GetSystemTargetWindowActionText(step),
             MacroNodeType.SystemFocusWindow => NodeDisplayFormatter.GetSystemFocusWindowActionText(step),
+            MacroNodeType.RunMacro => NodeDisplayFormatter.GetRunMacroActionText(step),
             _ => "SYSTEM"
         };
 
@@ -35,10 +38,11 @@ public partial class SystemNode : NodeBase
             MacroNodeType.SystemWaitUntilWindowOpens => NodeDisplayFormatter.GetSystemWindowWaitDetailText(step),
             MacroNodeType.SystemSelectTargetWindow => NodeDisplayFormatter.GetSystemTargetWindowDetailText(step),
             MacroNodeType.SystemFocusWindow => NodeDisplayFormatter.GetSystemFocusWindowDetailText(step),
+            MacroNodeType.RunMacro => NodeDisplayFormatter.GetRunMacroDetailText(step, ResolveMacroName),
             _ => ""
         };
 
-        RootBorder.ToolTip = NodeDisplayFormatter.GetSystemNodeTooltip(step);
+        RootBorder.ToolTip = NodeDisplayFormatter.GetSystemNodeTooltip(step, ResolveMacroName);
 
         RootBorder.Background = new SolidColorBrush(IsSelected
             ? Color.FromRgb(45, 52, 69)

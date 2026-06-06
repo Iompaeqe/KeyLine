@@ -43,6 +43,9 @@ internal static class NativeMethods
     public const int VK_SHIFT = 0x10;
     public const int VK_CONTROL = 0x11;
     public const int VK_MENU = 0x12;
+    public const int VK_CAPITAL = 0x14;
+    public const int VK_NUMLOCK = 0x90;
+    public const int VK_SCROLL = 0x91;
     public const int VK_XBUTTON1 = 0x05;
     public const int VK_XBUTTON2 = 0x06;
     public const int VK_LWIN = 0x5B;
@@ -56,6 +59,7 @@ internal static class NativeMethods
     public const uint LLKHF_INJECTED = 0x10;
     public const uint LLKHF_LOWER_IL_INJECTED = 0x02;
     public const uint GA_ROOT = 2;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -84,6 +88,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    public static extern short GetKeyState(int nVirtKey);
 
     [DllImport("user32.dll")]
     public static extern IntPtr GetDC(IntPtr hWnd);
@@ -125,6 +132,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);

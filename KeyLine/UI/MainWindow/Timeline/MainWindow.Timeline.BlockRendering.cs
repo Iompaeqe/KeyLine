@@ -102,7 +102,7 @@ public partial class MainWindow
             var startLabel = CreateBlockLabel(
                 timeline,
                 range.Start,
-                NodeDisplayFormatter.GetBlockTimelineLabel(range.Start),
+                NodeDisplayFormatter.GetBlockTimelineLabel(range.Start, ResolveActiveProfileMacroName),
                 horizontalPadding: 7);
             Canvas.SetLeft(startLabel, left + 12);
             Canvas.SetTop(startLabel, labelTop);

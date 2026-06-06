@@ -204,6 +204,12 @@
                                 Style="{StaticResource SystemAddMenuButton}"
                                 ToolTip="Set target window"
                                 Click="SystemSelectTargetWindowMenuButton_Click" />
+
+                        <Button x:Name="RunMacroMenuButton"
+                                Content="Run Macro"
+                                Style="{StaticResource SystemAddMenuButton}"
+                                ToolTip="Run another macro"
+                                Click="RunMacroMenuButton_Click" />
                     </UniformGrid>
                 </Expander>
 

@@ -69,7 +69,8 @@ public sealed class MacroFeatureValidator
                 MacroNodeType.SystemVolumeControl or
                 MacroNodeType.SystemWaitUntilWindowOpens or
                 MacroNodeType.SystemSelectTargetWindow or
-                MacroNodeType.SystemFocusWindow => FeatureId.SystemNodes,
+                MacroNodeType.SystemFocusWindow or
+                MacroNodeType.RunMacro => FeatureId.SystemNodes,
             _ => null
         };
     }

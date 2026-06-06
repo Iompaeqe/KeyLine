@@ -1,5 +1,6 @@
 using KeyLine.Domain;
 using KeyLine.Services.Input;
+using KeyLine.Services.Macro;
 using KeyLine.UI.Config;
 using System.IO;
 
@@ -10,12 +11,12 @@ public static class NodeDisplayFormatter
     public static string GetKeyText(MacroNode node)
     {
         if (node.IsSyntheticDisplayNode && !string.IsNullOrWhiteSpace(node.KeyName))
-            return node.KeyName;
+            return GetToggleKeyText(node, node.KeyName);
 
         if (node.Type is MacroNodeType.MouseDown or MacroNodeType.MouseUp)
             return $"M{NormalizeMouseButton(node.MouseButton)}";
 
-        return node.KeyName;
+        return GetToggleKeyText(node, node.KeyName);
     }
 
     public static bool IsComboKey(string keyText)
@@ -64,6 +65,7 @@ public static class NodeDisplayFormatter
             MacroNodeType.SystemWaitUntilWindowOpens => "Wait Until Window Opens",
             MacroNodeType.SystemSelectTargetWindow => "Set Target Window",
             MacroNodeType.SystemFocusWindow => "Focus Window",
+            MacroNodeType.RunMacro => "Run Macro",
             MacroNodeType.CursorMove => "Move Cursor",
             MacroNodeType.BackgroundMouseDown => "BG Mouse Down",
             MacroNodeType.BackgroundMouseUp => "BG Mouse Up",
@@ -76,17 +78,21 @@ public static class NodeDisplayFormatter
         };
     }
 
-    public static string GetBlockTimelineLabel(MacroNode startNode)
+    public static string GetBlockTimelineLabel(
+        MacroNode startNode,
+        Func<string, string?>? resolveMacroName = null)
     {
         return startNode.Type switch
         {
             MacroNodeType.RepeatStart => $"Repeat \u00d7{Math.Max(1, startNode.RepeatCount)}",
-            MacroNodeType.ConditionStart => GetConditionSummary(startNode),
+            MacroNodeType.ConditionStart => GetConditionSummary(startNode, resolveMacroName),
             _ => GetNodeTypeText(startNode)
         };
     }
 
-    public static string GetConditionSummary(MacroNode node)
+    public static string GetConditionSummary(
+        MacroNode node,
+        Func<string, string?>? resolveMacroName = null)
     {
         return node.ConditionType switch
         {
@@ -94,6 +100,11 @@ public static class NodeDisplayFormatter
             MacroConditionType.PixelColor => "If Pixel Matches",
             MacroConditionType.RandomChance => $"If Random {Math.Clamp(node.ConditionChancePercent, 0, 100)}%",
             MacroConditionType.LoopContext => GetLoopConditionSummary(node),
+            MacroConditionType.TargetWindowFocused => $"{GetIfPrefix(node)}Target Window Focused",
+            MacroConditionType.WindowExists => $"{GetIfPrefix(node)}Window Exists: {GetWindowReferenceSummary(node)}",
+            MacroConditionType.MacroRunning =>
+                $"{GetIfPrefix(node)}Macro \"{GetMacroReferenceSummary(node.ConditionMacroId, resolveMacroName)}\" Is Running",
+            MacroConditionType.TimePassed => $"If {FormatTimePassed(node.ConditionTimePassedMs)} Passed",
             _ => "If Condition"
         };
     }
@@ -106,6 +117,10 @@ public static class NodeDisplayFormatter
             MacroConditionType.PixelColor => "Pixel matches",
             MacroConditionType.RandomChance => "Random chance",
             MacroConditionType.LoopContext => "Loop context",
+            MacroConditionType.TargetWindowFocused => "Target Window Focused",
+            MacroConditionType.WindowExists => "Window Exists",
+            MacroConditionType.MacroRunning => "Macro Running",
+            MacroConditionType.TimePassed => "Time Passed",
             _ => type.ToString()
         };
     }
@@ -245,6 +260,13 @@ public static class NodeDisplayFormatter
     public static string GetSystemTargetWindowDetailText(MacroNode node) =>
         GetWindowReferenceSummary(node);
 
+    public static string GetRunMacroActionText(MacroNode node) => "RUN MACRO";
+
+    public static string GetRunMacroDetailText(
+        MacroNode node,
+        Func<string, string?>? resolveMacroName = null) =>
+        GetMacroReferenceSummary(node.RunMacroId, resolveMacroName);
+
     public static string GetWindowReferenceSummary(MacroNode node)
     {
         var reference = node.GetEffectiveWindowReference();
@@ -267,7 +289,9 @@ public static class NodeDisplayFormatter
             : $"Custom \"{title}\"";
     }
 
-    public static string GetSystemNodeTooltip(MacroNode node)
+    public static string GetSystemNodeTooltip(
+        MacroNode node,
+        Func<string, string?>? resolveMacroName = null)
     {
         return node.Type switch
         {
@@ -283,7 +307,51 @@ public static class NodeDisplayFormatter
                 $"Focus: {GetSystemFocusWindowDetailText(node)}",
             MacroNodeType.SystemSelectTargetWindow =>
                 $"Set target: {GetSystemTargetWindowDetailText(node)}",
+            MacroNodeType.RunMacro =>
+                $"Run Macro: {GetRunMacroDetailText(node, resolveMacroName)}",
             _ => GetNodeTypeText(node)
         };
+    }
+
+    private static string GetToggleKeyText(MacroNode node, string keyName)
+    {
+        if (!ToggleKeyService.IsToggleKey(node.VirtualKey) ||
+            node.ToggleKeyMode == ToggleKeyMode.Normal)
+        {
+            return keyName;
+        }
+
+        return node.ToggleKeyMode switch
+        {
+            ToggleKeyMode.Toggle => $"{keyName} Toggle",
+            ToggleKeyMode.ToggleOn => $"{keyName} Toggle On",
+            ToggleKeyMode.ToggleOff => $"{keyName} Toggle Off",
+            _ => keyName
+        };
+    }
+
+    private static string GetIfPrefix(MacroNode node) =>
+        MacroConditionDefinitions.ShouldInvert(node) ? "If NOT " : "If ";
+
+    private static string GetMacroReferenceSummary(
+        string macroId,
+        Func<string, string?>? resolveMacroName)
+    {
+        macroId = macroId?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(macroId))
+            return "Missing Macro";
+
+        var name = resolveMacroName?.Invoke(macroId);
+        return string.IsNullOrWhiteSpace(name)
+            ? "Missing Macro"
+            : name.Trim();
+    }
+
+    private static string FormatTimePassed(int milliseconds)
+    {
+        milliseconds = Math.Max(1, milliseconds);
+        return milliseconds >= 1000 && milliseconds % 1000 == 0
+            ? $"{milliseconds / 1000}s"
+            : $"{milliseconds}ms";
     }
 }

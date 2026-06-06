@@ -1,0 +1,25 @@
+﻿<UserControl x:Class="KeyLine.UI.Inspector.Nodes.DelayNodeInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:KeyLine.UI"
+             xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout"
+             xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks">
+
+    <Border Background="{StaticResource Surface}">
+        <StackPanel>
+            <layout:InspectorRow x:Name="MinDelayRow"
+                                 Label="Min Delay"
+                                 RowToolTip="{x:Static ui:TooltipNotes.DelayNodeMinimum}">
+                <entryBlocks:TimeEntryBlock HorizontalAlignment="Right"
+                                            ToolTip="{x:Static ui:TooltipNotes.DelayNodeMinimum}" />
+            </layout:InspectorRow>
+
+            <layout:InspectorRow x:Name="MaxDelayRow"
+                                 Label="Max Delay"
+                                 RowToolTip="{x:Static ui:TooltipNotes.DelayNodeMaximum}">
+                <entryBlocks:TimeEntryBlock HorizontalAlignment="Right"
+                                            ToolTip="{x:Static ui:TooltipNotes.DelayNodeMaximum}" />
+            </layout:InspectorRow>
+        </StackPanel>
+    </Border>
+</UserControl>

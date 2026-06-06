@@ -12,7 +12,7 @@ public enum TimelinePlaybackStatus
     Warning
 }
 
-public sealed class PlaybackController
+public sealed class PlaybackController : IMacroRunHost
 {
     private readonly Dictionary<MacroTimeline, MacroRunner> _runners = new();
     private readonly HashSet<MacroWorkspace> _shortcutStartingWorkspaces = new();
@@ -127,14 +127,17 @@ public sealed class PlaybackController
 
     public Task RunAsyncPlayback(
         nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
-        Action<string>? onPlaybackFailure = null)
+        Action<string>? onPlaybackFailure = null,
+        MacroRunContext? runContext = null)
     {
         StopRequested = false;
         var tasks = new List<Task>();
-        var runContext = new MacroRunContext(targetHwnd);
+        runContext ??= CreateRunContext(targetHwnd, workspace, activeProfileWorkspaces);
 
         for (var i = 0; i < runnableTimelines.Count; i++)
         {
@@ -177,14 +180,17 @@ public sealed class PlaybackController
 
     public async Task RunSyncedPlayback(
         nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
-        Action<string>? onPlaybackFailure = null)
+        Action<string>? onPlaybackFailure = null,
+        MacroRunContext? runContext = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
-        var runContext = new MacroRunContext(targetHwnd);
+        runContext ??= CreateRunContext(targetHwnd, workspace, activeProfileWorkspaces);
 
         while (!StopRequested)
         {
@@ -252,14 +258,17 @@ public sealed class PlaybackController
 
     public async Task RunCyclePlayback(
         nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
-        Action<string>? onPlaybackFailure = null)
+        Action<string>? onPlaybackFailure = null,
+        MacroRunContext? runContext = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
-        var runContext = new MacroRunContext(targetHwnd);
+        runContext ??= CreateRunContext(targetHwnd, workspace, activeProfileWorkspaces);
 
         while (!StopRequested)
         {
@@ -320,14 +329,17 @@ public sealed class PlaybackController
 
     public async Task RunChainPlayback(
         nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
-        Action<string>? onPlaybackFailure = null)
+        Action<string>? onPlaybackFailure = null,
+        MacroRunContext? runContext = null)
     {
         StopRequested = false;
         var completedLoops = new int[runnableTimelines.Count];
-        var runContext = new MacroRunContext(targetHwnd);
+        runContext ??= CreateRunContext(targetHwnd, workspace, activeProfileWorkspaces);
 
         for (var i = 0; i < runnableTimelines.Count; i++)
         {
@@ -377,6 +389,132 @@ public sealed class PlaybackController
 
         PublishChainStatuses(runnableTimelines, completedLoops, null, onTimelineStatusChanged);
     }
+
+    public string? ResolveMacroName(string macroId, MacroRunContext context)
+    {
+        return FindMacroInContext(macroId, context)?.Name;
+    }
+
+    public bool IsMacroRunning(string macroId, MacroRunContext context)
+    {
+        if (string.Equals(
+                NormalizeMacroId(macroId),
+                NormalizeMacroId(context.CurrentMacroId),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var workspace = FindMacroInContext(macroId, context);
+        return workspace != null && IsWorkspaceRunning(workspace);
+    }
+
+    public async Task RunMacroAsync(
+        string macroId,
+        MacroRunContext context,
+        Action<string>? reportFailure,
+        CancellationToken token)
+    {
+        var targetWorkspace = FindMacroInContext(macroId, context);
+        if (targetWorkspace == null)
+        {
+            reportFailure?.Invoke("Run Macro target is missing or outside the active profile.");
+            return;
+        }
+
+        if (context.IsMacroInCallStack(targetWorkspace.Id))
+        {
+            reportFailure?.Invoke($"Run Macro recursion prevented: {targetWorkspace.Name}.");
+            return;
+        }
+
+        if (IsWorkspaceRunning(targetWorkspace))
+            return;
+
+        var runnableTimelines = targetWorkspace.Document.Timelines
+            .Where(timeline => timeline.Nodes.Count > 0)
+            .ToList();
+
+        if (runnableTimelines.Count == 0)
+            return;
+
+        var childContext = context.CreateChild(targetWorkspace);
+        using var stopRegistration = token.Register(() => StopWorkspace(targetWorkspace));
+
+        await RunPlaybackForWorkspaceAsync(
+            context.CurrentTargetWindowHandle,
+            targetWorkspace,
+            context.ActiveProfileWorkspaces,
+            runnableTimelines,
+            childContext,
+            reportFailure);
+    }
+
+    private Task RunPlaybackForWorkspaceAsync(
+        nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
+        IReadOnlyList<MacroTimeline> runnableTimelines,
+        MacroRunContext runContext,
+        Action<string>? onPlaybackFailure)
+    {
+        return workspace.LoopMode switch
+        {
+            MacroLoopMode.Chain => RunChainPlayback(
+                targetHwnd,
+                workspace,
+                activeProfileWorkspaces,
+                runnableTimelines,
+                onPlaybackFailure: onPlaybackFailure,
+                runContext: runContext),
+            MacroLoopMode.Cycle => RunCyclePlayback(
+                targetHwnd,
+                workspace,
+                activeProfileWorkspaces,
+                runnableTimelines,
+                onPlaybackFailure: onPlaybackFailure,
+                runContext: runContext),
+            MacroLoopMode.Sync when runnableTimelines.Count > 1 => RunSyncedPlayback(
+                targetHwnd,
+                workspace,
+                activeProfileWorkspaces,
+                runnableTimelines,
+                onPlaybackFailure: onPlaybackFailure,
+                runContext: runContext),
+            _ => RunAsyncPlayback(
+                targetHwnd,
+                workspace,
+                activeProfileWorkspaces,
+                runnableTimelines,
+                onPlaybackFailure: onPlaybackFailure,
+                runContext: runContext)
+        };
+    }
+
+    private MacroRunContext CreateRunContext(
+        nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces)
+    {
+        return new MacroRunContext(
+            targetHwnd,
+            workspace.Id,
+            activeProfileWorkspaces,
+            this);
+    }
+
+    private static MacroWorkspace? FindMacroInContext(string macroId, MacroRunContext context)
+    {
+        macroId = NormalizeMacroId(macroId);
+        if (string.IsNullOrWhiteSpace(macroId))
+            return null;
+
+        return context.ActiveProfileWorkspaces.FirstOrDefault(workspace =>
+            string.Equals(NormalizeMacroId(workspace.Id), macroId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeMacroId(string? macroId) =>
+        string.IsNullOrWhiteSpace(macroId) ? "" : macroId.Trim();
 
     private static bool HasEligibleCycleTimeline(
         IReadOnlyList<MacroTimeline> runnableTimelines,

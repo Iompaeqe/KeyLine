@@ -76,6 +76,7 @@ public static class MacroStateStore
                 ? state.Workspaces.Select(ToWorkspace).ToList()
                 : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
             ApplyLegacyShortcutEnabledState(workspaces, state.ShortcutsEnabled);
+            NormalizeWorkspaceIds(workspaces);
 
             var profiles = GetPersistedProfiles(state.Profiles);
             NormalizeWorkspaceProfileIds(workspaces, profiles);
@@ -252,6 +253,7 @@ public static class MacroStateStore
                 ? state.Workspaces.Select(ToWorkspace).ToList()
                 : new List<MacroWorkspace> { ToLegacyWorkspace(state) };
             ApplyLegacyShortcutEnabledState(workspaces, state.ShortcutsEnabled);
+            NormalizeWorkspaceIds(workspaces);
 
             var profiles = GetPersistedProfiles(state.Profiles);
             NormalizeWorkspaceProfileIds(workspaces, profiles);
@@ -282,6 +284,7 @@ public static class MacroStateStore
     {
         return new MacroWorkspace
         {
+            Id = GetPersistedWorkspaceId(persistedWorkspace.Id),
             ProfileId = MacroProfile.NormalizeId(persistedWorkspace.ProfileId),
             Name = string.IsNullOrWhiteSpace(persistedWorkspace.Name)
                 ? "Macro"
@@ -365,6 +368,7 @@ public static class MacroStateStore
         var type = GetRuntimeNodeType(persistedType);
         var (delayMinMs, delayMaxMs) = GetPersistedDelayRange(persistedType, persistedStep);
         var mouseButton = Math.Clamp(persistedStep.MouseButton <= 0 ? 1 : persistedStep.MouseButton, 1, 5);
+        var conditionType = GetPersistedConditionType(persistedStep.ConditionType);
 
         return new MacroNode
         {
@@ -386,19 +390,23 @@ public static class MacroStateStore
             SystemLaunchTarget = persistedStep.SystemLaunchTarget,
             SystemVolumeAction = GetPersistedSystemVolumeAction(persistedStep.SystemVolumeAction),
             SystemVolumePercent = Math.Clamp(persistedStep.SystemVolumePercent, 0, 100),
+            RunMacroId = GetPersistedMacroId(persistedStep.RunMacroId),
             SystemWaitWindowTitle = persistedStep.SystemWaitWindowTitle,
             SystemWaitPollIntervalMs = GetPersistedSystemWaitPollIntervalMs(persistedStep.SystemWaitPollIntervalMs),
             SystemTargetWindowTitle = persistedStep.SystemTargetWindowTitle,
             WindowReference = GetPersistedWindowReference(
                 type,
+                conditionType,
                 persistedStep.WindowReference,
                 persistedStep.SystemWaitWindowTitle,
                 persistedStep.SystemTargetWindowTitle),
             IsRecordedDelay = persistedStep.IsRecordedDelay,
+            ToggleKeyMode = GetPersistedToggleKeyMode(persistedStep.ToggleKeyMode),
             RepeatBlockId = persistedStep.RepeatBlockId,
             RepeatCount = Math.Max(0, persistedStep.RepeatCount),
             ConditionBlockId = persistedStep.ConditionBlockId,
-            ConditionType = GetPersistedConditionType(persistedStep.ConditionType),
+            ConditionType = conditionType,
+            ConditionIsInverted = MacroConditionDefinitions.CanInvert(conditionType) && persistedStep.ConditionIsInverted,
             ConditionKeyName = persistedStep.ConditionKeyName,
             ConditionVirtualKey = Math.Max(0, persistedStep.ConditionVirtualKey),
             ConditionShortcutKeys = persistedStep.ConditionShortcutKeys,
@@ -410,7 +418,9 @@ public static class MacroStateStore
             ConditionPixelTolerance = Math.Clamp(persistedStep.ConditionPixelTolerance, 0, 255),
             ConditionChancePercent = Math.Clamp(persistedStep.ConditionChancePercent, 0, 100),
             ConditionLoopMode = GetPersistedConditionLoopMode(persistedStep.ConditionLoopMode),
-            ConditionLoopInterval = Math.Max(1, persistedStep.ConditionLoopInterval)
+            ConditionLoopInterval = Math.Max(1, persistedStep.ConditionLoopInterval),
+            ConditionMacroId = GetPersistedMacroId(persistedStep.ConditionMacroId),
+            ConditionTimePassedMs = Math.Max(1, persistedStep.ConditionTimePassedMs)
         };
     }
 
@@ -500,7 +510,7 @@ public static class MacroStateStore
 
     private static WindowReference? GetPersistedWindowReference(MacroNode node)
     {
-        if (!UsesWindowReference(node.Type))
+        if (!UsesWindowReference(node))
             return null;
 
         var reference = node.GetEffectiveWindowReference();
@@ -510,11 +520,12 @@ public static class MacroStateStore
 
     private static WindowReference GetPersistedWindowReference(
         MacroNodeType type,
+        MacroConditionType conditionType,
         WindowReference? persistedReference,
         string systemWaitWindowTitle,
         string systemTargetWindowTitle)
     {
-        if (!UsesWindowReference(type))
+        if (!UsesWindowReference(type, conditionType))
             return new WindowReference();
 
         if (persistedReference != null && Enum.IsDefined(persistedReference.Type))
@@ -538,6 +549,14 @@ public static class MacroStateStore
             };
         }
 
+        if (type == MacroNodeType.ConditionStart && conditionType == MacroConditionType.WindowExists)
+        {
+            return new WindowReference
+            {
+                Type = WindowReferenceType.SelectedTarget
+            };
+        }
+
         return WindowReference.Custom(GetLegacyWindowTitle(type, systemWaitWindowTitle, systemTargetWindowTitle));
     }
 
@@ -553,10 +572,14 @@ public static class MacroStateStore
         return (title ?? "").Trim();
     }
 
-    private static bool UsesWindowReference(MacroNodeType type) =>
+    private static bool UsesWindowReference(MacroNode node) =>
+        UsesWindowReference(node.Type, node.ConditionType);
+
+    private static bool UsesWindowReference(MacroNodeType type, MacroConditionType conditionType) =>
         type is MacroNodeType.SystemWaitUntilWindowOpens or
             MacroNodeType.SystemSelectTargetWindow or
-            MacroNodeType.SystemFocusWindow;
+            MacroNodeType.SystemFocusWindow ||
+        type == MacroNodeType.ConditionStart && conditionType == MacroConditionType.WindowExists;
 
     private static MacroNodeType GetPersistedNodeType(string type)
     {
@@ -576,6 +599,9 @@ public static class MacroStateStore
 
     private static MacroConditionLoopMode GetPersistedConditionLoopMode(MacroConditionLoopMode mode) =>
         Enum.IsDefined(mode) ? mode : MacroConditionLoopMode.FirstLoop;
+
+    private static ToggleKeyMode GetPersistedToggleKeyMode(ToggleKeyMode mode) =>
+        Enum.IsDefined(mode) ? mode : ToggleKeyMode.Normal;
 
     private static PersistedTimeline ToPersistedTimeline(MacroTimeline timeline)
     {
@@ -599,6 +625,7 @@ public static class MacroStateStore
     {
         return new PersistedWorkspace
         {
+            Id = GetPersistedWorkspaceId(workspace.Id),
             ProfileId = MacroProfile.NormalizeId(workspace.ProfileId),
             Name = workspace.Name,
             ActiveTimelineIndex = Math.Clamp(
@@ -730,6 +757,39 @@ public static class MacroStateStore
     private static int GetPersistedDelayMs(long milliseconds) =>
         DelayFormatter.ClampMilliseconds(milliseconds);
 
+    private static void NormalizeWorkspaceIds(IReadOnlyList<MacroWorkspace> workspaces)
+    {
+        var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var workspace in workspaces)
+        {
+            var id = NormalizeMacroId(workspace.Id);
+            if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(id))
+            {
+                do
+                {
+                    id = Guid.NewGuid().ToString("N");
+                }
+                while (!usedIds.Add(id));
+            }
+
+            workspace.Id = id;
+        }
+    }
+
+    private static string GetPersistedWorkspaceId(string id)
+    {
+        id = NormalizeMacroId(id);
+        return string.IsNullOrWhiteSpace(id)
+            ? Guid.NewGuid().ToString("N")
+            : id;
+    }
+
+    private static string GetPersistedMacroId(string id) => NormalizeMacroId(id);
+
+    private static string NormalizeMacroId(string? id) =>
+        string.IsNullOrWhiteSpace(id) ? "" : id.Trim();
+
     private static string GetPersistedNodeTypeName(MacroNode node) =>
         IsDelayNodeType(node.Type)
             ? nameof(MacroNodeType.Delay)
@@ -848,15 +908,18 @@ public static class MacroStateStore
             SystemLaunchTarget = node.SystemLaunchTarget,
             SystemVolumeAction = GetPersistedSystemVolumeAction(node.SystemVolumeAction),
             SystemVolumePercent = Math.Clamp(node.SystemVolumePercent, 0, 100),
+            RunMacroId = GetPersistedMacroId(node.RunMacroId),
             SystemWaitWindowTitle = GetPersistedSystemWaitWindowTitle(node),
             SystemWaitPollIntervalMs = GetPersistedSystemWaitPollIntervalMs(node.SystemWaitPollIntervalMs),
             SystemTargetWindowTitle = GetPersistedSystemTargetWindowTitle(node),
             WindowReference = GetPersistedWindowReference(node),
             IsRecordedDelay = node.IsRecordedDelay,
+            ToggleKeyMode = GetPersistedToggleKeyMode(node.ToggleKeyMode),
             RepeatBlockId = node.RepeatBlockId,
             RepeatCount = Math.Max(0, node.RepeatCount),
             ConditionBlockId = node.ConditionBlockId,
             ConditionType = node.ConditionType,
+            ConditionIsInverted = MacroConditionDefinitions.ShouldInvert(node),
             ConditionKeyName = node.ConditionKeyName,
             ConditionVirtualKey = Math.Max(0, node.ConditionVirtualKey),
             ConditionShortcutKeys = ConditionInputGesture.GetGesture(node),
@@ -868,7 +931,9 @@ public static class MacroStateStore
             ConditionPixelTolerance = Math.Clamp(node.ConditionPixelTolerance, 0, 255),
             ConditionChancePercent = Math.Clamp(node.ConditionChancePercent, 0, 100),
             ConditionLoopMode = node.ConditionLoopMode,
-            ConditionLoopInterval = Math.Max(1, node.ConditionLoopInterval)
+            ConditionLoopInterval = Math.Max(1, node.ConditionLoopInterval),
+            ConditionMacroId = GetPersistedMacroId(node.ConditionMacroId),
+            ConditionTimePassedMs = Math.Max(1, node.ConditionTimePassedMs)
         };
     }
 
@@ -894,6 +959,7 @@ public static class MacroStateStore
 
     private sealed class PersistedWorkspace
     {
+        public string Id { get; set; } = "";
         public string ProfileId { get; set; } = MacroProfile.NoProfileId;
         public string Name { get; set; } = "";
         public int ActiveTimelineIndex { get; set; }
@@ -956,16 +1022,19 @@ public static class MacroStateStore
         public string SystemLaunchTarget { get; set; } = "";
         public SystemVolumeAction SystemVolumeAction { get; set; } = SystemVolumeAction.VolumeUp;
         public int SystemVolumePercent { get; set; } = 50;
+        public string RunMacroId { get; set; } = "";
         public string SystemWaitWindowTitle { get; set; } = "";
         public int SystemWaitPollIntervalMs { get; set; } = 250;
         public string SystemTargetWindowTitle { get; set; } = "";
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public WindowReference? WindowReference { get; set; }
         public bool IsRecordedDelay { get; set; }
+        public ToggleKeyMode ToggleKeyMode { get; set; } = ToggleKeyMode.Normal;
         public string RepeatBlockId { get; set; } = "";
         public int RepeatCount { get; set; } = 2;
         public string ConditionBlockId { get; set; } = "";
         public MacroConditionType ConditionType { get; set; } = MacroConditionType.KeyState;
+        public bool ConditionIsInverted { get; set; }
         public string ConditionKeyName { get; set; } = "Shift";
         public int ConditionVirtualKey { get; set; } = 0x10;
         public string ConditionShortcutKeys { get; set; } = "";
@@ -978,6 +1047,8 @@ public static class MacroStateStore
         public int ConditionChancePercent { get; set; } = 30;
         public MacroConditionLoopMode ConditionLoopMode { get; set; } = MacroConditionLoopMode.FirstLoop;
         public int ConditionLoopInterval { get; set; } = 2;
+        public string ConditionMacroId { get; set; } = "";
+        public int ConditionTimePassedMs { get; set; } = 1000;
     }
 }
 

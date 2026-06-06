@@ -264,24 +264,32 @@ public partial class MainWindow
         {
             MacroLoopMode.Chain => _playback.RunChainPlayback(
                 targetHwnd,
+                workspace,
+                GetWorkspacesForProfile(workspace.ProfileId),
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
                 onPlaybackFailure),
             MacroLoopMode.Cycle => _playback.RunCyclePlayback(
                 targetHwnd,
+                workspace,
+                GetWorkspacesForProfile(workspace.ProfileId),
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
                 onPlaybackFailure),
             MacroLoopMode.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
                 targetHwnd,
+                workspace,
+                GetWorkspacesForProfile(workspace.ProfileId),
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
                 onPlaybackFailure),
             _ => _playback.RunAsyncPlayback(
                 targetHwnd,
+                workspace,
+                GetWorkspacesForProfile(workspace.ProfileId),
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,

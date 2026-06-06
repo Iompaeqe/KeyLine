@@ -1,0 +1,17 @@
+﻿<UserControl x:Class="KeyLine.UI.Inspector.Nodes.TimePassedConditionInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:layout="clr-namespace:KeyLine.UI.Common.Layout"
+             xmlns:entryBlocks="clr-namespace:KeyLine.UI.Common.EntryBlocks">
+
+    <Border Background="{StaticResource Surface}">
+        <StackPanel>
+            <layout:InspectorRow x:Name="EveryRow"
+                                 Label="Every"
+                                 RowToolTip="Amount of active playback time that must pass before this condition succeeds.">
+                <entryBlocks:TimeEntryBlock HorizontalAlignment="Right"
+                                            ToolTip="Amount of active playback time that must pass before this condition succeeds." />
+            </layout:InspectorRow>
+        </StackPanel>
+    </Border>
+</UserControl>

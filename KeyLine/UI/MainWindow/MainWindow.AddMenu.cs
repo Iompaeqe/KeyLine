@@ -117,6 +117,13 @@ public partial class MainWindow
                     WindowReference = WindowReference.Custom("")
                 });
                 break;
+            case TimelineAddMenuAction.RunMacro:
+                AddConfigurableSystemStep(new MacroNode
+                {
+                    Type = MacroNodeType.RunMacro,
+                    RunMacroId = ""
+                });
+                break;
             case TimelineAddMenuAction.BackgroundMouseDown:
                 AddMouseStep(MacroNodeType.BackgroundMouseDown);
                 break;

@@ -16,6 +16,8 @@ public enum ShortcutTriggerBehavior
 
 public sealed class MacroWorkspace
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
     public string ProfileId { get; set; } = MacroProfile.NoProfileId;
 
     public string Name { get; set; } = "Macro 1";

@@ -6,11 +6,18 @@ public static class MacroCloneService
 {
     public static MacroWorkspace CloneWorkspace(MacroWorkspace source)
     {
+        var cloneId = Guid.NewGuid().ToString("N");
+        var macroIdMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [source.Id] = cloneId
+        };
+
         return new MacroWorkspace
         {
+            Id = cloneId,
             ProfileId = source.ProfileId,
             Name = source.Name,
-            Document = CloneDocument(source.Document),
+            Document = CloneDocument(source.Document, macroIdMap),
             LoopCount = source.LoopCount,
             TimerMs = source.TimerMs,
             BaseDelayMs = source.BaseDelayMs,
@@ -28,11 +35,18 @@ public static class MacroCloneService
 
     public static MacroDocument CloneDocument(MacroDocument source)
     {
+        return CloneDocument(source, macroIdMap: null);
+    }
+
+    private static MacroDocument CloneDocument(
+        MacroDocument source,
+        IReadOnlyDictionary<string, string>? macroIdMap)
+    {
         var clone = new MacroDocument();
         clone.Timelines.Clear();
 
         foreach (var timeline in source.Timelines)
-            clone.Timelines.Add(CloneTimeline(timeline));
+            clone.Timelines.Add(CloneTimeline(timeline, macroIdMap));
 
         clone.EnsureTimeline();
         clone.SelectTimeline(Math.Clamp(source.ActiveTimelineIndex, 0, clone.Timelines.Count - 1));
@@ -40,6 +54,13 @@ public static class MacroCloneService
     }
 
     public static MacroTimeline CloneTimeline(MacroTimeline source)
+    {
+        return CloneTimeline(source, macroIdMap: null);
+    }
+
+    private static MacroTimeline CloneTimeline(
+        MacroTimeline source,
+        IReadOnlyDictionary<string, string>? macroIdMap)
     {
         var clone = new MacroTimeline
         {
@@ -52,7 +73,7 @@ public static class MacroCloneService
             BaseDelayMs = source.BaseDelayMs
         };
 
-        foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode)))
+        foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode), macroIdMap))
             clone.Nodes.Add(step);
 
         return clone;
@@ -70,7 +91,7 @@ public static class MacroCloneService
 
     public static MacroNode CloneStep(MacroNode source)
     {
-        return CloneStep(source, repeatBlockIdMap: null, conditionBlockIdMap: null);
+        return CloneStep(source, repeatBlockIdMap: null, conditionBlockIdMap: null, macroIdMap: null);
     }
 
     private static List<MacroNode> CloneSteps(IEnumerable<MacroNode> source, bool remapRepeatBlockIds)
@@ -83,14 +104,24 @@ public static class MacroCloneService
             : null;
 
         return source
-            .Select(step => CloneStep(step, repeatBlockIdMap, conditionBlockIdMap))
+            .Select(step => CloneStep(step, repeatBlockIdMap, conditionBlockIdMap, macroIdMap: null))
+            .ToList();
+    }
+
+    private static List<MacroNode> CloneSteps(
+        IEnumerable<MacroNode> source,
+        IReadOnlyDictionary<string, string>? macroIdMap)
+    {
+        return source
+            .Select(step => CloneStep(step, repeatBlockIdMap: null, conditionBlockIdMap: null, macroIdMap))
             .ToList();
     }
 
     private static MacroNode CloneStep(
         MacroNode source,
         Dictionary<string, string>? repeatBlockIdMap,
-        Dictionary<string, string>? conditionBlockIdMap)
+        Dictionary<string, string>? conditionBlockIdMap,
+        IReadOnlyDictionary<string, string>? macroIdMap)
     {
         return new MacroNode
         {
@@ -112,15 +143,18 @@ public static class MacroCloneService
             SystemLaunchTarget = source.SystemLaunchTarget,
             SystemVolumeAction = source.SystemVolumeAction,
             SystemVolumePercent = source.SystemVolumePercent,
+            RunMacroId = GetClonedMacroId(source.RunMacroId, macroIdMap),
             SystemWaitWindowTitle = source.SystemWaitWindowTitle,
             SystemWaitPollIntervalMs = source.SystemWaitPollIntervalMs,
             SystemTargetWindowTitle = source.SystemTargetWindowTitle,
             WindowReference = source.GetEffectiveWindowReference().Clone(),
             IsRecordedDelay = source.IsRecordedDelay,
+            ToggleKeyMode = source.ToggleKeyMode,
             RepeatBlockId = GetClonedRepeatBlockId(source.RepeatBlockId, repeatBlockIdMap),
             RepeatCount = source.RepeatCount,
             ConditionBlockId = GetClonedRepeatBlockId(source.ConditionBlockId, conditionBlockIdMap),
             ConditionType = source.ConditionType,
+            ConditionIsInverted = source.ConditionIsInverted,
             ConditionKeyName = source.ConditionKeyName,
             ConditionVirtualKey = source.ConditionVirtualKey,
             ConditionShortcutKeys = source.ConditionShortcutKeys,
@@ -132,7 +166,9 @@ public static class MacroCloneService
             ConditionPixelTolerance = source.ConditionPixelTolerance,
             ConditionChancePercent = source.ConditionChancePercent,
             ConditionLoopMode = source.ConditionLoopMode,
-            ConditionLoopInterval = source.ConditionLoopInterval
+            ConditionLoopInterval = source.ConditionLoopInterval,
+            ConditionMacroId = GetClonedMacroId(source.ConditionMacroId, macroIdMap),
+            ConditionTimePassedMs = source.ConditionTimePassedMs
         };
     }
 
@@ -150,6 +186,18 @@ public static class MacroCloneService
         }
 
         return clonedBlockId;
+    }
+
+    private static string GetClonedMacroId(
+        string sourceMacroId,
+        IReadOnlyDictionary<string, string>? macroIdMap)
+    {
+        if (macroIdMap == null || string.IsNullOrWhiteSpace(sourceMacroId))
+            return sourceMacroId;
+
+        return macroIdMap.TryGetValue(sourceMacroId.Trim(), out var clonedMacroId)
+            ? clonedMacroId
+            : sourceMacroId;
     }
 }
 
