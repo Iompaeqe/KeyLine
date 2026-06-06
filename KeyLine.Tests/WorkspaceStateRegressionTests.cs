@@ -47,6 +47,27 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void CloneSteps_PreservesDelayRange()
+    {
+        var source = new MacroNode
+        {
+            Type = MacroNodeType.Delay,
+            DelayMs = 50,
+            MinDelayMs = 50,
+            MaxDelayMs = 150,
+            RandomDelayMinMs = 50,
+            RandomDelayMaxMs = 150
+        };
+
+        var clone = MacroCloneService.CloneStep(source);
+
+        Assert.Equal(MacroNodeType.Delay, clone.Type);
+        Assert.Equal(50, clone.MinDelayMs);
+        Assert.Equal(150, clone.MaxDelayMs);
+        Assert.Equal((50, 150), clone.GetEffectiveDelayRange());
+    }
+
+    [Fact]
     public void CloneSteps_PreservesSystemNodeConfiguration()
     {
         var source = new MacroNode
@@ -191,6 +212,36 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void SaveAndLoad_PreservesDelayRange()
+    {
+        var workspace = CreateWorkspace("State Delay Range", MacroLoopMode.Async);
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.Delay,
+            DelayMs = 50,
+            MinDelayMs = 50,
+            MaxDelayMs = 150,
+            RandomDelayMinMs = 50,
+            RandomDelayMaxMs = 150
+        });
+
+        MacroStateStore.Save(
+            new[] { workspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNode = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes[0];
+        Assert.Equal(MacroNodeType.Delay, loadedNode.Type);
+        Assert.Equal(50, loadedNode.MinDelayMs);
+        Assert.Equal(150, loadedNode.MaxDelayMs);
+        Assert.Equal((50, 150), loadedNode.GetEffectiveDelayRange());
+    }
+
+    [Fact]
     public void SaveAndLoad_PreservesSystemNodes()
     {
         var workspace = CreateWorkspace("State System", MacroLoopMode.Async);
@@ -312,6 +363,54 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void Load_MigratesLegacyRandomDelayToDelayRange()
+    {
+        Directory.CreateDirectory(MacroStateStore.StateDirectory);
+        File.WriteAllText(
+            Path.Combine(MacroStateStore.StateDirectory, "state.json"),
+            """
+            {
+              "Version": 3,
+              "ActiveWorkspaceIndex": 0,
+              "ShortcutsEnabled": false,
+              "Settings": {},
+              "Workspaces": [
+                {
+                  "Name": "Legacy Random Delay",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [
+                    {
+                      "Name": "T1",
+                      "LoopCount": 0,
+                      "BaseDelayMs": 50,
+                      "Nodes": [
+                        {
+                          "Type": "RandomDelay",
+                          "RandomDelayMinMs": 50,
+                          "RandomDelayMaxMs": 150
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loadedNode = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes[0];
+        Assert.Equal(MacroNodeType.Delay, loadedNode.Type);
+        Assert.Equal(50, loadedNode.MinDelayMs);
+        Assert.Equal(150, loadedNode.MaxDelayMs);
+        Assert.Equal((50, 150), loadedNode.GetEffectiveDelayRange());
+    }
+
+    [Fact]
     public void AppSettings_DefaultsGlobalRemapEnabledWithToggleShortcut()
     {
         var settings = new AppSettings();
@@ -392,6 +491,80 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal(MacroNodeType.MouseScrollRight, loadedNodes[1].Type);
         Assert.Equal(120, loadedNodes[1].MouseWheelDelta);
         Assert.Equal(5, loadedNodes[1].MouseScrollAmount);
+    }
+
+    [Fact]
+    public void ExportAndImport_PreservesDelayRange()
+    {
+        var workspace = CreateWorkspace("Export Delay Range", MacroLoopMode.Async);
+        workspace.Document.ActiveTimeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.Delay,
+            DelayMs = 75,
+            MinDelayMs = 75,
+            MaxDelayMs = 250,
+            RandomDelayMinMs = 75,
+            RandomDelayMaxMs = 250
+        });
+        var exportPath = Path.Combine(_appDataRoot, "delay-range.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+
+        MacroFileStore.Export(exportPath, new[] { workspace });
+
+        var imported = MacroFileStore.Import(exportPath);
+
+        Assert.Single(imported);
+        var loadedNode = imported[0].Document.ActiveTimeline.Nodes[0];
+        Assert.Equal(MacroNodeType.Delay, loadedNode.Type);
+        Assert.Equal(75, loadedNode.MinDelayMs);
+        Assert.Equal(250, loadedNode.MaxDelayMs);
+        Assert.Equal((75, 250), loadedNode.GetEffectiveDelayRange());
+    }
+
+    [Fact]
+    public void Import_MigratesLegacyRandomDelayToDelayRange()
+    {
+        var importPath = Path.Combine(_appDataRoot, "legacy-random.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+        File.WriteAllText(
+            importPath,
+            """
+            {
+              "Kind": "Macros",
+              "Macros": [
+                {
+                  "Name": "Legacy Random Delay",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [
+                    {
+                      "Name": "T1",
+                      "LoopCount": 0,
+                      "BaseDelayMs": 50,
+                      "Nodes": [
+                        {
+                          "Type": "RandomDelay",
+                          "RandomDelayMinMs": 20,
+                          "RandomDelayMaxMs": 120
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var imported = MacroFileStore.Import(importPath);
+
+        Assert.Single(imported);
+        var loadedNode = imported[0].Document.ActiveTimeline.Nodes[0];
+        Assert.Equal(MacroNodeType.Delay, loadedNode.Type);
+        Assert.Equal(20, loadedNode.MinDelayMs);
+        Assert.Equal(120, loadedNode.MaxDelayMs);
+        Assert.Equal((20, 120), loadedNode.GetEffectiveDelayRange());
     }
 
     [Fact]

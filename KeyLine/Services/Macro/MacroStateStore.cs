@@ -361,7 +361,9 @@ public static class MacroStateStore
 
     private static MacroNode ToStep(PersistedStep persistedStep)
     {
-        var type = GetPersistedNodeType(persistedStep.Type);
+        var persistedType = GetPersistedNodeType(persistedStep.Type);
+        var type = GetRuntimeNodeType(persistedType);
+        var (delayMinMs, delayMaxMs) = GetPersistedDelayRange(persistedType, persistedStep);
         var mouseButton = Math.Clamp(persistedStep.MouseButton <= 0 ? 1 : persistedStep.MouseButton, 1, 5);
 
         return new MacroNode
@@ -369,9 +371,11 @@ public static class MacroStateStore
             Type = type,
             KeyName = GetPersistedStepKeyName(type, persistedStep.KeyName, mouseButton),
             VirtualKey = persistedStep.VirtualKey,
-            DelayMs = GetPersistedDelayMs(persistedStep.DelayMs),
-            RandomDelayMinMs = GetPersistedDelayMs(persistedStep.RandomDelayMinMs),
-            RandomDelayMaxMs = GetPersistedDelayMs(persistedStep.RandomDelayMaxMs),
+            DelayMs = delayMinMs,
+            RandomDelayMinMs = delayMinMs,
+            RandomDelayMaxMs = delayMaxMs,
+            MinDelayMs = delayMinMs,
+            MaxDelayMs = delayMaxMs,
             Text = persistedStep.Text,
             MouseX = persistedStep.MouseX,
             MouseY = persistedStep.MouseY,
@@ -562,6 +566,11 @@ public static class MacroStateStore
         return Enum.IsDefined(parsedType) ? parsedType : MacroNodeType.Delay;
     }
 
+    private static MacroNodeType GetRuntimeNodeType(MacroNodeType persistedType) =>
+        persistedType == MacroNodeType.RandomDelay
+            ? MacroNodeType.Delay
+            : persistedType;
+
     private static MacroConditionType GetPersistedConditionType(MacroConditionType type) =>
         Enum.IsDefined(type) ? type : MacroConditionType.KeyState;
 
@@ -721,6 +730,55 @@ public static class MacroStateStore
     private static int GetPersistedDelayMs(long milliseconds) =>
         DelayFormatter.ClampMilliseconds(milliseconds);
 
+    private static string GetPersistedNodeTypeName(MacroNode node) =>
+        IsDelayNodeType(node.Type)
+            ? nameof(MacroNodeType.Delay)
+            : node.Type.ToString();
+
+    private static bool IsDelayNodeType(MacroNodeType type) =>
+        type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
+
+    private static (int MinMs, int MaxMs) GetPersistedDelayRange(MacroNode node)
+    {
+        var (min, max) = node.GetEffectiveDelayRange();
+        min = GetPersistedDelayMs(min);
+        max = GetPersistedDelayMs(max);
+
+        if (max < min)
+            (min, max) = (max, min);
+
+        return (min, max);
+    }
+
+    private static (int MinMs, int MaxMs) GetPersistedDelayRange(
+        MacroNodeType persistedType,
+        PersistedStep persisted)
+    {
+        int min;
+        int max;
+
+        if (persisted.MinDelayMs.HasValue || persisted.MaxDelayMs.HasValue)
+        {
+            min = GetPersistedDelayMs(persisted.MinDelayMs ?? persisted.MaxDelayMs ?? persisted.DelayMs);
+            max = GetPersistedDelayMs(persisted.MaxDelayMs ?? persisted.MinDelayMs ?? persisted.DelayMs);
+        }
+        else if (persistedType == MacroNodeType.RandomDelay)
+        {
+            min = GetPersistedDelayMs(persisted.RandomDelayMinMs);
+            max = GetPersistedDelayMs(persisted.RandomDelayMaxMs);
+        }
+        else
+        {
+            min = GetPersistedDelayMs(persisted.DelayMs);
+            max = min;
+        }
+
+        if (max < min)
+            (min, max) = (max, min);
+
+        return (min, max);
+    }
+
     private static void ApplyLegacyShortcutEnabledState(
         IEnumerable<MacroWorkspace> workspaces,
         bool legacyShortcutsEnabled)
@@ -765,14 +823,21 @@ public static class MacroStateStore
 
     private static PersistedStep ToPersistedStep(MacroNode node)
     {
+        var isDelayNode = IsDelayNodeType(node.Type);
+        var (delayMinMs, delayMaxMs) = isDelayNode
+            ? GetPersistedDelayRange(node)
+            : (GetPersistedDelayMs(node.DelayMs), GetPersistedDelayMs(node.DelayMs));
+
         return new PersistedStep
         {
-            Type = node.Type.ToString(),
+            Type = GetPersistedNodeTypeName(node),
             KeyName = node.KeyName,
             VirtualKey = node.VirtualKey,
-            DelayMs = GetPersistedDelayMs(node.DelayMs),
-            RandomDelayMinMs = GetPersistedDelayMs(node.RandomDelayMinMs),
-            RandomDelayMaxMs = GetPersistedDelayMs(node.RandomDelayMaxMs),
+            DelayMs = delayMinMs,
+            RandomDelayMinMs = isDelayNode ? delayMinMs : GetPersistedDelayMs(node.RandomDelayMinMs),
+            RandomDelayMaxMs = isDelayNode ? delayMaxMs : GetPersistedDelayMs(node.RandomDelayMaxMs),
+            MinDelayMs = isDelayNode ? delayMinMs : null,
+            MaxDelayMs = isDelayNode ? delayMaxMs : null,
             Text = node.Text,
             MouseX = node.MouseX,
             MouseY = node.MouseY,
@@ -877,6 +942,10 @@ public static class MacroStateStore
         public int DelayMs { get; set; }
         public int RandomDelayMinMs { get; set; }
         public int RandomDelayMaxMs { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MinDelayMs { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MaxDelayMs { get; set; }
         public string Text { get; set; } = "";
         public int MouseX { get; set; }
         public int MouseY { get; set; }

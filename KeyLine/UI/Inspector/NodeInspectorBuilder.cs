@@ -128,30 +128,22 @@ public sealed class NodeInspectorBuilder
         switch (node.Type)
         {
             case MacroNodeType.Delay:
-                section.Children.Add(CreateDelayRow(
-                    "Delay",
-                    () => node.DelayMs,
-                    value => _commitNodeValueChange(() => node.DelayMs = value),
-                    TooltipNotes.DelayNodeValue,
-                    policy.CanEditDelay));
-                break;
-
             case MacroNodeType.RandomDelay:
                 section.Children.Add(CreateDelayRow(
-                    "Min",
-                    () => node.RandomDelayMinMs,
-                    value => _commitNodeValueChange(() => node.RandomDelayMinMs = value),
-                    TooltipNotes.RandomDelayMinimum,
-                    policy.CanEditRandomDelay,
-                    () => NormalizeRandomDelayAfterEdit(node)));
+                    "Min Delay",
+                    () => GetDelayMinimum(node),
+                    value => _commitNodeChange(() => SetDelayMinimum(node, value)),
+                    TooltipNotes.DelayNodeMinimum,
+                    policy.CanEditDelay,
+                    commitOnTextChanged: false));
 
                 section.Children.Add(CreateDelayRow(
-                    "Max",
-                    () => node.RandomDelayMaxMs,
-                    value => _commitNodeValueChange(() => node.RandomDelayMaxMs = value),
-                    TooltipNotes.RandomDelayMaximum,
-                    policy.CanEditRandomDelay,
-                    () => NormalizeRandomDelayAfterEdit(node)));
+                    "Max Delay",
+                    () => GetDelayMaximum(node),
+                    value => _commitNodeChange(() => SetDelayMaximum(node, value)),
+                    TooltipNotes.DelayNodeMaximum,
+                    policy.CanEditDelay,
+                    commitOnTextChanged: false));
                 break;
 
             case MacroNodeType.Text:
@@ -1115,7 +1107,8 @@ public sealed class NodeInspectorBuilder
         Action<int> commit,
         string tooltip,
         bool isEnabled = true,
-        Action? normalizeAfterEdit = null)
+        Action? normalizeAfterEdit = null,
+        bool commitOnTextChanged = true)
     {
         var grid = CreateInspectorRowGrid();
         var canEdit = CanEditOption(isEnabled);
@@ -1182,7 +1175,7 @@ public sealed class NodeInspectorBuilder
         };
         textBox.TextChanged += (_, _) =>
         {
-            if (!isEditing || isSettingText || _isRefreshing())
+            if (!commitOnTextChanged || !isEditing || isSettingText || _isRefreshing())
                 return;
 
             InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
@@ -1394,18 +1387,30 @@ public sealed class NodeInspectorBuilder
             : null;
     }
 
-    private static void NormalizeRandomDelay(MacroNode node)
+    private static int GetDelayMinimum(MacroNode node)
     {
-        if (node.RandomDelayMaxMs < node.RandomDelayMinMs)
-            (node.RandomDelayMinMs, node.RandomDelayMaxMs) = (node.RandomDelayMaxMs, node.RandomDelayMinMs);
+        var (min, _) = node.GetEffectiveDelayRange();
+        return DelayFormatter.ClampMilliseconds(min);
     }
 
-    private void NormalizeRandomDelayAfterEdit(MacroNode node)
+    private static int GetDelayMaximum(MacroNode node)
     {
-        if (node.RandomDelayMaxMs >= node.RandomDelayMinMs)
-            return;
+        var (_, max) = node.GetEffectiveDelayRange();
+        return DelayFormatter.ClampMilliseconds(max);
+    }
 
-        _commitNodeChange(() => NormalizeRandomDelay(node));
+    private static void SetDelayMinimum(MacroNode node, int value)
+    {
+        var (_, max) = node.GetEffectiveDelayRange();
+        var min = DelayFormatter.ClampMilliseconds(value);
+        node.SetDelayRange(min, DelayFormatter.ClampMilliseconds(max));
+    }
+
+    private static void SetDelayMaximum(MacroNode node, int value)
+    {
+        var (min, _) = node.GetEffectiveDelayRange();
+        var max = DelayFormatter.ClampMilliseconds(value);
+        node.SetDelayRange(DelayFormatter.ClampMilliseconds(min), max);
     }
 
     private static void NormalizeConditionDefaults(MacroNode node)

@@ -15,7 +15,7 @@ public static class MacroTimelineBuilder
         if (showKeyUpDown)
         {
             return rawSteps
-                .Where(step => step.Type != MacroNodeType.Delay)
+                .Where(step => step.Type is not (MacroNodeType.Delay or MacroNodeType.RandomDelay))
                 .ToList();
         }
 

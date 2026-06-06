@@ -65,7 +65,9 @@ public partial class DelayNode : NodeBase
 
         var ui = GeneratedUiConfig.DelayStep;
 
-        if (step.Type == MacroNodeType.RandomDelay)
+        var showRandomDelay = ShouldShowRandomDelayPanel(step);
+
+        if (showRandomDelay)
         {
             RootBorder.Width = 84;
             FixedDelayPanel.Visibility = Visibility.Collapsed;
@@ -119,16 +121,18 @@ public partial class DelayNode : NodeBase
         _isSettingText = true;
         try
         {
-            if (Node.Type == MacroNodeType.RandomDelay)
+            if (IsRandomDelayVisual())
             {
-                MinValueTextBox.Text = DelayFormatter.ClampMilliseconds(Node.RandomDelayMinMs).ToString();
-                MaxValueTextBox.Text = DelayFormatter.ClampMilliseconds(Node.RandomDelayMaxMs).ToString();
+                var (min, max) = GetDisplayDelayRange(Node);
+                MinValueTextBox.Text = min.ToString();
+                MaxValueTextBox.Text = max.ToString();
                 MinUnitTextBlock.Text = "ms";
                 MaxUnitTextBlock.Text = "ms";
             }
             else
             {
-                ValueTextBox.Text = DelayFormatter.ClampMilliseconds(Node.DelayMs).ToString();
+                var (min, _) = GetDisplayDelayRange(Node);
+                ValueTextBox.Text = min.ToString();
                 UnitTextBlock.Text = "ms";
             }
         }
@@ -177,10 +181,34 @@ public partial class DelayNode : NodeBase
 
         var changed = false;
 
-        if (Node.Type == MacroNodeType.RandomDelay)
+        if (IsRandomDelayVisual())
         {
             var min = ParseDelayValue(MinValueTextBox.Text);
             var max = ParseDelayValue(MaxValueTextBox.Text);
+
+            if (Node.Type != MacroNodeType.Delay)
+            {
+                Node.Type = MacroNodeType.Delay;
+                changed = true;
+            }
+
+            if (Node.MinDelayMs != min)
+            {
+                Node.MinDelayMs = min;
+                changed = true;
+            }
+
+            if (Node.MaxDelayMs != max)
+            {
+                Node.MaxDelayMs = max;
+                changed = true;
+            }
+
+            if (Node.DelayMs != min)
+            {
+                Node.DelayMs = min;
+                changed = true;
+            }
 
             if (Node.RandomDelayMinMs != min)
             {
@@ -197,9 +225,10 @@ public partial class DelayNode : NodeBase
         else
         {
             var value = ParseDelayValue(ValueTextBox.Text);
-            if (Node.DelayMs != value)
+            var (min, max) = Node.GetEffectiveDelayRange();
+            if (Node.Type != MacroNodeType.Delay || min != value || max != value)
             {
-                Node.DelayMs = value;
+                Node.SetDelayRange(value, value);
                 changed = true;
             }
         }
@@ -217,7 +246,7 @@ public partial class DelayNode : NodeBase
 
         var changed = NormalizeDelayValues();
 
-        SetDisplayFromNode();
+        UpdateVisual();
 
         if (changed)
             DelayCommitted?.Invoke(this, EventArgs.Empty);
@@ -231,10 +260,9 @@ public partial class DelayNode : NodeBase
         _isSettingText = true;
         try
         {
-            if (Node.Type == MacroNodeType.RandomDelay)
+            if (ShouldShowRandomDelayPanel(Node))
             {
-                var minMs = DelayFormatter.ClampMilliseconds(Math.Min(Node.RandomDelayMinMs, Node.RandomDelayMaxMs));
-                var maxMs = DelayFormatter.ClampMilliseconds(Math.Max(Node.RandomDelayMinMs, Node.RandomDelayMaxMs));
+                var (minMs, maxMs) = GetDisplayDelayRange(Node);
                 var (minValue, minUnit) = DelayFormatter.Split(minMs);
                 var (maxValue, maxUnit) = DelayFormatter.Split(maxMs);
 
@@ -245,7 +273,8 @@ public partial class DelayNode : NodeBase
             }
             else
             {
-                var (value, unit) = DelayFormatter.Split(DelayFormatter.ClampMilliseconds(Node.DelayMs));
+                var (minMs, _) = GetDisplayDelayRange(Node);
+                var (value, unit) = DelayFormatter.Split(minMs);
                 ValueTextBox.Text = value;
                 UnitTextBlock.Text = unit;
             }
@@ -266,26 +295,36 @@ public partial class DelayNode : NodeBase
         if (Node == null)
             return false;
 
-        if (Node.Type == MacroNodeType.RandomDelay)
+        var (min, max) = GetDisplayDelayRange(Node);
+        if (Node.Type == MacroNodeType.Delay &&
+            Node.MinDelayMs == min &&
+            Node.MaxDelayMs == max &&
+            Node.DelayMs == min &&
+            Node.RandomDelayMinMs == min &&
+            Node.RandomDelayMaxMs == max)
         {
-            var min = DelayFormatter.ClampMilliseconds(Node.RandomDelayMinMs);
-            var max = DelayFormatter.ClampMilliseconds(Node.RandomDelayMaxMs);
-            if (max < min)
-                (min, max) = (max, min);
-
-            if (Node.RandomDelayMinMs == min && Node.RandomDelayMaxMs == max)
-                return false;
-
-            Node.RandomDelayMinMs = min;
-            Node.RandomDelayMaxMs = max;
-            return true;
+            return false;
         }
 
-        var delay = DelayFormatter.ClampMilliseconds(Node.DelayMs);
-        if (Node.DelayMs == delay)
-            return false;
-
-        Node.DelayMs = delay;
+        Node.SetDelayRange(min, max);
         return true;
+    }
+
+    private bool IsRandomDelayVisual() =>
+        RandomDelayPanel.Visibility == Visibility.Visible;
+
+    private bool ShouldShowRandomDelayPanel(MacroNode node) =>
+        node.HasRandomDelayRange() || (_isEditing && IsRandomDelayVisual());
+
+    private static (int MinMs, int MaxMs) GetDisplayDelayRange(MacroNode node)
+    {
+        var (min, max) = node.GetEffectiveDelayRange();
+        min = DelayFormatter.ClampMilliseconds(min);
+        max = DelayFormatter.ClampMilliseconds(max);
+
+        if (max < min)
+            (min, max) = (max, min);
+
+        return (min, max);
     }
 }

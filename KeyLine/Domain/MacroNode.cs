@@ -106,6 +106,10 @@ public sealed class MacroNode
 
     public int RandomDelayMaxMs { get; set; }
 
+    public int MinDelayMs { get; set; }
+
+    public int MaxDelayMs { get; set; }
+
     public string Text { get; set; } = "";
 
     public int MouseX { get; set; }
@@ -170,6 +174,56 @@ public sealed class MacroNode
     }
 
     public bool IsRecordedDelay { get; set; }
+
+    public (int MinMs, int MaxMs) GetEffectiveDelayRange()
+    {
+        var min = MinDelayMs;
+        var max = MaxDelayMs;
+
+        if (min == 0 && max == 0)
+        {
+            if (Type == MacroNodeType.RandomDelay)
+            {
+                min = RandomDelayMinMs;
+                max = RandomDelayMaxMs;
+            }
+            else
+            {
+                min = DelayMs;
+                max = DelayMs;
+            }
+        }
+
+        min = Math.Max(0, min);
+        max = Math.Max(0, max);
+
+        if (max < min)
+            (min, max) = (max, min);
+
+        return (min, max);
+    }
+
+    public bool HasRandomDelayRange()
+    {
+        var (min, max) = GetEffectiveDelayRange();
+        return min != max;
+    }
+
+    public void SetDelayRange(int minMs, int maxMs)
+    {
+        minMs = Math.Max(0, minMs);
+        maxMs = Math.Max(0, maxMs);
+
+        if (maxMs < minMs)
+            (minMs, maxMs) = (maxMs, minMs);
+
+        Type = MacroNodeType.Delay;
+        MinDelayMs = minMs;
+        MaxDelayMs = maxMs;
+        DelayMs = minMs;
+        RandomDelayMinMs = minMs;
+        RandomDelayMaxMs = maxMs;
+    }
 
     public bool IsSyntheticDisplayNode { get; set; }
 

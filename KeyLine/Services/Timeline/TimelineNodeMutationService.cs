@@ -89,10 +89,13 @@ public static class TimelineNodeMutationService
             var previous = timeline.Nodes[i - 1];
             var current = timeline.Nodes[i];
 
-            if (previous.Type != MacroNodeType.Delay || current.Type != MacroNodeType.Delay)
+            if (!CanMergeDelayNodes(previous, current))
                 continue;
 
-            previous.DelayMs += current.DelayMs;
+            var (previousDelayMs, _) = previous.GetEffectiveDelayRange();
+            var (currentDelayMs, _) = current.GetEffectiveDelayRange();
+            var mergedDelayMs = DelayFormatter.ClampMilliseconds((long)previousDelayMs + currentDelayMs);
+            previous.SetDelayRange(mergedDelayMs, mergedDelayMs);
             previous.IsRecordedDelay = previous.IsRecordedDelay && current.IsRecordedDelay;
             timeline.Nodes.RemoveAt(i);
             changed = true;
@@ -208,4 +211,10 @@ public static class TimelineNodeMutationService
 
     private static bool IsDelayCleanupStep(MacroNode node) =>
         node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay;
+
+    private static bool CanMergeDelayNodes(MacroNode previous, MacroNode current) =>
+        previous.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay &&
+        current.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay &&
+        !previous.HasRandomDelayRange() &&
+        !current.HasRandomDelayRange();
 }

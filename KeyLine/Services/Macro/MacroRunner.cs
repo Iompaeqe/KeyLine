@@ -158,7 +158,11 @@ public sealed class MacroRunner
                 result.Add(new MacroNode
                 {
                     Type = MacroNodeType.Delay,
-                    DelayMs = standardDelayMs
+                    DelayMs = standardDelayMs,
+                    MinDelayMs = standardDelayMs,
+                    MaxDelayMs = standardDelayMs,
+                    RandomDelayMinMs = standardDelayMs,
+                    RandomDelayMaxMs = standardDelayMs
                 });
             }
         }
@@ -403,13 +407,9 @@ public sealed class MacroRunner
                 break;
 
             case MacroNodeType.Delay:
-                await DelayWithPause(Math.Max(node.DelayMs, minimumDelayMs), token);
-                break;
-
             case MacroNodeType.RandomDelay:
-                var min = Math.Min(node.RandomDelayMinMs, node.RandomDelayMaxMs);
-                var max = Math.Max(node.RandomDelayMinMs, node.RandomDelayMaxMs);
-                await DelayWithPause(Math.Max(Random.Shared.Next(min, max + 1), minimumDelayMs), token);
+                var delayMs = GetPlaybackDelayMs(node);
+                await DelayWithPause(Math.Max(delayMs, minimumDelayMs), token);
                 break;
 
             case MacroNodeType.Text:
@@ -694,6 +694,20 @@ public sealed class MacroRunner
 
     private static bool IsValidWindow(nint handle) =>
         handle != 0 && NativeMethods.IsWindow(handle);
+
+    private static int GetPlaybackDelayMs(MacroNode node)
+    {
+        var (min, max) = node.GetEffectiveDelayRange();
+        min = DelayFormatter.ClampMilliseconds(min);
+        max = DelayFormatter.ClampMilliseconds(max);
+
+        if (max < min)
+            (min, max) = (max, min);
+
+        return min == max
+            ? min
+            : Random.Shared.Next(min, max + 1);
+    }
 
     private static int GetMouseWheelDelta(MacroNode node)
     {

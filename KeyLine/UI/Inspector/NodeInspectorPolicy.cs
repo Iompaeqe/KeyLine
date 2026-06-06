@@ -5,7 +5,6 @@ public sealed class NodeInspectorPolicy
     public bool HasInspector { get; init; } = true;
 
     public bool CanEditDelay { get; init; }
-    public bool CanEditRandomDelay { get; init; }
     public bool CanEditText { get; init; }
     public bool CanEditMousePosition { get; init; }
     public bool CanPickMousePosition { get; init; }
@@ -31,14 +30,9 @@ public sealed class NodeInspectorPolicy
 
         return node.Type switch
         {
-            MacroNodeType.Delay => new NodeInspectorPolicy
+            MacroNodeType.Delay or MacroNodeType.RandomDelay => new NodeInspectorPolicy
             {
                 CanEditDelay = true
-            },
-
-            MacroNodeType.RandomDelay => new NodeInspectorPolicy
-            {
-                CanEditRandomDelay = true
             },
 
             MacroNodeType.Text => new NodeInspectorPolicy

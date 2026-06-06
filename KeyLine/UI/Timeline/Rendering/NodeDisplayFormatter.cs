@@ -50,8 +50,7 @@ public static class NodeDisplayFormatter
         {
             MacroNodeType.KeyDown => "Key Down",
             MacroNodeType.KeyUp => "Key Up",
-            MacroNodeType.Delay => "Delay",
-            MacroNodeType.RandomDelay => "Random Delay",
+            MacroNodeType.Delay or MacroNodeType.RandomDelay => node.HasRandomDelayRange() ? "Random Delay" : "Delay",
             MacroNodeType.Text => "Text",
             MacroNodeType.MouseClick => "Mouse Click",
             MacroNodeType.MouseDown => "Mouse Down",

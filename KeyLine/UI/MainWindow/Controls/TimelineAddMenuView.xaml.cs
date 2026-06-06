@@ -9,7 +9,6 @@ public enum TimelineAddMenuAction
 {
     RecordInput,
     Delay,
-    RandomDelay,
     Text,
     RepeatBlock,
     ConditionBlock,
@@ -130,9 +129,6 @@ public partial class TimelineAddMenuView : UserControl
 
     private void DelayMenuButton_Click(object sender, RoutedEventArgs e) =>
         Request(TimelineAddMenuAction.Delay);
-
-    private void RandomDelayMenuButton_Click(object sender, RoutedEventArgs e) =>
-        Request(TimelineAddMenuAction.RandomDelay);
 
     private void TextMenuButton_Click(object sender, RoutedEventArgs e) =>
         Request(TimelineAddMenuAction.Text);

@@ -100,6 +100,8 @@ public static class MacroCloneService
             DelayMs = source.DelayMs,
             RandomDelayMinMs = source.RandomDelayMinMs,
             RandomDelayMaxMs = source.RandomDelayMaxMs,
+            MinDelayMs = source.MinDelayMs,
+            MaxDelayMs = source.MaxDelayMs,
             Text = source.Text,
             MouseX = source.MouseX,
             MouseY = source.MouseY,

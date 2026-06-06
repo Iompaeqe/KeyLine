@@ -71,6 +71,10 @@ public sealed class MacroRecorder
                 {
                     Type = MacroNodeType.Delay,
                     DelayMs = delayMs,
+                    MinDelayMs = delayMs,
+                    MaxDelayMs = delayMs,
+                    RandomDelayMinMs = delayMs,
+                    RandomDelayMaxMs = delayMs,
                     IsRecordedDelay = true
                 };
             }
@@ -98,6 +102,10 @@ public sealed class MacroRecorder
                 {
                     Type = MacroNodeType.Delay,
                     DelayMs = delayMs,
+                    MinDelayMs = delayMs,
+                    MaxDelayMs = delayMs,
+                    RandomDelayMinMs = delayMs,
+                    RandomDelayMaxMs = delayMs,
                     IsRecordedDelay = true
                 };
             }
@@ -125,6 +133,10 @@ public sealed class MacroRecorder
                 {
                     Type = MacroNodeType.Delay,
                     DelayMs = delayMs,
+                    MinDelayMs = delayMs,
+                    MaxDelayMs = delayMs,
+                    RandomDelayMinMs = delayMs,
+                    RandomDelayMaxMs = delayMs,
                     IsRecordedDelay = true
                 };
             }

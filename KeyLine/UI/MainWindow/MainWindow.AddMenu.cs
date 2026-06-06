@@ -50,9 +50,6 @@ public partial class MainWindow
             case TimelineAddMenuAction.Delay:
                 AddDelayStep();
                 break;
-            case TimelineAddMenuAction.RandomDelay:
-                AddRandomDelayStep();
-                break;
             case TimelineAddMenuAction.Text:
                 AddTextStep();
                 break;
@@ -199,31 +196,11 @@ public partial class MainWindow
             new MacroNode
             {
                 Type = MacroNodeType.Delay,
-                DelayMs = 100,
-                IsRecordedDelay = false
-            }
-        });
-
-        timeline.UseStandardDelay = false;
-        MergeAdjacentDelayNodesIfEnabled(timeline);
-        SelectTimeline(timeline);
-        RefreshTimeline();
-        ScheduleSaveState();
-    }
-
-    private void AddRandomDelayStep()
-    {
-        TimelineAddMenu.Close();
-
-        SaveDocumentUndoSnapshot();
-        var timeline = GetPopupTimeline();
-        InsertPopupSteps(timeline, new[]
-        {
-            new MacroNode
-            {
-                Type = MacroNodeType.RandomDelay,
+                DelayMs = 50,
+                MinDelayMs = 50,
+                MaxDelayMs = 50,
                 RandomDelayMinMs = 50,
-                RandomDelayMaxMs = 150,
+                RandomDelayMaxMs = 50,
                 IsRecordedDelay = false
             }
         });
