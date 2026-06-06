@@ -67,5 +67,8 @@ public sealed class MacroFeatureValidatorTests
         Assert.Equal(
             FeatureId.SystemNodes,
             MacroFeatureValidator.GetRequiredFeatureForNode(new MacroNode { Type = MacroNodeType.SystemFocusWindow }));
+        Assert.Equal(
+            FeatureId.SystemNodes,
+            MacroFeatureValidator.GetRequiredFeatureForNode(new MacroNode { Type = MacroNodeType.RunMacro }));
     }
 }

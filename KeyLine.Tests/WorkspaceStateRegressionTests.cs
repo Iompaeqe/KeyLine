@@ -965,6 +965,83 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal(loadedNodes[0].ConditionBlockId, loadedNodes[2].ConditionBlockId);
     }
 
+    [Fact]
+    public void SaveAndLoad_PreservesNewConditionRunMacroAndToggleSettings()
+    {
+        var targetWorkspace = CreateWorkspace("Buff Loop", MacroLoopMode.Async);
+        targetWorkspace.Id = "macro-b";
+
+        var workspace = CreateWorkspace("Caller", MacroLoopMode.Async);
+        workspace.Id = "macro-a";
+        var timeline = workspace.Document.ActiveTimeline;
+
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.KeyDown,
+            KeyName = "Caps Lock",
+            VirtualKey = 0x14,
+            ToggleKeyMode = ToggleKeyMode.ToggleOff
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.RunMacro,
+            RunMacroId = targetWorkspace.Id
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.ConditionStart,
+            ConditionType = MacroConditionType.WindowExists,
+            ConditionIsInverted = true,
+            WindowReference = new WindowReference
+            {
+                Type = WindowReferenceType.LastFoundWindow
+            }
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.ConditionStart,
+            ConditionType = MacroConditionType.MacroRunning,
+            ConditionIsInverted = true,
+            ConditionMacroId = targetWorkspace.Id
+        });
+        timeline.Nodes.Add(new MacroNode
+        {
+            Type = MacroNodeType.ConditionStart,
+            ConditionType = MacroConditionType.TimePassed,
+            ConditionIsInverted = true,
+            ConditionTimePassedMs = 250
+        });
+
+        MacroStateStore.Save(
+            new[] { workspace, targetWorkspace },
+            0,
+            shortcutsEnabled: false,
+            new AppSettings());
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        Assert.Equal("macro-a", snapshot.Workspaces[0].Id);
+        Assert.Equal("macro-b", snapshot.Workspaces[1].Id);
+
+        var loadedNodes = snapshot.Workspaces[0].Document.ActiveTimeline.Nodes;
+        Assert.Equal(ToggleKeyMode.ToggleOff, loadedNodes[0].ToggleKeyMode);
+        Assert.Equal(MacroNodeType.RunMacro, loadedNodes[1].Type);
+        Assert.Equal("macro-b", loadedNodes[1].RunMacroId);
+
+        Assert.Equal(MacroConditionType.WindowExists, loadedNodes[2].ConditionType);
+        Assert.True(loadedNodes[2].ConditionIsInverted);
+        Assert.Equal(WindowReferenceType.LastFoundWindow, loadedNodes[2].WindowReference.Type);
+
+        Assert.Equal(MacroConditionType.MacroRunning, loadedNodes[3].ConditionType);
+        Assert.True(loadedNodes[3].ConditionIsInverted);
+        Assert.Equal("macro-b", loadedNodes[3].ConditionMacroId);
+
+        Assert.Equal(MacroConditionType.TimePassed, loadedNodes[4].ConditionType);
+        Assert.False(loadedNodes[4].ConditionIsInverted);
+        Assert.Equal(250, loadedNodes[4].ConditionTimePassedMs);
+    }
+
     public void Dispose()
     {
         Environment.SetEnvironmentVariable(
