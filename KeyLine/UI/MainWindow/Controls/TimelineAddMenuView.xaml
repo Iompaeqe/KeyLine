@@ -149,13 +149,13 @@
                                 ToolTip="Cursor move"
                                 Click="CursorMoveMenuButton_Click" />
 
-                        <Button Content="Scroll Up"
-                                Style="{StaticResource MouseAddMenuButton}"
-                                Click="MouseScrollUpMenuButton_Click" />
+                        <!-- <Button Content="Scroll Up" -->
+                        <!--         Style="{StaticResource MouseAddMenuButton}" -->
+                        <!--         Click="MouseScrollUpMenuButton_Click" /> -->
 
-                        <Button Content="Scroll Down"
-                                Style="{StaticResource MouseAddMenuButton}"
-                                Click="MouseScrollDownMenuButton_Click" />
+                        <!-- <Button Content="Scroll Down" -->
+                        <!--         Style="{StaticResource MouseAddMenuButton}" -->
+                        <!--         Click="MouseScrollDownMenuButton_Click" /> -->
 
                         <Button Content="Scroll Left"
                                 Style="{StaticResource MouseAddMenuButton}"
