@@ -223,4 +223,9 @@ Possible future improvements include:
 
 ## License
 
-See the [License](https://github.com/Iompaeqe/KeyLine-code/tree/1.8?tab=GPL-3.0-1-ov-file).
+## License
+
+KeyLine is licensed under the **GNU General Public License v3.0**.
+
+See the full license here: [GNU General Public License v3.0](https://github.com/Iompaeqe/KeyLine-code/tree/1.8?tab=GPL-3.0-1-ov-file)
+
