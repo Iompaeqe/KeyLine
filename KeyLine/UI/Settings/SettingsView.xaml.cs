@@ -12,6 +12,8 @@ namespace KeyLine;
 public partial class SettingsView : UserControl
 {
     private const string AboutCategory = "About";
+    private const string LicenseUrl = "https://github.com/Iompaeqe/KeyLine-code/tree/1.8?tab=GPL-3.0-1-ov-file";
+    private const string FeedbackUrl = "https://github.com/Iompaeqe/KeyLine/issues/new";
 
     private readonly AppSettings _settings;
     private readonly ISettingsActions _actions;
@@ -275,10 +277,11 @@ public partial class SettingsView : UserControl
         AddDescription("KeyLine");
         AddDescription($"Version: {_actions.CurrentVersionText}");
         AddLicenseLink();
-        AddDescription("Copyright © 2026 Iompaeqe(Iompa). All rights reserved.");
-        AddDescription("A compact window-targeted macro recorder with keyboard, mouse, timeline, and shortcut support.");
+        AddDescription("Copyright © 2026 Iompaeqe(Iompa).");
 
         AddUpdateCheckButton();
+        AddSpacer(90);
+        AddFeedbackButton();
         BeginUpdateCheck(forceRefresh: true);
     }
 
@@ -503,33 +506,71 @@ public partial class SettingsView : UserControl
             Margin = new Thickness(0, 0, 0, 8)
         };
 
-        var link = new Hyperlink(new Run("License: Proprietary Freeware"))
+        textBlock.Inlines.Add(new Run("Licensed under the "));
+
+        var link = new Hyperlink(new Run("GNU General Public License v3.0"))
         {
-            Foreground = new SolidColorBrush(Color.FromRgb(147, 197, 253))
+            Foreground = new SolidColorBrush(Color.FromRgb(147, 197, 253)),
+            ToolTip = LicenseUrl
         };
 
-        link.Click += (_, _) => ShowLicenseWindow();
+        link.Click += (_, _) => OpenUrl(LicenseUrl);
 
         textBlock.Inlines.Add(link);
+        textBlock.Inlines.Add(new Run("."));
+
         SettingsPanel.Children.Add(textBlock);
     }
     
-    private void ShowLicenseWindow()
+    private void AddFeedbackButton()
     {
-        var window = new Window
+        var panel = new DockPanel
         {
-            Content = new LicenseView(),
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStyle = WindowStyle.None,
-            AllowsTransparency = true,
-            ResizeMode = ResizeMode.NoResize,
-            Background = Brushes.Transparent,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = Window.GetWindow(this),
-            ShowInTaskbar = false
+            LastChildFill = false,
+            Margin = new Thickness(0, 4, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        window.ShowDialog();
+        var button = new Button
+        {
+            Content = "Feedback / Bug report",
+            Height = 28,
+            MinWidth = 170,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            ToolTip = "Open the KeyLine GitHub issue page."
+        };
+
+        button.Click += (_, _) => OpenUrl(FeedbackUrl);
+
+        DockPanel.SetDock(button, Dock.Right);
+        panel.Children.Add(button);
+
+        SettingsPanel.Children.Add(panel);
+    }
+    
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Optional external link. Ignore if Windows cannot open it.
+        }
+    }
+    
+    private void AddSpacer(double height)
+    {
+        SettingsPanel.Children.Add(new Border
+        {
+            Height = height,
+            Background = Brushes.Transparent
+        });
     }
     
     private void AddUpdateCheckButton()
