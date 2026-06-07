@@ -1,126 +1,226 @@
-
 # KeyLine
 
-KeyLine is a lightweight timeline-based macro recorder and editor for Windows.
+**KeyLine** is a lightweight timeline-based macro recorder and editor for Windows.
 
-It lets you select a target window, record or build macros, organize them into profiles, and run them using visual timelines. In compatible applications, keyboard input can be sent to an unfocused/background window while you continue using your PC normally.
+Create macros visually, arrange actions on timelines, assign shortcuts, and run them against a selected target window without writing scripts.
 
-KeyLine is not meant to be a huge automation framework. It is designed to be simple, practical, and fast to use.
-
----
-
-<img width="1998" height="739" alt="image" src="https://github.com/user-attachments/assets/fffa1af3-fda3-46c8-b287-3e9f97d12e81" />
+<p align="center">
+  <img width="900" alt="KeyLine" src="https://github.com/user-attachments/assets/04ab499a-f58d-41f4-a8ff-88f3ba18700b" />
+</p>
 
 ---
 
-## Features
+## Download
 
-* Visual timeline-based macro editing
-* Macro profiles
-* Multiple macro tabs per profile
-* Multiple timelines per macro
-* Keyboard recording
-* Mouse recording
-* Key down / key up nodes
-* Text nodes
-* Delay and random delay nodes
-* Mouse input nodes
-* Cursor move nodes
-* Per-macro shortcuts
-* Profile-scoped macro shortcuts
-* Global playback shortcuts
-* Undo / redo
-* Copy / paste / duplicate for nodes, timelines, and macros
-* Macro/profile import and export
-* Full backup export/import for moving KeyLine data between PCs
-* Tray support
-* Auto target window matching
-* Experimental background mouse input
+Download the latest version from the [Releases](https://github.com/Iompaeqe/KeyLine/releases) page.
+
+KeyLine is distributed as a portable Windows executable.  
+No installation is required.
 
 ---
 
-## Profiles
+## Why KeyLine?
 
-Profiles let you organize macros into separate groups.
+Most macro tools feel either too old, too complicated, or too focused on recording everything.
 
-Each profile has its own macro tabs and macro shortcuts. Switching profiles changes which macros are visible and active.
+KeyLine focuses on making macro creation fast, visual, and easy to understand.
 
----
+One of KeyLine’s main goals is **background keyboard input**: it can send keyboard actions to a selected target window without taking focus from what you are currently doing.
 
-## Inspector Panel
+This means a macro can run against another application while you continue using your PC normally.
 
-KeyLine uses an Inspector panel for selected timeline and node settings.
+> Background input currently applies to keyboard actions.
+> Mouse background input is experimental and depends heavily on how the target application handles input.
 
-The UI is split clearly:
+KeyLine focuses on:
 
-* Macro settings are in OPTIONS.
-* Timeline settings are in the Inspector.
-* Node settings are in the Inspector.
-
-This keeps the main window cleaner while still allowing more advanced macro setups.
-
----
-
-## Loop Modes
-
-KeyLine supports four macro loop modes:
-
-* **Async**: Timelines loop independently.
-* **Sync**: Timelines wait for each other before starting the next loop.
-* **Cycle**: Runs one loop of each timeline in order, skipping finished timelines.
-
-  * Example: A×3, B×5, C×4 → ABCABCABCBCB
-* **Chain**: Fully completes each timeline before starting the next.
-
-  * Example: A×3, B×5, C×4 → AAABBBBBCCCC
-
-Loop count and loop delay are set per timeline.
+* Fast macro creation
+* Visual timeline editing
+* Background keyboard input to a selected target window
+* Shortcuts and remapping
+* Multiple timelines
+* Window-aware automation
+* Reusable macro workflows
+* Keeping the UI clean and understandable
 
 ---
 
-## Import / Export
+## Macro Creation
 
-KeyLine supports different export types depending on the use case.
+Build macros by adding actions such as key presses, text, delays, mouse input, and blocks directly onto the timeline.
 
-For sharing:
+<p align="center">
+  <img width="760" alt="Macro Creation" src="https://github.com/user-attachments/assets/734b7bb9-aff2-4681-a607-5eb183388ea5" />
+</p>
 
-* Export selected macros
-* Export selected profiles
-
-For backup or PC migration:
-
-* Export everything
-
-Full export includes profiles, macros, and settings. Full import intentionally replaces the current local KeyLine data, so it is meant for personal backup, formatting your PC, or moving to another PC.
+KeyLine uses timelines instead of long script-like action lists. Nodes can be moved, edited, copied, duplicated, deleted, and arranged visually.
 
 ---
 
-## Background Input
+## Macro Shortcuts
 
-KeyLine can send keyboard input to selected windows using WinAPI window messages.
+Assign a shortcut to a macro and trigger it without pressing the Start button manually.
 
-This can allow macros to run on compatible background windows, but support depends on the target application.
+<p align="center">
+  <img width="760" alt="Macro Shortcut" src="https://github.com/user-attachments/assets/4856742b-45f1-4750-8ef7-0138015725dd" />
+</p>
 
-Some apps accept background input. Some ignore it. Some games or protected applications may block it completely.
-
-Background mouse input is experimental and only works in some applications.
-
----
-
-## Limitations
-
-KeyLine does not guarantee that every application will accept background input.
-
-Compatibility depends on how the target window handles input.
-
-Foreground input should behave normally. Background input is application-dependent.
+Shortcuts are useful for repeated actions, quick text input, game/app automation, toggle-style macros, and remap behavior.
 
 ---
 
-## Planned Features
+## Remap
 
-* Repeat nodes
-* Conditional nodes
-* More advanced timeline controls
-* Better background mouse support if a reliable method is found
+Remap lets a shortcut key trigger a macro without sending the original key to the target window.
 
+For example:
+
+```text
+Shortcut: 1
+Macro: Q > Q > Q
+Result: Q > Q > Q
+Not:    1 > Q > Q > Q
+```
+
+Remap only works when the selected target window is focused, so it does not consume inputs while you are using other apps.
+
+Global Remap can be turned off temporarily when you want to type normally, such as in an in-game chat.
+
+<p align="center">
+  <img width="760" alt="Remap" src="https://github.com/user-attachments/assets/1c2f7873-b89f-4606-bcd9-ef371eb36380" />
+</p>
+
+---
+
+## Timelines and Loop Modes
+
+A macro can contain multiple timelines.
+
+This makes it easier to separate actions instead of forcing everything into one long sequence.
+
+Loop modes control how timelines run:
+
+* **Async** — timelines run independently.
+* **Sync** — timelines wait and restart together.
+* **Cycle** — one loop of each available timeline runs in order.
+* **Chain** — each timeline fully completes before the next starts.
+
+<p align="center">
+  <img width="800" alt="Timelines and Loop Modes" src="https://github.com/user-attachments/assets/900fde08-d138-43c3-ab7f-cff72784c352" />
+</p>
+
+---
+
+## Repeat Blocks
+
+Repeat blocks let you loop a group of nodes without duplicating them manually.
+
+<p align="center">
+  <img width="760" alt="Repeat Block" src="https://github.com/user-attachments/assets/0805d683-e79b-43c5-b751-a03d4c8b309f" />
+</p>
+
+---
+
+## Condition Blocks
+
+Condition blocks let part of a macro run only when the given condition is true.
+
+Current condition types:
+
+* Held key
+* Random chance
+* Every N loop / repeat
+* Pixel color
+* Target Window Focused
+* Window Exists
+* Macro Running
+* Time Passed
+
+<p align="center">
+  <img width="760" alt="Condition Blocks" src="https://github.com/user-attachments/assets/3a9d5a1c-84c6-4084-bef3-c92aed9bbf2c" />
+</p>
+
+---
+
+## Run Macro and Reusable Workflows
+
+Macros can trigger other macros using the Run Macro node.
+
+This allows larger workflows to be split into smaller reusable pieces instead of duplicating the same timeline logic multiple times.
+
+Only macros from the active profile can be selected and executed.
+
+---
+
+## Recording
+
+KeyLine supports keyboard recording.
+
+Recorded input is converted into editable timeline nodes, so you can record first and then clean up the macro manually.
+
+---
+
+## Profiles and Import / Export
+
+Macros can be organized into profiles.
+
+Profiles make it easier to separate different macro groups, such as different games, apps, or workflows.
+
+KeyLine also supports import/export for sharing macros, moving profiles, or backing up all app data.
+
+---
+
+## Notes and Limitations
+
+KeyLine sends input to a selected target window, but not every application handles simulated or background input the same way.
+
+Some games or programs may block, ignore, or handle simulated input differently.
+
+Background mouse input is experimental and may work in some applications but not others.
+
+Use KeyLine responsibly and follow the rules of any software or game you use it with.
+
+---
+
+## Current Status
+
+KeyLine is in active development.
+
+The goal is to keep it simple to use while gradually adding more powerful macro-building tools.
+
+--
+
+## Feedback and Bug Reports
+
+KeyLine is developed in my spare time and is still evolving.
+
+If you encounter bugs, compatibility issues, confusing behavior, or have feature suggestions, please open an issue on GitHub.
+
+When reporting a problem, include:
+
+* KeyLine version
+* Windows version
+* Target application (if relevant)
+* Steps to reproduce the issue
+
+Feedback from real users is the most valuable way to improve KeyLine.
+
+---
+
+## Planned / Future Ideas
+
+Possible future improvements include:
+
+* More examples and tutorials
+* More condition options
+* More polish for block editing
+* Further background input improvements where possible
+* Mouse recording and playback improvements
+* Controller support
+* More advanced macro organization tools
+
+---
+
+## License
+
+See the [License](https://github.com/Iompaeqe/KeyLine?tab=License-1-ov-file).
