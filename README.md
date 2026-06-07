@@ -223,4 +223,4 @@ Possible future improvements include:
 
 ## License
 
-See the [License](https://github.com/Iompaeqe/KeyLine?tab=License-1-ov-file).
+See the [License](https://github.com/Iompaeqe/KeyLine-code/tree/1.8?tab=GPL-3.0-1-ov-file).
