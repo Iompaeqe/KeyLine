@@ -5,8 +5,9 @@
 Create macros visually, arrange actions on timelines, assign shortcuts, and run them against a selected target window without writing scripts.
 
 <p align="center">
-  <img width="900" alt="KeyLine" src="https://github.com/user-attachments/assets/04ab499a-f58d-41f4-a8ff-88f3ba18700b" />
-</p>
+  <img width="900" alt="KeyLine" src="https://github.com/user-attachments/assets/ed43052f-e17b-49d0-adf1-e963f562d189" />
+</p><img width="1280" height="720" alt="Macro" src="https://github.com/user-attachments/assets/29a89a3a-93bd-4627-a4cd-9932fec3045c" />
+
 
 ---
 
@@ -50,8 +51,9 @@ KeyLine focuses on:
 Build macros by adding actions such as key presses, text, delays, mouse input, and blocks directly onto the timeline.
 
 <p align="center">
-  <img width="760" alt="Macro Creation" src="https://github.com/user-attachments/assets/734b7bb9-aff2-4681-a607-5eb183388ea5" />
+  <img width="760" alt="Macro Creation" src="https://github.com/user-attachments/assets/5b9e25d1-0b22-4780-975c-2f4f609855d6" />
 </p>
+
 
 KeyLine uses timelines instead of long script-like action lists. Nodes can be moved, edited, copied, duplicated, deleted, and arranged visually.
 
@@ -62,8 +64,9 @@ KeyLine uses timelines instead of long script-like action lists. Nodes can be mo
 Assign a shortcut to a macro and trigger it without pressing the Start button manually.
 
 <p align="center">
-  <img width="760" alt="Macro Shortcut" src="https://github.com/user-attachments/assets/4856742b-45f1-4750-8ef7-0138015725dd" />
+  <img width="760" alt="Macro Shortcut" src="https://github.com/user-attachments/assets/5af6f6ef-26ab-48cd-a49f-9ca9d05adc41" />
 </p>
+
 
 Shortcuts are useful for repeated actions, quick text input, game/app automation, toggle-style macros, and remap behavior.
 
@@ -87,8 +90,9 @@ Remap only works when the selected target window is focused, so it does not cons
 Global Remap can be turned off temporarily when you want to type normally, such as in an in-game chat.
 
 <p align="center">
-  <img width="760" alt="Remap" src="https://github.com/user-attachments/assets/1c2f7873-b89f-4606-bcd9-ef371eb36380" />
+  <img width="760" alt="Remap" src="https://github.com/user-attachments/assets/7e1e4861-36eb-49af-b6af-1add140ead68" />
 </p>
+
 
 ---
 
@@ -106,8 +110,9 @@ Loop modes control how timelines run:
 * **Chain** — each timeline fully completes before the next starts.
 
 <p align="center">
-  <img width="800" alt="Timelines and Loop Modes" src="https://github.com/user-attachments/assets/900fde08-d138-43c3-ab7f-cff72784c352" />
+  <img width="800" alt="Timelines and Loop Modes" src="https://github.com/user-attachments/assets/b293721f-3f6c-4bde-8be6-eaa1826fa107" />
 </p>
+
 
 ---
 
@@ -116,8 +121,9 @@ Loop modes control how timelines run:
 Repeat blocks let you loop a group of nodes without duplicating them manually.
 
 <p align="center">
-  <img width="760" alt="Repeat Block" src="https://github.com/user-attachments/assets/0805d683-e79b-43c5-b751-a03d4c8b309f" />
+  <img width="760" alt="Repeat Block" src="https://github.com/user-attachments/assets/6107ffae-24c0-4748-aea2-5ea253dbc010" />
 </p>
+
 
 ---
 
@@ -137,8 +143,9 @@ Current condition types:
 * Time Passed
 
 <p align="center">
-  <img width="760" alt="Condition Blocks" src="https://github.com/user-attachments/assets/3a9d5a1c-84c6-4084-bef3-c92aed9bbf2c" />
+  <img width="760" alt="Condition Blocks" src="https://github.com/user-attachments/assets/74d7d194-2e64-4ba7-8a9d-241e94f7ce0c" />
 </p>
+
 
 ---
 
