@@ -6,7 +6,7 @@ Create macros visually, arrange actions on timelines, assign shortcuts, and run 
 
 <p align="center">
   <img width="900" alt="KeyLine" src="https://github.com/user-attachments/assets/ed43052f-e17b-49d0-adf1-e963f562d189" />
-</p><img width="1280" height="720" alt="Macro" src="https://github.com/user-attachments/assets/29a89a3a-93bd-4627-a4cd-9932fec3045c" />
+</p>
 
 
 ---
