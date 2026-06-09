@@ -13,11 +13,11 @@ public partial class SystemWindowReferenceNodeInspector
 {
     private static readonly IReadOnlyList<WindowReferenceTypeOption> WindowReferenceTypeOptions =
     [
-        new("Selected Target Window", WindowReferenceType.SelectedTarget),
-        new("Focused Window", WindowReferenceType.FocusedWindow),
-        new("Last Launched Window", WindowReferenceType.LastLaunchedWindow),
-        new("Last Found Window", WindowReferenceType.LastFoundWindow),
-        new("Custom Window Title", WindowReferenceType.CustomTitle)
+        new("Target", WindowReferenceType.SelectedTarget),
+        new("Focused", WindowReferenceType.FocusedWindow),
+        new("Last Launched", WindowReferenceType.LastLaunchedWindow),
+        new("Last Found", WindowReferenceType.LastFoundWindow),
+        new("Custom Title", WindowReferenceType.CustomTitle)
     ];
 
     private ComboBox WindowSourceCombo =>
