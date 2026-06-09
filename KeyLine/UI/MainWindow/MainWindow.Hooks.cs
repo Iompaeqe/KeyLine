@@ -38,36 +38,23 @@ public partial class MainWindow
         Action<int>? onRunnerLoopCompleted,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged,
         Action<string>? onPlaybackFailure,
-        bool followForegroundWindow,
-        bool singlePassBody = false)
+        bool followForegroundWindow)
     {
         _hardStopWorkspaces.Remove(workspace);
 
         if (!IsHardStopRequested(workspace))
             await RunHookAsync(targetHwnd, workspace, isStart: true, followForegroundWindow, onPlaybackFailure);
 
-        if (singlePassBody)
-        {
-            // Sequence/Random play a single selected timeline once (loop count forced to 1).
-            await _playback.RunSingleTimelineAsync(
-                targetHwnd,
-                workspace,
-                GetWorkspacesForProfile(workspace.ProfileId),
-                runnableTimelines[0],
-                followForegroundWindow,
-                onPlaybackFailure);
-        }
-        else
-        {
-            await RunPlaybackForLoopMode(
-                targetHwnd,
-                workspace,
-                runnableTimelines,
-                onRunnerLoopCompleted,
-                onTimelineStatusChanged,
-                onPlaybackFailure,
-                followForegroundWindow);
-        }
+        // Sequence/Random pass a single selected timeline here; running it through the normal loop
+        // path honors that timeline's own loop count (and the macro timer bounds infinite loops).
+        await RunPlaybackForLoopMode(
+            targetHwnd,
+            workspace,
+            runnableTimelines,
+            onRunnerLoopCompleted,
+            onTimelineStatusChanged,
+            onPlaybackFailure,
+            followForegroundWindow);
 
         if (!IsHardStopRequested(workspace))
             await RunHookAsync(targetHwnd, workspace, isStart: false, followForegroundWindow, onPlaybackFailure);

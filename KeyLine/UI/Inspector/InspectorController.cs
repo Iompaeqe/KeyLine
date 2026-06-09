@@ -91,7 +91,8 @@ public sealed class InspectorController
                 StandardDelayMs: Math.Max(0, timeline.StandardDelayMs),
                 ShowKeyUpDown: timeline.ShowKeyUpDown,
                 CooldownMs: Math.Max(0, timeline.CooldownMs),
-                ShowCooldown: showCooldown));
+                ShowCooldown: showCooldown,
+                IsNameReadOnly: workspace.IsHookTimeline(timeline)));
 
             var nodeContent = _nodeInspectorBuilder.Build(timeline);
             _window.SetNodeContent(nodeContent, nodeContent != null, _isNodeCollapsed);

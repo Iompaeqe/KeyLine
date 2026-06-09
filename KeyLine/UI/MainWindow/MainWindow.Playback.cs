@@ -61,7 +61,6 @@ public partial class MainWindow
         }
 
         var timerMs = GetTimerMs();
-        var singlePassBody = sequenceSelected != null;
 
         InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
         _restoreInputsOnStop = false;
@@ -86,8 +85,7 @@ public partial class MainWindow
             CreateRunnerLoopCompletedCallback(workspace),
             CreateTimelineStatusCallback(workspace, runnableTimelines),
             CreatePlaybackFailureCallback(workspace),
-            target.IsFocusedWindowFallback,
-            singlePassBody);
+            target.IsFocusedWindowFallback);
 
         OnSequenceRunCompleted(workspace, sequenceSelected);
         _playback.UnmarkShortcutStarting(workspace);
@@ -205,7 +203,6 @@ public partial class MainWindow
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
-        var singlePassBody = sequenceSelected != null;
         InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
 
         if (workspaceIndex == _activeWorkspaceIndex)
@@ -229,8 +226,7 @@ public partial class MainWindow
             CreateRunnerLoopCompletedCallback(workspace),
             onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines),
             onPlaybackFailure: CreatePlaybackFailureCallback(workspace),
-            followForegroundWindow: target.IsFocusedWindowFallback,
-            singlePassBody: singlePassBody);
+            followForegroundWindow: target.IsFocusedWindowFallback);
 
         PlayMacroSound();
 

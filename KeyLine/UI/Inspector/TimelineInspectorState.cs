@@ -12,4 +12,5 @@ public sealed record TimelineInspectorState(
     int StandardDelayMs,
     bool ShowKeyUpDown,
     int CooldownMs = 0,
-    bool ShowCooldown = false);
+    bool ShowCooldown = false,
+    bool IsNameReadOnly = false);

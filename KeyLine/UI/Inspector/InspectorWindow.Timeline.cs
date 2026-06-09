@@ -11,6 +11,7 @@ public partial class InspectorWindow
 {
     private bool _isSettingTimelineState;
     private bool _isEditingEnabled = true;
+    private bool _isNameReadOnly;
     private bool _isTimelineNameEditing;
     private string _timelineName = string.Empty;
     private int _loopDelayMs;
@@ -22,6 +23,7 @@ public partial class InspectorWindow
     {
         _isSettingTimelineState = true;
         _isEditingEnabled = state.IsEditingEnabled;
+        _isNameReadOnly = state.IsNameReadOnly;
         _loopCount = Math.Max(0, state.LoopCount);
         _loopDelayMs = DelayFormatter.ClampMilliseconds(state.LoopDelayMs);
         _standardDelayMs = DelayFormatter.ClampMilliseconds(state.StandardDelayMs);
@@ -54,7 +56,7 @@ public partial class InspectorWindow
         TimelineNameEditIcon.MouseLeave += (_, _) => TimelineNameEditIcon.Opacity = _isEditingEnabled ? 0.65 : 0.35;
         TimelineNameEditIcon.MouseLeftButtonDown += (_, e) =>
         {
-            if (_isEditingEnabled)
+            if (_isEditingEnabled && !_isNameReadOnly)
                 BeginTimelineNameEdit();
 
             e.Handled = true;
@@ -161,9 +163,11 @@ public partial class InspectorWindow
 
     private void SetTimelineControlsEnabled(bool isEditingEnabled)
     {
+        // Hook timelines (Start/End) keep their Name row but it is read-only: hide the edit pencil.
+        TimelineNameEditIcon.Visibility = _isNameReadOnly ? Visibility.Collapsed : Visibility.Visible;
         TimelineNameEditIcon.Opacity = isEditingEnabled ? 0.65 : 0.35;
-        TimelineNameEditIcon.IsEnabled = isEditingEnabled;
-        TimelineNameEditTextBox.IsEnabled = isEditingEnabled;
+        TimelineNameEditIcon.IsEnabled = isEditingEnabled && !_isNameReadOnly;
+        TimelineNameEditTextBox.IsEnabled = isEditingEnabled && !_isNameReadOnly;
         TimelineLoopsEntry.TextBox.IsEnabled = isEditingEnabled;
         TimelineLoopDelayEntry.TextBox.IsEnabled = isEditingEnabled;
         TimelineStandardDelayCheckBox.IsEnabled = isEditingEnabled;
@@ -175,7 +179,7 @@ public partial class InspectorWindow
 
     private void BeginTimelineNameEdit()
     {
-        if (_isTimelineNameEditing)
+        if (_isTimelineNameEditing || _isNameReadOnly)
             return;
 
         TimelineNameEditStarted?.Invoke();
