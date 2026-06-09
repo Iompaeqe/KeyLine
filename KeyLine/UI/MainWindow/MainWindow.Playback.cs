@@ -605,6 +605,39 @@ public partial class MainWindow
         return remaining == int.MaxValue ? "\u221E" : remaining.ToString();
     }
 
+    /// <summary>
+    /// Highest number of completed loops among unlimited-loop timelines of the active
+    /// workspace. Used to show how many times an infinite macro has played so far.
+    /// </summary>
+    private int GetPlayedLoopCount(WorkspacePlaybackStatusState state)
+    {
+        var played = 0;
+
+        for (var i = 0; i < state.RunnerTargetLoops.Length && i < state.RunnerCompletedLoops.Length; i++)
+        {
+            if (state.RunnerTargetLoops[i] <= 0)
+                played = Math.Max(played, state.RunnerCompletedLoops[i]);
+        }
+
+        return played;
+    }
+
+    /// <summary>
+    /// Suffix appended to the playback status text for unlimited-loop macros, e.g.
+    /// "; 42 loops played". Empty when the macro runs a finite number of loops.
+    /// </summary>
+    private string GetPlayedLoopStatusSuffix()
+    {
+        if (!_workspacePlaybackStates.TryGetValue(_activeWorkspace, out var state))
+            return "";
+
+        if (GetDisplayedRemainingLoopCount(state) != int.MaxValue)
+            return "";
+
+        var played = GetPlayedLoopCount(state);
+        return $"; {played} {(played == 1 ? "loop" : "loops")} played";
+    }
+
     private void BeginTimelinePlaybackStatuses(
         MacroWorkspace workspace,
         IReadOnlyList<MacroTimeline> runnableTimelines)
@@ -727,7 +760,7 @@ public partial class MainWindow
         SetTimerCountdownText(remainingText);
 
         StatusText.Text = paused
-            ? $"Paused; {remainingText} remaining"
+            ? $"Paused; {remainingText} remaining{GetPlayedLoopStatusSuffix()}"
             : GetRunningStatusText(remainingText);
 
         StatusText.Foreground = new SolidColorBrush(paused
@@ -755,17 +788,19 @@ public partial class MainWindow
 
     private string GetRunningStatusText(string remainingText)
     {
+        var loopSuffix = GetPlayedLoopStatusSuffix();
+
         if (!_workspacePlaybackStates.TryGetValue(_activeWorkspace, out var state) ||
             !state.UsesFocusedWindowTarget)
         {
-            return $"Running... {remainingText} remaining";
+            return $"Running... {remainingText} remaining{loopSuffix}";
         }
 
         var target = string.IsNullOrWhiteSpace(state.TargetTitle)
             ? "focused window"
             : state.TargetTitle;
 
-        return $"Running on focused window ({target}); {remainingText} remaining";
+        return $"Running on focused window ({target}); {remainingText} remaining{loopSuffix}";
     }
 
     private WorkspacePlaybackStatusState GetOrCreateWorkspacePlaybackState(MacroWorkspace workspace, int timerMs)
