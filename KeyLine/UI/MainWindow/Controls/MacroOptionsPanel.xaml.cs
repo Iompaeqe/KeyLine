@@ -23,4 +23,6 @@ public partial class MacroOptionsPanel : UserControl
     public System.Windows.Controls.Primitives.Popup HooksPopupControl => HooksPopup;
     public CheckBox StartHookCheckBoxControl => StartHookCheckBox;
     public CheckBox EndHookCheckBoxControl => EndHookCheckBox;
+    public OptionsPillBlock ResetPillControl => ResetPill;
+    public OptionsPillBlock ResetShortcutPillControl => ResetShortcutPill;
 }

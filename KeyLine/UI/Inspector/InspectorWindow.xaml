@@ -90,6 +90,11 @@
                                 <entryBlocks:TimeEntryBlock ToolTip="{x:Static ui:TooltipNotes.TimelineLoopDelayEdit}" />
                             </layout:InspectorRow>
 
+                            <!-- Cooldown Field (Sequence/Random only) -->
+                            <layout:InspectorRow x:Name="TimelineCooldownRow" Label="Cooldown" RowToolTip="Cooldown before this timeline can be picked again by Sequence/Random.">
+                                <entryBlocks:TimeEntryBlock ToolTip="Cooldown before this timeline can be picked again by Sequence/Random." />
+                            </layout:InspectorRow>
+
                             <!-- INPUT Header -->
                             <TextBlock Text="INPUT" Style="{StaticResource InspectorGroupLabel}" />
 

@@ -19,6 +19,8 @@ public partial class InspectorWindow
 
     private TimeEntryBlock TimelineLoopDelayEntry => TimelineLoopDelayRow.GetContent<TimeEntryBlock>()!;
 
+    private TimeEntryBlock TimelineCooldownEntry => TimelineCooldownRow.GetContent<TimeEntryBlock>()!;
+
     private PagerEntryBlock InputTypePager => InputTypeRow.GetContent<PagerEntryBlock>()!;
 
     private CheckBox TimelineStandardDelayCheckBox => TimelineStandardDelayRow.GetContent<CheckBox>()!;

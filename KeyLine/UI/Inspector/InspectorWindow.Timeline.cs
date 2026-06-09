@@ -16,6 +16,7 @@ public partial class InspectorWindow
     private int _loopDelayMs;
     private int _standardDelayMs;
     private int _loopCount;
+    private int _cooldownMs;
 
     public void SetTimelineState(TimelineInspectorState state)
     {
@@ -24,6 +25,7 @@ public partial class InspectorWindow
         _loopCount = Math.Max(0, state.LoopCount);
         _loopDelayMs = DelayFormatter.ClampMilliseconds(state.LoopDelayMs);
         _standardDelayMs = DelayFormatter.ClampMilliseconds(state.StandardDelayMs);
+        _cooldownMs = DelayFormatter.ClampMilliseconds(state.CooldownMs);
 
         ApplyTimelineCollapsedState(state.IsCollapsed);
         ApplyTimelineNameState(state.TimelineName, state.IsNameEditing);
@@ -101,6 +103,15 @@ public partial class InspectorWindow
                 TimelineStandardDelayCommitted?.Invoke(value);
             });
 
+        WireDelayTextBox(
+            TimelineCooldownEntry,
+            () => _cooldownMs,
+            value =>
+            {
+                _cooldownMs = value;
+                TimelineCooldownCommitted?.Invoke(value);
+            });
+
         InputTypePager.PageRequested += (_, _) => RequestInputTypeChange();
 
         TimelineStandardDelayCheckBox.Checked += (_, _) => RaiseStandardDelayChanged(true);
@@ -143,6 +154,9 @@ public partial class InspectorWindow
         StandardDelayDetailsPanel.Visibility = state.UseStandardDelay ? Visibility.Visible : Visibility.Collapsed;
         TimelineStandardDelayEntry.SetDisplay(_standardDelayMs);
         TimelineShowKeyUpDownCheckBox.IsChecked = state.ShowKeyUpDown;
+
+        TimelineCooldownRow.Visibility = state.ShowCooldown ? Visibility.Visible : Visibility.Collapsed;
+        TimelineCooldownEntry.SetDisplay(_cooldownMs);
     }
 
     private void SetTimelineControlsEnabled(bool isEditingEnabled)
@@ -155,6 +169,7 @@ public partial class InspectorWindow
         TimelineStandardDelayCheckBox.IsEnabled = isEditingEnabled;
         TimelineStandardDelayEntry.TextBox.IsEnabled = isEditingEnabled;
         TimelineShowKeyUpDownCheckBox.IsEnabled = isEditingEnabled;
+        TimelineCooldownEntry.TextBox.IsEnabled = isEditingEnabled;
         InputTypePager.IsEnabled = isEditingEnabled;
     }
 

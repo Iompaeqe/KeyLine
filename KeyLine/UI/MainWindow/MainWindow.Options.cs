@@ -83,12 +83,16 @@ public partial class MainWindow
         private const string LoopModeSyncText = "Sync";
         private const string LoopModeCycleText = "Cycle";
         private const string LoopModeChainText = "Chain";
+        private const string LoopModeSequenceText = "Sequence";
+        private const string LoopModeRandomText = "Random";
         private static readonly string[] LoopModeOptions =
         [
             LoopModeAsyncText,
             LoopModeSyncText,
             LoopModeCycleText,
-            LoopModeChainText
+            LoopModeChainText,
+            LoopModeSequenceText,
+            LoopModeRandomText
         ];
         private bool _isUpdatingLoopModeSelection;
         private bool _isUpdatingTimerInput;
@@ -127,6 +131,7 @@ public partial class MainWindow
 
             SetLoopModeSelection(workspace.LoopMode);
             ApplyHookOptionsFromWorkspace(workspace);
+            UpdateSequenceModeUi();
 
             TargetWindowSearchTextBox.Text = workspace.TargetWindowSearchName;
             UpdateAutoWindowFeatureState(!IsWorkspaceRunning(workspace));
@@ -172,6 +177,12 @@ public partial class MainWindow
             if (string.Equals(selectedMode, LoopModeChainText, StringComparison.OrdinalIgnoreCase))
                 return MacroLoopMode.Chain;
 
+            if (string.Equals(selectedMode, LoopModeSequenceText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopMode.Sequence;
+
+            if (string.Equals(selectedMode, LoopModeRandomText, StringComparison.OrdinalIgnoreCase))
+                return MacroLoopMode.Random;
+
             return MacroLoopMode.Async;
         }
 
@@ -189,6 +200,8 @@ public partial class MainWindow
             _activeWorkspace.LoopMode = GetSelectedMacroLoopMode();
             CaptureActiveWorkspaceState();
             RefreshTimelineHeaderStatuses();
+            RefreshInspector();
+            UpdateSequenceModeUi();
             ScheduleSaveState();
         }
 
@@ -212,6 +225,8 @@ public partial class MainWindow
                 MacroLoopMode.Sync => LoopModeSyncText,
                 MacroLoopMode.Cycle => LoopModeCycleText,
                 MacroLoopMode.Chain => LoopModeChainText,
+                MacroLoopMode.Sequence => LoopModeSequenceText,
+                MacroLoopMode.Random => LoopModeRandomText,
                 _ => LoopModeAsyncText
             };
         }

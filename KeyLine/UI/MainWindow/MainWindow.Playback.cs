@@ -50,16 +50,19 @@ public partial class MainWindow
         if (target == null)
             return;
 
-        var runnableTimelines = _document.Timelines
-            .Where(timeline => timeline.Nodes.Count > 0)
-            .ToList();
+        var workspace = _activeWorkspace;
+        var runnableTimelines = GetTriggerRunnableTimelines(workspace, out var sequenceSelected);
 
         if (runnableTimelines.Count == 0)
+        {
+            if (IsSequenceMode(workspace))
+                SetWarningStatus("No timeline ready to play.");
             return;
+        }
 
         var timerMs = GetTimerMs();
+        var singlePassBody = sequenceSelected != null;
 
-        var workspace = _activeWorkspace;
         InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
         _restoreInputsOnStop = false;
         _playback.PrepareManualStart();
@@ -83,8 +86,10 @@ public partial class MainWindow
             CreateRunnerLoopCompletedCallback(workspace),
             CreateTimelineStatusCallback(workspace, runnableTimelines),
             CreatePlaybackFailureCallback(workspace),
-            target.IsFocusedWindowFallback);
+            target.IsFocusedWindowFallback,
+            singlePassBody);
 
+        OnSequenceRunCompleted(workspace, sequenceSelected);
         _playback.UnmarkShortcutStarting(workspace);
         SetWorkspaceStoppedStatus(workspace, _restoreInputsOnStop);
         PlayMacroSound();
@@ -188,20 +193,19 @@ public partial class MainWindow
             return;
         }
 
-        var runnableTimelines = workspace.Document.Timelines
-            .Where(timeline => timeline.Nodes.Count > 0)
-            .ToList();
+        var runnableTimelines = GetTriggerRunnableTimelines(workspace, out var sequenceSelected);
 
         if (runnableTimelines.Count == 0)
         {
             _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
             if (workspaceIndex == _activeWorkspaceIndex)
-                StatusText.Text = "No steps to run";
+                StatusText.Text = IsSequenceMode(workspace) ? "No timeline ready to play" : "No steps to run";
             return;
         }
 
         var timerMs = Math.Max(0, workspace.TimerMs);
+        var singlePassBody = sequenceSelected != null;
         InitializeWorkspacePlaybackState(workspace, timerMs, runnableTimelines, target);
 
         if (workspaceIndex == _activeWorkspaceIndex)
@@ -225,7 +229,8 @@ public partial class MainWindow
             CreateRunnerLoopCompletedCallback(workspace),
             onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines),
             onPlaybackFailure: CreatePlaybackFailureCallback(workspace),
-            followForegroundWindow: target.IsFocusedWindowFallback);
+            followForegroundWindow: target.IsFocusedWindowFallback,
+            singlePassBody: singlePassBody);
 
         PlayMacroSound();
 
@@ -238,6 +243,7 @@ public partial class MainWindow
         }
         finally
         {
+            OnSequenceRunCompleted(workspace, sequenceSelected);
             _playback.UnmarkShortcutStarting(workspace);
             RefreshMacroTabs();
 
@@ -341,6 +347,7 @@ public partial class MainWindow
         PlaybackSplitButton.Visibility = Visibility.Visible;
         PlaybackSplitButton.IsHitTestVisible = true;
         SetPauseResumeButtonMode(false);
+        UpdateSequenceModeUi();
     }
 
     private void ResumeWorkspacePlayback(MacroWorkspace workspace)
@@ -415,6 +422,7 @@ public partial class MainWindow
         SetCountdownRunningStyle(false);
         SyncOptionsFromActiveTimeline();
         RefreshMacroTabs();
+        UpdateSequenceModeUi();
     }
 
     private void SetWorkspaceStoppedStatus(MacroWorkspace workspace, bool restoreInputs = false)

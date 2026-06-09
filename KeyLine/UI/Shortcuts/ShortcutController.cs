@@ -24,6 +24,7 @@ public sealed class ShortcutController : IDisposable
     private readonly Action _emergencyStop;
     private readonly Action _pauseResumeAll;
     private readonly Action _toggleGlobalRemap;
+    private readonly Action<int> _resetSequenceFromShortcut;
 
     private readonly HashSet<int> _globalPressedKeys = new();
     private readonly HashSet<int> _suppressedKeys = new();
@@ -46,7 +47,8 @@ public sealed class ShortcutController : IDisposable
         Action<int> startRemapMacroFromShortcut,
         Action emergencyStop,
         Action pauseResumeAll,
-        Action toggleGlobalRemap)
+        Action toggleGlobalRemap,
+        Action<int> resetSequenceFromShortcut)
     {
         _dispatcher = dispatcher;
         _getSettings = getSettings;
@@ -59,6 +61,7 @@ public sealed class ShortcutController : IDisposable
         _emergencyStop = emergencyStop;
         _pauseResumeAll = pauseResumeAll;
         _toggleGlobalRemap = toggleGlobalRemap;
+        _resetSequenceFromShortcut = resetSequenceFromShortcut;
     }
 
     public void SetCaptureActive(bool isActive)
@@ -215,6 +218,9 @@ public sealed class ShortcutController : IDisposable
             if (TryTriggerSettingsShortcut())
                 return false;
 
+            if (TryTriggerResetSequenceShortcut())
+                return false;
+
             if (TryTriggerRemapShortcut(virtualKey))
             {
                 _consumedRemapKeys.Add(virtualKey);
@@ -278,6 +284,32 @@ public sealed class ShortcutController : IDisposable
         return true;
     }
 
+    private bool TryTriggerResetSequenceShortcut()
+    {
+        var workspaces = _getWorkspaces();
+
+        for (var i = 0; i < workspaces.Count; i++)
+        {
+            var resetKeys = ShortcutGesture.Parse(workspaces[i].ResetShortcutKeys);
+            if (resetKeys.Length == 0)
+                continue;
+
+            if (!ShortcutGesture.Matches(_globalPressedKeys, resetKeys))
+                continue;
+
+            var signature = $"reset:{i}:{ShortcutGesture.Serialize(resetKeys)}";
+            if (_triggeredShortcutSignature == signature)
+                return true;
+
+            _triggeredShortcutSignature = signature;
+            var index = i;
+            _dispatcher.BeginInvoke(new Action(() => _resetSequenceFromShortcut(index)));
+            return true;
+        }
+
+        return false;
+    }
+
     private bool TryTriggerSettingsShortcut()
     {
         var settings = _getSettings();
@@ -325,7 +357,8 @@ public sealed class ShortcutController : IDisposable
         return _areMacroShortcutsEnabled() ||
                ShortcutGesture.Parse(settings.EmergencyStopShortcut).Length > 0 ||
                ShortcutGesture.Parse(settings.PauseResumeAllMacrosShortcut).Length > 0 ||
-               ShortcutGesture.Parse(settings.ToggleGlobalRemapShortcut).Length > 0;
+               ShortcutGesture.Parse(settings.ToggleGlobalRemapShortcut).Length > 0 ||
+               _getWorkspaces().Any(workspace => ShortcutGesture.Parse(workspace.ResetShortcutKeys).Length > 0);
     }
 
     private int FindMatchingPassThroughShortcutWorkspaceIndex()

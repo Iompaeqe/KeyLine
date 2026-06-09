@@ -52,6 +52,8 @@ public partial class MainWindow
         private System.Windows.Controls.Primitives.Popup HooksPopup => MacroOptionsPanel.HooksPopupControl;
         private CheckBox StartHookCheckBox => MacroOptionsPanel.StartHookCheckBoxControl;
         private CheckBox EndHookCheckBox => MacroOptionsPanel.EndHookCheckBoxControl;
+        private OptionsPillBlock ResetPill => MacroOptionsPanel.ResetPillControl;
+        private OptionsPillBlock ResetShortcutPill => MacroOptionsPanel.ResetShortcutPillControl;
 
         private OptionsPillBlock TargetWindowSearchPill => TargetWindowPanel.SearchPill;
         private TextBox TargetWindowSearchTextBox => TargetWindowPanel.SearchTextBox;

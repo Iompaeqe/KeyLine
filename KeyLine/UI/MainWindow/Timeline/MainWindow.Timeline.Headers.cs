@@ -122,9 +122,7 @@ public partial class MainWindow
 
             var detailText = new TextBlock
             {
-                Text = isHook
-                    ? string.Empty
-                    : $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
+                Text = BuildTimelineHeaderDetailText(timeline, isHook),
                 FontSize = 10,
                 Height = 50,
                 Width = 45,
@@ -224,8 +222,76 @@ public partial class MainWindow
             UpdateTimelineHeaderStatusTextBlock(timeline, statusTextBlock);
     }
 
+    private string BuildTimelineHeaderDetailText(MacroTimeline timeline, bool isHook)
+    {
+        if (isHook)
+            return string.Empty;
+
+        var detail = $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}";
+
+        // In Sequence/Random, show the configured cooldown compactly (hidden when 0 to avoid clutter).
+        if (IsSequenceMode(_activeWorkspace) && timeline.CooldownMs > 0)
+            detail += $"\nC{FormatTimelineHeaderDelay(timeline.CooldownMs)}";
+
+        return detail;
+    }
+
+    // Sequence/Random "Ready" / "CD <remaining>" status shown on normal timeline headers while the
+    // macro is not playing. Returns false when the default playback status should be used instead.
+    private bool TryGetSequenceHeaderStatus(MacroTimeline timeline, out string text, out Color color)
+    {
+        text = string.Empty;
+        color = Color.FromRgb(100, 116, 139);
+
+        if (!IsSequenceMode(_activeWorkspace) ||
+            IsHookTimeline(timeline) ||
+            IsWorkspaceRunning(_activeWorkspace) ||
+            !timeline.HasNodes)
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (_sequence.IsOnCooldown(_activeWorkspace, timeline, now))
+        {
+            var remaining = _sequence.GetRemainingCooldown(_activeWorkspace, timeline, now);
+            text = $"CD {FormatCooldownRemaining(remaining)}";
+            color = Color.FromRgb(253, 230, 138);
+            return true;
+        }
+
+        // For Sequence, mark the timeline the pointer will check next.
+        var normals = _activeWorkspace.Document.Timelines;
+        var isNext = _activeWorkspace.LoopMode == MacroLoopMode.Sequence &&
+                     normals.Count > 0 &&
+                     ReferenceEquals(timeline, normals[_sequence.GetNextIndex(_activeWorkspace, normals.Count)]);
+
+        text = isNext ? "Ready\nNext" : "Ready";
+        color = Color.FromRgb(52, 211, 153);
+        return true;
+    }
+
+    private static string FormatCooldownRemaining(TimeSpan remaining)
+    {
+        if (remaining <= TimeSpan.Zero)
+            return "0s";
+
+        return remaining.TotalSeconds >= 10
+            ? $"{(int)Math.Ceiling(remaining.TotalSeconds)}s"
+            : $"{remaining.TotalSeconds:0.0}s";
+    }
+
     private void UpdateTimelineHeaderStatusTextBlock(MacroTimeline timeline, TextBlock statusTextBlock)
     {
+        if (TryGetSequenceHeaderStatus(timeline, out var sequenceText, out var sequenceColor))
+        {
+            statusTextBlock.Text = sequenceText;
+            statusTextBlock.ToolTip = null;
+            statusTextBlock.Foreground = new SolidColorBrush(sequenceColor);
+            statusTextBlock.FontSize = 8.5;
+            return;
+        }
+
         var status = GetTimelinePlaybackStatusForHeader(timeline);
 
         statusTextBlock.Text = status switch

@@ -25,7 +25,19 @@ public partial class MainWindow
             startRemapMacroFromShortcut: StartRemapMacroFromShortcut,
             emergencyStop: StopAllPlaybackFromGlobalShortcut,
             pauseResumeAll: PauseResumeAllPlaybackFromGlobalShortcut,
-            toggleGlobalRemap: ToggleGlobalRemapFromShortcut);
+            toggleGlobalRemap: ToggleGlobalRemapFromShortcut,
+            resetSequenceFromShortcut: ResetSequenceFromShortcut);
+    }
+
+    private void ResetSequenceFromShortcut(int profileWorkspaceIndex)
+    {
+        var workspaceIndex = GetGlobalWorkspaceIndexFromActiveProfileIndex(profileWorkspaceIndex);
+        if (workspaceIndex < 0 || workspaceIndex >= _workspaces.Count)
+            return;
+
+        var workspace = _workspaces[workspaceIndex];
+        if (IsSequenceMode(workspace))
+            ResetSequenceState(workspace);
     }
 
     private bool IsShortcutCaptureActive()

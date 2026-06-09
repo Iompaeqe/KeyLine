@@ -1,0 +1,246 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Threading;
+using KeyLine.Domain;
+using KeyLine.Services.Playback;
+
+namespace KeyLine;
+
+public partial class MainWindow
+{
+    private readonly SequenceController _sequence = new();
+    private DispatcherTimer? _sequenceHeaderTimer;
+
+    private static bool IsSequenceMode(MacroWorkspace workspace) =>
+        workspace.LoopMode is MacroLoopMode.Sequence or MacroLoopMode.Random;
+
+    // Refreshes timeline header status (CD countdown / Ready) while in Sequence/Random and idle,
+    // and shows/hides the Reset option. Called on workspace apply, loop-mode change, and stop/start.
+    private void UpdateSequenceModeUi()
+    {
+        _sequenceHeaderTimer ??= CreateSequenceHeaderTimer();
+
+        var showsSequenceStatus = IsSequenceMode(_activeWorkspace) && !IsWorkspaceRunning(_activeWorkspace);
+        if (showsSequenceStatus)
+            _sequenceHeaderTimer.Start();
+        else
+            _sequenceHeaderTimer.Stop();
+
+        UpdateResetOptionVisibility();
+    }
+
+    private DispatcherTimer CreateSequenceHeaderTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        timer.Tick += (_, _) =>
+        {
+            if (IsSequenceMode(_activeWorkspace) && !IsWorkspaceRunning(_activeWorkspace))
+                RefreshTimelineHeaderStatuses();
+            else
+                _sequenceHeaderTimer?.Stop();
+        };
+        return timer;
+    }
+
+    /// <summary>
+    /// The timelines to run for a single trigger. For Sequence/Random this is the one selected
+    /// timeline (or empty if none is ready). For the other loop modes it is all runnable normals.
+    /// </summary>
+    private List<MacroTimeline> GetTriggerRunnableTimelines(MacroWorkspace workspace, out MacroTimeline? sequenceSelected)
+    {
+        sequenceSelected = null;
+
+        if (IsSequenceMode(workspace))
+        {
+            var mode = workspace.LoopMode == MacroLoopMode.Random
+                ? SequenceSelectionMode.Random
+                : SequenceSelectionMode.Sequence;
+
+            sequenceSelected = _sequence.SelectNext(
+                workspace,
+                workspace.Document.Timelines.ToList(),
+                mode,
+                System.DateTime.UtcNow);
+
+            return sequenceSelected == null
+                ? new List<MacroTimeline>()
+                : new List<MacroTimeline> { sequenceSelected };
+        }
+
+        return workspace.Document.Timelines
+            .Where(timeline => timeline.Nodes.Count > 0)
+            .ToList();
+    }
+
+    private void OnSequenceRunCompleted(MacroWorkspace workspace, MacroTimeline? sequenceSelected)
+    {
+        if (sequenceSelected == null)
+            return;
+
+        _sequence.MarkPlayed(
+            workspace,
+            workspace.Document.Timelines.ToList(),
+            sequenceSelected,
+            System.DateTime.UtcNow);
+
+        if (ReferenceEquals(workspace, _activeWorkspace))
+            RefreshTimelineHeaderStatuses();
+    }
+
+    private void ResetSequenceState(MacroWorkspace workspace)
+    {
+        _sequence.Reset(workspace);
+
+        if (ReferenceEquals(workspace, _activeWorkspace))
+        {
+            RefreshTimelineHeaderStatuses();
+            SetWarningStatus("Sequence reset.");
+        }
+    }
+
+    // --- Reset option UI (button + reset shortcut recorder), shown only for Sequence/Random ---
+    private bool _isCapturingResetShortcut;
+    private readonly List<int> _capturedResetKeys = new();
+    private readonly HashSet<int> _resetCaptureDownKeys = new();
+
+    private void InitializeResetUi()
+    {
+        ResetPill.MouseLeftButtonDown += (_, e) =>
+        {
+            ResetSequenceState(_activeWorkspace);
+            e.Handled = true;
+        };
+
+        ResetShortcutPill.MouseLeftButtonDown += (_, e) =>
+        {
+            BeginResetShortcutCapture();
+            e.Handled = true;
+        };
+        ResetShortcutPill.MouseRightButtonDown += (_, e) =>
+        {
+            CommitResetShortcut(System.Array.Empty<int>());
+            e.Handled = true;
+        };
+        ResetShortcutPill.PreviewKeyDown += ResetShortcutPill_PreviewKeyDown;
+        ResetShortcutPill.PreviewKeyUp += ResetShortcutPill_PreviewKeyUp;
+        ResetShortcutPill.LostKeyboardFocus += (_, _) =>
+        {
+            if (_isCapturingResetShortcut)
+                CancelResetShortcutCapture();
+        };
+    }
+
+    private void UpdateResetOptionVisibility()
+    {
+        var show = IsSequenceMode(_activeWorkspace);
+        var visibility = show ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+        ResetPill.Visibility = visibility;
+        ResetShortcutPill.Visibility = visibility;
+
+        if (!show && _isCapturingResetShortcut)
+            CancelResetShortcutCapture();
+
+        UpdateResetShortcutText();
+    }
+
+    private void UpdateResetShortcutText()
+    {
+        if (_isCapturingResetShortcut)
+            return;
+
+        var keys = _activeWorkspace.ResetShortcutKeys;
+        ResetShortcutPill.Text = string.IsNullOrWhiteSpace(keys)
+            ? "no reset key"
+            : KeyLine.Services.Input.ShortcutGesture.Format(keys);
+    }
+
+    private void BeginResetShortcutCapture()
+    {
+        _isCapturingResetShortcut = true;
+        _capturedResetKeys.Clear();
+        _resetCaptureDownKeys.Clear();
+        ResetShortcutPill.Text = "press reset key";
+        ResetShortcutPill.Focus();
+        System.Windows.Input.Keyboard.Focus(ResetShortcutPill);
+    }
+
+    private void CancelResetShortcutCapture()
+    {
+        _isCapturingResetShortcut = false;
+        _capturedResetKeys.Clear();
+        _resetCaptureDownKeys.Clear();
+        UpdateResetShortcutText();
+    }
+
+    private void ResetShortcutPill_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!_isCapturingResetShortcut)
+            return;
+
+        e.Handled = true;
+
+        if (e.Key == System.Windows.Input.Key.Escape)
+        {
+            CancelResetShortcutCapture();
+            return;
+        }
+
+        if (e.Key is System.Windows.Input.Key.Back or System.Windows.Input.Key.Delete)
+        {
+            CommitResetShortcut(System.Array.Empty<int>());
+            return;
+        }
+
+        var virtualKey = GetVirtualKeyFromKeyEvent(e);
+        if (virtualKey <= 0)
+            return;
+
+        _resetCaptureDownKeys.Add(virtualKey);
+        if (!_capturedResetKeys.Contains(virtualKey) &&
+            _capturedResetKeys.Count < KeyLine.Services.Input.ShortcutGesture.MaxKeyCount)
+        {
+            _capturedResetKeys.Add(virtualKey);
+        }
+
+        ResetShortcutPill.Text = KeyLine.Services.Input.ShortcutGesture.Format(_capturedResetKeys);
+    }
+
+    private void ResetShortcutPill_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!_isCapturingResetShortcut)
+            return;
+
+        e.Handled = true;
+
+        var virtualKey = GetVirtualKeyFromKeyEvent(e);
+        if (virtualKey > 0)
+            _resetCaptureDownKeys.Remove(virtualKey);
+
+        if (_capturedResetKeys.Count > 0 && _resetCaptureDownKeys.Count == 0)
+            CommitResetShortcut(_capturedResetKeys);
+    }
+
+    private void CommitResetShortcut(IEnumerable<int> virtualKeys)
+    {
+        var keys = virtualKeys
+            .Select(KeyLine.Services.Input.ShortcutGesture.NormalizeVirtualKey)
+            .Where(key => key > 0)
+            .Distinct()
+            .Take(KeyLine.Services.Input.ShortcutGesture.MaxKeyCount)
+            .ToArray();
+
+        _isCapturingResetShortcut = false;
+        _capturedResetKeys.Clear();
+        _resetCaptureDownKeys.Clear();
+
+        _activeWorkspace.ResetShortcutKeys = keys.Length > 0
+            ? KeyLine.Services.Input.ShortcutGesture.Serialize(keys)
+            : "";
+
+        UpdateResetShortcutText();
+        ApplyShortcutHookState();
+        System.Windows.Input.Keyboard.ClearFocus();
+        ScheduleSaveState();
+    }
+}

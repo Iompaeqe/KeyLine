@@ -15,6 +15,7 @@ public partial class InspectorWindow : Window
     public event Action<bool>? TimelineStandardDelayChanged;
     public event Action<int>? TimelineStandardDelayCommitted;
     public event Action<bool>? TimelineShowKeyUpDownChanged;
+    public event Action<int>? TimelineCooldownCommitted;
 
     public InspectorWindow()
     {

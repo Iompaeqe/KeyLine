@@ -10,4 +10,6 @@ public sealed record TimelineInspectorState(
     bool UseTextInputMode,
     bool UseStandardDelay,
     int StandardDelayMs,
-    bool ShowKeyUpDown);
+    bool ShowKeyUpDown,
+    int CooldownMs = 0,
+    bool ShowCooldown = false);

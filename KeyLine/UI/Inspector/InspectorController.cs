@@ -74,6 +74,10 @@ public sealed class InspectorController
         try
         {
             var timeline = _getCurrentTimeline();
+            var workspace = _getActiveWorkspace();
+            var showCooldown =
+                workspace.LoopMode is MacroLoopMode.Sequence or MacroLoopMode.Random &&
+                !workspace.IsHookTimeline(timeline);
 
             _window.SetTimelineState(new TimelineInspectorState(
                 TimelineName: timeline.Name,
@@ -85,7 +89,9 @@ public sealed class InspectorController
                 UseTextInputMode: timeline.UseTextInputMode,
                 UseStandardDelay: timeline.UseStandardDelay,
                 StandardDelayMs: Math.Max(0, timeline.StandardDelayMs),
-                ShowKeyUpDown: timeline.ShowKeyUpDown));
+                ShowKeyUpDown: timeline.ShowKeyUpDown,
+                CooldownMs: Math.Max(0, timeline.CooldownMs),
+                ShowCooldown: showCooldown));
 
             var nodeContent = _nodeInspectorBuilder.Build(timeline);
             _window.SetNodeContent(nodeContent, nodeContent != null, _isNodeCollapsed);
@@ -119,6 +125,7 @@ public sealed class InspectorController
         _window.TimelineStandardDelayChanged += SetStandardDelayEnabled;
         _window.TimelineStandardDelayCommitted += CommitStandardDelay;
         _window.TimelineShowKeyUpDownChanged += SetShowKeyUpDown;
+        _window.TimelineCooldownCommitted += CommitCooldown;
     }
 
     private void ToggleTimelineSection()
@@ -163,6 +170,14 @@ public sealed class InspectorController
     {
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineValueChange(timeline, () => timeline.BaseDelayMs = value);
+    }
+
+    private void CommitCooldown(int value)
+    {
+        var timeline = _getCurrentTimeline();
+        // Full refresh so the timeline header's compact cooldown text updates immediately.
+        _commitService.CommitTimelineChange(timeline, () => timeline.CooldownMs = value);
+        Refresh();
     }
 
     private void ToggleInputType()

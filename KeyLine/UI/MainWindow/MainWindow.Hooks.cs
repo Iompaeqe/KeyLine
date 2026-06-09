@@ -38,21 +38,36 @@ public partial class MainWindow
         Action<int>? onRunnerLoopCompleted,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged,
         Action<string>? onPlaybackFailure,
-        bool followForegroundWindow)
+        bool followForegroundWindow,
+        bool singlePassBody = false)
     {
         _hardStopWorkspaces.Remove(workspace);
 
         if (!IsHardStopRequested(workspace))
             await RunHookAsync(targetHwnd, workspace, isStart: true, followForegroundWindow, onPlaybackFailure);
 
-        await RunPlaybackForLoopMode(
-            targetHwnd,
-            workspace,
-            runnableTimelines,
-            onRunnerLoopCompleted,
-            onTimelineStatusChanged,
-            onPlaybackFailure,
-            followForegroundWindow);
+        if (singlePassBody)
+        {
+            // Sequence/Random play a single selected timeline once (loop count forced to 1).
+            await _playback.RunSingleTimelineAsync(
+                targetHwnd,
+                workspace,
+                GetWorkspacesForProfile(workspace.ProfileId),
+                runnableTimelines[0],
+                followForegroundWindow,
+                onPlaybackFailure);
+        }
+        else
+        {
+            await RunPlaybackForLoopMode(
+                targetHwnd,
+                workspace,
+                runnableTimelines,
+                onRunnerLoopCompleted,
+                onTimelineStatusChanged,
+                onPlaybackFailure,
+                followForegroundWindow);
+        }
 
         if (!IsHardStopRequested(workspace))
             await RunHookAsync(targetHwnd, workspace, isStart: false, followForegroundWindow, onPlaybackFailure);
@@ -82,6 +97,7 @@ public partial class MainWindow
 
     private void InitializeHooksUi()
     {
+        InitializeResetUi();
         HooksPill.MouseLeftButtonDown += HooksPill_MouseLeftButtonDown;
         StartHookCheckBox.Checked += (_, _) => OnHookToggled(isStart: true, enabled: true);
         StartHookCheckBox.Unchecked += (_, _) => OnHookToggled(isStart: true, enabled: false);

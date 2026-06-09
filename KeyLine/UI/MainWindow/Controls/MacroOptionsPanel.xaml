@@ -122,6 +122,19 @@
                             </StackPanel>
                         </Border>
                     </Popup>
+
+                    <entryBlocks:OptionsPillBlock x:Name="ResetPill"
+                                                  Text="Reset"
+                                                  Margin="6,0,0,0"
+                                                  Visibility="Collapsed"
+                                                  ToolTip="Reset the Sequence/Random pointer and clear active cooldowns." />
+
+                    <entryBlocks:OptionsPillBlock x:Name="ResetShortcutPill"
+                                                  Text="no reset key"
+                                                  Margin="6,0,0,0"
+                                                  Visibility="Collapsed"
+                                                  Focusable="True"
+                                                  ToolTip="Click to assign a shortcut that resets the sequence. Right-click to clear." />
                 </StackPanel>
             </Grid>
         </StackPanel>
