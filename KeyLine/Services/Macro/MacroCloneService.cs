@@ -29,7 +29,12 @@ public static class MacroCloneService
             TargetWindowHandle = 0,
             TargetWindowTitle = "",
             TargetChildWindowHandle = 0,
-            TargetChildWindowTitle = ""
+            TargetChildWindowTitle = "",
+            StartHookTimeline = CloneTimeline(source.StartHookTimeline, macroIdMap),
+            EndHookTimeline = CloneTimeline(source.EndHookTimeline, macroIdMap),
+            StartHookEnabled = source.StartHookEnabled,
+            EndHookEnabled = source.EndHookEnabled,
+            ResetShortcutKeys = source.ResetShortcutKeys
         };
     }
 
@@ -70,7 +75,8 @@ public static class MacroCloneService
             ShowKeyUpDown = source.ShowKeyUpDown,
             UseTextInputMode = source.UseTextInputMode,
             LoopCount = source.LoopCount,
-            BaseDelayMs = source.BaseDelayMs
+            BaseDelayMs = source.BaseDelayMs,
+            CooldownMs = source.CooldownMs
         };
 
         foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode), macroIdMap))

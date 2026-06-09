@@ -1042,6 +1042,117 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
         Assert.Equal(250, loadedNodes[4].ConditionTimePassedMs);
     }
 
+    [Fact]
+    public void CloneWorkspace_PreservesHooksAndCooldownAndResetShortcut()
+    {
+        var source = CreateWorkspace("Hooked", MacroLoopMode.Sequence);
+        source.StartHookEnabled = true;
+        source.EndHookEnabled = false;
+        source.ResetShortcutKeys = "17,82";
+        source.StartHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "start" });
+        source.EndHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "end" });
+        source.Document.ActiveTimeline.CooldownMs = 1500;
+
+        var clone = MacroCloneService.CloneWorkspace(source);
+
+        Assert.Equal(MacroLoopMode.Sequence, clone.LoopMode);
+        Assert.True(clone.StartHookEnabled);
+        Assert.False(clone.EndHookEnabled);
+        Assert.Equal("17,82", clone.ResetShortcutKeys);
+        Assert.Equal("start", clone.StartHookTimeline.Nodes[0].Text);
+        Assert.Equal("end", clone.EndHookTimeline.Nodes[0].Text);
+        Assert.Equal(MacroTimeline.StartHookName, clone.StartHookTimeline.Name);
+        Assert.Equal(1500, clone.Document.ActiveTimeline.CooldownMs);
+        // Clone is a deep copy.
+        Assert.NotSame(source.StartHookTimeline, clone.StartHookTimeline);
+    }
+
+    [Fact]
+    public void SaveAndLoad_KeepsHooksRegardlessOfEnabledAndPreservesCooldown()
+    {
+        var workspace = CreateWorkspace("State Hooks", MacroLoopMode.Random);
+        workspace.StartHookEnabled = true;
+        workspace.EndHookEnabled = false; // disabled but still kept in local state
+        workspace.ResetShortcutKeys = "82";
+        workspace.StartHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "start-body" });
+        workspace.EndHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "end-body" });
+        workspace.Document.ActiveTimeline.CooldownMs = 2500;
+
+        MacroStateStore.Save(new[] { workspace }, 0, shortcutsEnabled: false, new AppSettings());
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loaded = snapshot.Workspaces[0];
+        Assert.Equal(MacroLoopMode.Random, loaded.LoopMode);
+        Assert.True(loaded.StartHookEnabled);
+        Assert.False(loaded.EndHookEnabled);
+        Assert.Equal("82", loaded.ResetShortcutKeys);
+        Assert.Equal("start-body", loaded.StartHookTimeline.Nodes[0].Text);
+        Assert.Equal("end-body", loaded.EndHookTimeline.Nodes[0].Text); // kept even though disabled
+        Assert.Equal(2500, loaded.Document.ActiveTimeline.CooldownMs);
+    }
+
+    [Fact]
+    public void Export_OmitsDisabledHooksButKeepsEnabledHooksAndCooldown()
+    {
+        var workspace = CreateWorkspace("Export Hooks", MacroLoopMode.Sequence);
+        workspace.StartHookEnabled = false; // disabled -> excluded from sharing export
+        workspace.EndHookEnabled = true;    // enabled  -> included
+        workspace.StartHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "start-secret" });
+        workspace.EndHookTimeline.Nodes.Add(new MacroNode { Type = MacroNodeType.Text, Text = "end-shared" });
+        workspace.Document.ActiveTimeline.CooldownMs = 750;
+
+        var exportPath = Path.Combine(_appDataRoot, "hooks.keyline");
+        Directory.CreateDirectory(_appDataRoot);
+        MacroFileStore.Export(exportPath, new[] { workspace });
+        var imported = MacroFileStore.Import(exportPath);
+
+        Assert.Single(imported);
+        var result = imported[0];
+        Assert.False(result.StartHookEnabled);
+        Assert.Empty(result.StartHookTimeline.Nodes); // disabled hook content not exported
+        Assert.True(result.EndHookEnabled);
+        Assert.Equal("end-shared", result.EndHookTimeline.Nodes[0].Text);
+        Assert.Equal(750, result.Document.ActiveTimeline.CooldownMs);
+    }
+
+    [Fact]
+    public void OldFileWithoutHookFields_LoadsWithSafeDefaults()
+    {
+        Directory.CreateDirectory(MacroStateStore.StateDirectory);
+        File.WriteAllText(
+            Path.Combine(MacroStateStore.StateDirectory, "state.json"),
+            """
+            {
+              "Version": 3,
+              "ActiveWorkspaceIndex": 0,
+              "ShortcutsEnabled": false,
+              "Settings": {},
+              "Workspaces": [
+                {
+                  "Name": "No Hooks",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [ { "Name": "T1", "LoopCount": 0, "BaseDelayMs": 50, "Nodes": [] } ]
+                }
+              ]
+            }
+            """);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        var loaded = snapshot.Workspaces[0];
+        Assert.False(loaded.StartHookEnabled);
+        Assert.False(loaded.EndHookEnabled);
+        Assert.Equal(MacroTimeline.StartHookName, loaded.StartHookTimeline.Name);
+        Assert.Equal(MacroTimeline.EndHookName, loaded.EndHookTimeline.Name);
+        Assert.Equal("", loaded.ResetShortcutKeys);
+        Assert.Equal(0, loaded.Document.ActiveTimeline.CooldownMs);
+    }
+
     public void Dispose()
     {
         Environment.SetEnvironmentVariable(

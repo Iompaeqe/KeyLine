@@ -282,7 +282,7 @@ public static class MacroStateStore
 
     private static MacroWorkspace ToWorkspace(PersistedWorkspace persistedWorkspace)
     {
-        return new MacroWorkspace
+        var workspace = new MacroWorkspace
         {
             Id = GetPersistedWorkspaceId(persistedWorkspace.Id),
             ProfileId = MacroProfile.NormalizeId(persistedWorkspace.ProfileId),
@@ -307,6 +307,25 @@ public static class MacroStateStore
             TargetChildWindowHandle = Math.Max(0, persistedWorkspace.TargetChildWindowHandle),
             TargetChildWindowTitle = persistedWorkspace.TargetChildWindowTitle
         };
+
+        ApplyPersistedHooks(workspace, persistedWorkspace);
+        return workspace;
+    }
+
+    private static void ApplyPersistedHooks(MacroWorkspace workspace, PersistedWorkspace persisted)
+    {
+        if (persisted.StartHook != null)
+            workspace.StartHookTimeline = ToTimeline(persisted.StartHook, fallbackLoopCount: 1, fallbackBaseDelayMs: 50);
+        if (persisted.EndHook != null)
+            workspace.EndHookTimeline = ToTimeline(persisted.EndHook, fallbackLoopCount: 1, fallbackBaseDelayMs: 50);
+
+        workspace.StartHookTimeline.Name = MacroTimeline.StartHookName;
+        workspace.EndHookTimeline.Name = MacroTimeline.EndHookName;
+
+        // state.json keeps hooks regardless of enabled flag, so honor the persisted flags directly.
+        workspace.StartHookEnabled = persisted.StartHookEnabled;
+        workspace.EndHookEnabled = persisted.EndHookEnabled;
+        workspace.ResetShortcutKeys = persisted.ResetShortcutKeys ?? "";
     }
 
     private static MacroWorkspace ToLegacyWorkspace(PersistedState state)
@@ -353,7 +372,8 @@ public static class MacroStateStore
             ShowKeyUpDown = persistedTimeline.ShowKeyUpDown,
             UseTextInputMode = persistedTimeline.UseTextInputMode,
             LoopCount = Math.Max(0, persistedTimeline.LoopCount ?? fallbackLoopCount),
-            BaseDelayMs = GetPersistedDelayMs(persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs)
+            BaseDelayMs = GetPersistedDelayMs(persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs),
+            CooldownMs = GetPersistedDelayMs(persistedTimeline.CooldownMs)
         };
 
         foreach (var persistedStep in persistedTimeline.Nodes)
@@ -614,6 +634,7 @@ public static class MacroStateStore
             UseTextInputMode = timeline.UseTextInputMode,
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
+            CooldownMs = GetPersistedDelayMs(timeline.CooldownMs),
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -644,7 +665,13 @@ public static class MacroStateStore
             TargetWindowTitle = workspace.TargetWindowTitle,
             TargetChildWindowHandle = Math.Max(0, workspace.TargetChildWindowHandle),
             TargetChildWindowTitle = workspace.TargetChildWindowTitle,
-            Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
+            Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList(),
+            // Full local state keeps hook timelines regardless of enabled state.
+            StartHookEnabled = workspace.StartHookEnabled,
+            EndHookEnabled = workspace.EndHookEnabled,
+            StartHook = ToPersistedTimeline(workspace.StartHookTimeline),
+            EndHook = ToPersistedTimeline(workspace.EndHookTimeline),
+            ResetShortcutKeys = workspace.ResetShortcutKeys
         };
     }
 
@@ -979,6 +1006,13 @@ public static class MacroStateStore
         public long TargetChildWindowHandle { get; set; }
         public string TargetChildWindowTitle { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
+        public bool StartHookEnabled { get; set; }
+        public bool EndHookEnabled { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public PersistedTimeline? StartHook { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public PersistedTimeline? EndHook { get; set; }
+        public string ResetShortcutKeys { get; set; } = "";
     }
 
     private sealed class PersistedProfile
@@ -996,6 +1030,7 @@ public static class MacroStateStore
         public bool UseTextInputMode { get; set; }
         public int? LoopCount { get; set; }
         public int? BaseDelayMs { get; set; }
+        public int CooldownMs { get; set; }
         public List<PersistedStep> Nodes { get; set; } = new();
     }
 

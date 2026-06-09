@@ -106,7 +106,13 @@ public static class MacroFileStore
             ShortcutKeys = GetSafeShortcutKeys(workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
             ShortcutsEnabled = GetSafeShortcutsEnabled(workspace.ShortcutsEnabled, workspace.ShortcutKeys, workspace.ShortcutTriggerBehavior),
             TargetWindowSearchName = workspace.TargetWindowSearchName,
-            Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList()
+            Timelines = workspace.Document.Timelines.Select(ToPersistedTimeline).ToList(),
+            // Sharing export excludes disabled hooks; only enabled hook timelines are written.
+            StartHookEnabled = workspace.StartHookEnabled,
+            EndHookEnabled = workspace.EndHookEnabled,
+            StartHook = workspace.StartHookEnabled ? ToPersistedTimeline(workspace.StartHookTimeline) : null,
+            EndHook = workspace.EndHookEnabled ? ToPersistedTimeline(workspace.EndHookTimeline) : null,
+            ResetShortcutKeys = workspace.ResetShortcutKeys
         };
     }
 
@@ -130,6 +136,7 @@ public static class MacroFileStore
             UseTextInputMode = timeline.UseTextInputMode,
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
+            CooldownMs = GetPersistedDelayMs(timeline.CooldownMs),
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -223,7 +230,25 @@ public static class MacroFileStore
             0,
             workspace.Document.Timelines.Count - 1));
 
+        ApplyPersistedHooks(workspace, persisted);
+
         return workspace;
+    }
+
+    private static void ApplyPersistedHooks(MacroWorkspace workspace, PersistedWorkspace persisted)
+    {
+        if (persisted.StartHook != null)
+            workspace.StartHookTimeline = ToTimeline(persisted.StartHook, fallbackLoopCount: 1, fallbackBaseDelayMs: 50);
+        if (persisted.EndHook != null)
+            workspace.EndHookTimeline = ToTimeline(persisted.EndHook, fallbackLoopCount: 1, fallbackBaseDelayMs: 50);
+
+        workspace.StartHookTimeline.Name = MacroTimeline.StartHookName;
+        workspace.EndHookTimeline.Name = MacroTimeline.EndHookName;
+
+        // A hook is only enabled on import if it was flagged enabled and its timeline was present.
+        workspace.StartHookEnabled = persisted.StartHookEnabled && persisted.StartHook != null;
+        workspace.EndHookEnabled = persisted.EndHookEnabled && persisted.EndHook != null;
+        workspace.ResetShortcutKeys = persisted.ResetShortcutKeys ?? "";
     }
 
     private static MacroProfile ToProfile(PersistedProfile persisted)
@@ -245,7 +270,8 @@ public static class MacroFileStore
             ShowKeyUpDown = persisted.ShowKeyUpDown,
             UseTextInputMode = persisted.UseTextInputMode,
             LoopCount = Math.Max(0, persisted.LoopCount ?? fallbackLoopCount),
-            BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs ?? fallbackBaseDelayMs)
+            BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs ?? fallbackBaseDelayMs),
+            CooldownMs = GetPersistedDelayMs(persisted.CooldownMs)
         };
 
         foreach (var step in persisted.Nodes)
@@ -621,6 +647,13 @@ public static class MacroFileStore
         public ShortcutTriggerBehavior ShortcutTriggerBehavior { get; set; } = ShortcutTriggerBehavior.PassThrough;
         public string TargetWindowSearchName { get; set; } = "";
         public List<PersistedTimeline> Timelines { get; set; } = new();
+        public bool StartHookEnabled { get; set; }
+        public bool EndHookEnabled { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public PersistedTimeline? StartHook { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public PersistedTimeline? EndHook { get; set; }
+        public string ResetShortcutKeys { get; set; } = "";
     }
 
     private sealed class PersistedProfile
@@ -638,6 +671,7 @@ public static class MacroFileStore
         public bool UseTextInputMode { get; set; }
         public int? LoopCount { get; set; }
         public int? BaseDelayMs { get; set; }
+        public int CooldownMs { get; set; }
         public List<PersistedStep> Nodes { get; set; } = new();
     }
 

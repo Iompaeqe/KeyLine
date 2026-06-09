@@ -5,7 +5,9 @@ public enum MacroLoopMode
     Async,
     Sync,
     Cycle,
-    Chain
+    Chain,
+    Sequence,
+    Random
 }
 
 public enum ShortcutTriggerBehavior
@@ -49,5 +51,39 @@ public sealed class MacroWorkspace
     public string TargetChildWindowTitle { get; set; } = "";
 
     public string ErrorMessage { get; set; } = "";
+
+    // --- Macro Hooks (v1.9) ---
+    // Start/End hook timelines wrap macro execution. They are stored separately from
+    // Document.Timelines so "normal timelines" stay untouched; hooks never participate in
+    // loop-mode/sequence selection, reorder, or sharing-export filtering.
+    public MacroTimeline StartHookTimeline { get; set; } = new() { Name = MacroTimeline.StartHookName };
+
+    public MacroTimeline EndHookTimeline { get; set; } = new() { Name = MacroTimeline.EndHookName };
+
+    public bool StartHookEnabled { get; set; }
+
+    public bool EndHookEnabled { get; set; }
+
+    // Reset shortcut for Sequence/Random loop modes (resets the session pointer + active cooldowns).
+    public string ResetShortcutKeys { get; set; } = "";
+
+    public bool IsHookTimeline(MacroTimeline timeline) =>
+        ReferenceEquals(timeline, StartHookTimeline) || ReferenceEquals(timeline, EndHookTimeline);
+
+    /// <summary>
+    /// The timelines shown in the timeline strip: enabled Start hook first, then the normal
+    /// timelines, then the enabled End hook. Used for rendering only.
+    /// </summary>
+    public IEnumerable<MacroTimeline> EnumerateDisplayTimelines()
+    {
+        if (StartHookEnabled)
+            yield return StartHookTimeline;
+
+        foreach (var timeline in Document.Timelines)
+            yield return timeline;
+
+        if (EndHookEnabled)
+            yield return EndHookTimeline;
+    }
 }
 

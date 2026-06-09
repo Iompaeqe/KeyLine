@@ -4,6 +4,9 @@ namespace KeyLine.Domain;
 
 public sealed class MacroTimeline
 {
+    public const string StartHookName = "Start";
+    public const string EndHookName = "End";
+
     public string Name { get; set; } = "T1";
 
     public ObservableCollection<MacroNode> Nodes { get; } = new();
@@ -19,6 +22,10 @@ public sealed class MacroTimeline
     public int LoopCount { get; set; }
 
     public int BaseDelayMs { get; set; } = 50;
+
+    // Configured cooldown (ms) for Sequence/Random loop modes. Saved with the timeline.
+    // Active (runtime) cooldown timers are tracked separately and are not persisted.
+    public int CooldownMs { get; set; }
 
     public bool HasNodes => Nodes.Count > 0;
 
