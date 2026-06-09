@@ -438,6 +438,13 @@ public sealed class MacroRunner
         bool useTextInputMode,
         CancellationToken token)
     {
+        if (context.FollowForegroundWindow)
+        {
+            var foreground = NativeMethods.GetForegroundWindow();
+            if (IsValidWindow(foreground))
+                context.CurrentTargetWindowHandle = foreground;
+        }
+
         var hwnd = context.CurrentTargetWindowHandle;
 
         switch (node.Type)

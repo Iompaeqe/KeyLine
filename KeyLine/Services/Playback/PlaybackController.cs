@@ -491,16 +491,20 @@ public sealed class PlaybackController : IMacroRunHost
         };
     }
 
-    private MacroRunContext CreateRunContext(
+    public MacroRunContext CreateRunContext(
         nint targetHwnd,
         MacroWorkspace workspace,
-        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces)
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
+        bool followForegroundWindow = false)
     {
         return new MacroRunContext(
             targetHwnd,
             workspace.Id,
             activeProfileWorkspaces,
-            this);
+            this)
+        {
+            FollowForegroundWindow = followForegroundWindow
+        };
     }
 
     private static MacroWorkspace? FindMacroInContext(string macroId, MacroRunContext context)

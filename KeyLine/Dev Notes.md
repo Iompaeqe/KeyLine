@@ -8,12 +8,6 @@
 
 # To Do
 
-- Make "Target Window Focused" to "Window Focused" with reference.
-- redesign the node inspectors
-- toggle keys like capslock's node is disgusting 
-- add a counter for unlimited loops timelines to show how many times they played,  
-   this can count in the status text next to Running and timer
-
 1.9 
 1. Toggle Loop Mode, adds 2 fixed position timelines, macro start as first and macro end as last.
 this one can cause weird behavior if macro end has delay, so i gotta keep it consistent

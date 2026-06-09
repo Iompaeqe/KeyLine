@@ -57,6 +57,12 @@ public sealed class MacroRunContext
 
     public nint CurrentTargetWindowHandle { get; set; }
 
+    /// <summary>
+    /// When true the macro has no fixed target window and should send input to whatever
+    /// window is in the foreground at the moment of each step ("Focused window" target).
+    /// </summary>
+    public bool FollowForegroundWindow { get; init; }
+
     public nint LastLaunchedWindowHandle { get; set; }
 
     public int? LastLaunchedProcessId { get; set; }
@@ -79,6 +85,7 @@ public sealed class MacroRunContext
             new HashSet<string>(_macroCallStack, StringComparer.OrdinalIgnoreCase))
         {
             CurrentTargetWindowHandle = CurrentTargetWindowHandle,
+            FollowForegroundWindow = FollowForegroundWindow,
             LastLaunchedWindowHandle = LastLaunchedWindowHandle,
             LastLaunchedProcessId = LastLaunchedProcessId,
             LastFoundWindowHandle = LastFoundWindowHandle

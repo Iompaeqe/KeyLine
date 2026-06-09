@@ -82,7 +82,8 @@ public partial class MainWindow
             runnableTimelines,
             CreateRunnerLoopCompletedCallback(workspace),
             CreateTimelineStatusCallback(workspace, runnableTimelines),
-            CreatePlaybackFailureCallback(workspace));
+            CreatePlaybackFailureCallback(workspace),
+            target.IsFocusedWindowFallback);
 
         _playback.UnmarkShortcutStarting(workspace);
         SetWorkspaceStoppedStatus(workspace, _restoreInputsOnStop);
@@ -221,7 +222,8 @@ public partial class MainWindow
             runnableTimelines,
             CreateRunnerLoopCompletedCallback(workspace),
             onTimelineStatusChanged: CreateTimelineStatusCallback(workspace, runnableTimelines),
-            onPlaybackFailure: CreatePlaybackFailureCallback(workspace));
+            onPlaybackFailure: CreatePlaybackFailureCallback(workspace),
+            followForegroundWindow: target.IsFocusedWindowFallback);
 
         PlayMacroSound();
 
@@ -258,42 +260,54 @@ public partial class MainWindow
         IReadOnlyList<MacroTimeline> runnableTimelines,
         Action<int>? onRunnerLoopCompleted = null,
         Action<int, TimelinePlaybackStatus>? onTimelineStatusChanged = null,
-        Action<string>? onPlaybackFailure = null)
+        Action<string>? onPlaybackFailure = null,
+        bool followForegroundWindow = false)
     {
+        var profileWorkspaces = GetWorkspacesForProfile(workspace.ProfileId);
+        var runContext = _playback.CreateRunContext(
+            targetHwnd,
+            workspace,
+            profileWorkspaces,
+            followForegroundWindow);
+
         return workspace.LoopMode switch
         {
             MacroLoopMode.Chain => _playback.RunChainPlayback(
                 targetHwnd,
                 workspace,
-                GetWorkspacesForProfile(workspace.ProfileId),
+                profileWorkspaces,
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
-                onPlaybackFailure),
+                onPlaybackFailure,
+                runContext),
             MacroLoopMode.Cycle => _playback.RunCyclePlayback(
                 targetHwnd,
                 workspace,
-                GetWorkspacesForProfile(workspace.ProfileId),
+                profileWorkspaces,
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
-                onPlaybackFailure),
+                onPlaybackFailure,
+                runContext),
             MacroLoopMode.Sync when runnableTimelines.Count > 1 => _playback.RunSyncedPlayback(
                 targetHwnd,
                 workspace,
-                GetWorkspacesForProfile(workspace.ProfileId),
+                profileWorkspaces,
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
-                onPlaybackFailure),
+                onPlaybackFailure,
+                runContext),
             _ => _playback.RunAsyncPlayback(
                 targetHwnd,
                 workspace,
-                GetWorkspacesForProfile(workspace.ProfileId),
+                profileWorkspaces,
                 runnableTimelines,
                 onRunnerLoopCompleted,
                 onTimelineStatusChanged,
-                onPlaybackFailure)
+                onPlaybackFailure,
+                runContext)
         };
     }
 
