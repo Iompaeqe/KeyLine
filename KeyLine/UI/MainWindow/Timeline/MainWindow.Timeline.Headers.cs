@@ -40,18 +40,17 @@ public partial class MainWindow
                     ? Color.FromRgb(14, 165, 233)
                     : Color.FromRgb(30, 64, 100);
 
+        // Each header is now its own rounded card aligned to a single row, so it carries a full
+        // border on all sides and uniform rounding (no longer a connected top/bottom strip).
         var border = new Border
         {
-            Width = TimelineHeaderWidth,
-            Margin = new Thickness(0),
-            CornerRadius = new CornerRadius(
-                isFirst ? 8 : 0,
-                0,
-                0,
-                isLast ? 8 : 0),
+            // Stretch within the header column (with a small rail inset on both sides) rather than a
+            // fixed width, so the card's right edge stays inside the column instead of being clipped.
+            Margin = new Thickness(4, 0, 4, 0),
+            CornerRadius = new CornerRadius(9),
             Background = new SolidColorBrush(backgroundColor),
             BorderBrush = new SolidColorBrush(borderColor),
-            BorderThickness = new Thickness(0, 1, 1, 1),
+            BorderThickness = new Thickness(1),
             Cursor = System.Windows.Input.Cursors.SizeAll,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -65,92 +64,204 @@ public partial class MainWindow
         return border;
     }
 
+    // Inner-edge accent + status colors used across the header card.
+    private static readonly Color HeaderAccentActiveColor = Color.FromRgb(14, 165, 233);
+    private static readonly Color HeaderAccentIdleColor = Color.FromRgb(38, 64, 96);
+    private static readonly Color HeaderNameActiveColor = Color.FromRgb(224, 242, 254);
+    private static readonly Color HeaderNameIdleColor = Color.FromRgb(203, 213, 225);
+    private static readonly Color HeaderMetaColor = Color.FromRgb(122, 138, 156);
+
     private UIElement CreateTimelineHeaderContent(MacroTimeline timeline, bool isActive, bool isPendingDelete)
     {
-        if (!isPendingDelete)
+        if (isPendingDelete)
+            return CreatePendingDeleteHeaderContent(timeline);
+
+        var isHook = IsHookTimeline(timeline);
+        var isCollapsed = IsEffectivelyCollapsed(timeline);
+
+        var root = new Grid
         {
-            var isHook = IsHookTimeline(timeline);
-            var isCollapsed = IsEffectivelyCollapsed(timeline);
-            var content = new Grid
-            {
-                Margin = isCollapsed ? new Thickness(2, 1, 2, 1) : new Thickness(2, 3, 2, 4),
-                ToolTip = isHook
-                    ? $"{timeline.Name} hook\nWraps macro execution. Pinned and not reorderable."
-                    : $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
-            };
+            ToolTip = isHook
+                ? $"{timeline.Name} hook\nWraps macro execution. Pinned and not reorderable."
+                : $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
+        };
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Row 0: collapse chevron + status. Row 1: name (wrapped). Row 2: details (expanded only).
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(isCollapsed ? 11 : 13) });
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            if (!isCollapsed)
-                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+        // Status-colored accent spine on the inner edge ties the card to its row visually.
+        var accent = new Border
+        {
+            Width = 3,
+            CornerRadius = new CornerRadius(2),
+            Margin = new Thickness(0, isCollapsed ? 6 : 13, 0, isCollapsed ? 6 : 13),
+            Background = new SolidColorBrush(isActive ? HeaderAccentActiveColor : HeaderAccentIdleColor),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            IsHitTestVisible = false
+        };
+        Grid.SetColumn(accent, 0);
+        root.Children.Add(accent);
 
-            var chevron = CreateCollapseChevron(timeline, isCollapsed);
-            Grid.SetRow(chevron, 0);
-            content.Children.Add(chevron);
+        var body = isCollapsed
+            ? BuildCollapsedHeaderBody(timeline, isHook, isActive)
+            : BuildExpandedHeaderBody(timeline, isHook, isActive);
+        Grid.SetColumn(body, 1);
+        root.Children.Add(body);
 
-            var statusText = new TextBlock
-            {
-                FontSize = 7.5,
-                FontWeight = FontWeights.Bold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = Math.Max(28, TimelineHeaderWidth - 18)
-            };
+        return root;
+    }
 
-            _timelineHeaderStatusTextBlocks[timeline] = statusText;
-            UpdateTimelineHeaderStatusTextBlock(timeline, statusText);
-            Grid.SetRow(statusText, 0);
-            content.Children.Add(statusText);
+    // Expanded card: name line (chevron + name + status dot), a horizontal metadata line, and a
+    // live status word underneath. Laid out left-to-right so growing metadata stays readable.
+    private UIElement BuildExpandedHeaderBody(MacroTimeline timeline, bool isHook, bool isActive)
+    {
+        var stack = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 9, 0)
+        };
 
-            // Horizontal wrapped name (e.g. "Power Song" -> two centered lines) instead of rotated
-            // vertical text, so longer names stay readable within the same header width.
-            var nameText = new TextBlock
-            {
-                Text = timeline.Name,
-                FontWeight = FontWeights.Black,
-                FontSize = isCollapsed ? 11 : 12,
-                LineHeight = isCollapsed ? 12 : 14,
-                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-                MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
-                TextWrapping = isCollapsed ? TextWrapping.NoWrap : TextWrapping.Wrap,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new SolidColorBrush(isActive
-                    ? Color.FromRgb(224, 242, 254)
-                    : Color.FromRgb(148, 163, 184))
-            };
+        var nameLine = new Grid();
+        nameLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        nameLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        nameLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            Grid.SetRow(nameText, 1);
-            content.Children.Add(nameText);
+        var chevron = CreateCollapseChevron(timeline, false);
+        Grid.SetColumn(chevron, 0);
+        nameLine.Children.Add(chevron);
 
-            if (!isCollapsed)
-            {
-                var detailText = new TextBlock
-                {
-                    Text = BuildTimelineHeaderDetailText(timeline, isHook),
-                    FontSize = 10,
-                    Padding = new Thickness(4, 0, 0, 0),
-                    FontWeight = FontWeights.SemiBold,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    TextAlignment = TextAlignment.Left,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
-                    Foreground = new SolidColorBrush(Color.FromRgb(120, 136, 149))
-                };
+        var nameText = new TextBlock
+        {
+            Text = timeline.Name,
+            FontWeight = FontWeights.Bold,
+            FontSize = 12.5,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = new SolidColorBrush(isActive ? HeaderNameActiveColor : HeaderNameIdleColor)
+        };
+        Grid.SetColumn(nameText, 1);
+        nameLine.Children.Add(nameText);
 
-                Grid.SetRow(detailText, 2);
-                content.Children.Add(detailText);
-            }
+        var dot = CreateHeaderStatusDot();
+        Grid.SetColumn(dot, 2);
+        nameLine.Children.Add(dot);
 
-            return content;
-        }
+        stack.Children.Add(nameLine);
 
+        var metaText = new TextBlock
+        {
+            Text = BuildHeaderMetaLine(timeline, isHook),
+            FontSize = 9.5,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(2, 3, 0, 0),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            Foreground = new SolidColorBrush(HeaderMetaColor)
+        };
+        stack.Children.Add(metaText);
+
+        var statusText = new TextBlock
+        {
+            Margin = new Thickness(2, 2, 0, 0),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap
+        };
+        RegisterHeaderStatus(timeline, statusText, dot, collapsed: false);
+        stack.Children.Add(statusText);
+
+        return stack;
+    }
+
+    // Collapsed card: one compact horizontal line that still surfaces status (dot) and name.
+    private UIElement BuildCollapsedHeaderBody(MacroTimeline timeline, bool isHook, bool isActive)
+    {
+        var grid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 9, 0)
+        };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var chevron = CreateCollapseChevron(timeline, true);
+        Grid.SetColumn(chevron, 0);
+        grid.Children.Add(chevron);
+
+        var dot = CreateHeaderStatusDot();
+        dot.Margin = new Thickness(2, 0, 6, 0);
+        Grid.SetColumn(dot, 1);
+        grid.Children.Add(dot);
+
+        var nameText = new TextBlock
+        {
+            Text = timeline.Name,
+            FontWeight = FontWeights.Bold,
+            FontSize = 11.5,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = new SolidColorBrush(isActive ? HeaderNameActiveColor : HeaderNameIdleColor)
+        };
+        Grid.SetColumn(nameText, 2);
+        grid.Children.Add(nameText);
+
+        var statusText = new TextBlock
+        {
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap
+        };
+        RegisterHeaderStatus(timeline, statusText, dot, collapsed: true);
+        Grid.SetColumn(statusText, 3);
+        grid.Children.Add(statusText);
+
+        return grid;
+    }
+
+    private Border CreateHeaderStatusDot()
+    {
+        return new Border
+        {
+            Width = 7,
+            Height = 7,
+            CornerRadius = new CornerRadius(3.5),
+            Margin = new Thickness(5, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Background = new SolidColorBrush(Color.FromRgb(100, 116, 139)),
+            IsHitTestVisible = false
+        };
+    }
+
+    private void RegisterHeaderStatus(MacroTimeline timeline, TextBlock statusText, Border dot, bool collapsed)
+    {
+        statusText.Tag = collapsed ? CollapsedStatusTag : null;
+        _timelineHeaderStatusTextBlocks[timeline] = statusText;
+        _timelineHeaderStatusDots[timeline] = dot;
+        UpdateTimelineHeaderStatusTextBlock(timeline, statusText);
+    }
+
+    private string BuildHeaderMetaLine(MacroTimeline timeline, bool isHook)
+    {
+        if (isHook)
+            return "macro hook";
+
+        var meta = $"↻ {FormatTimelineHeaderLoopCount(timeline)}     {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}";
+
+        // In Sequence/Random, show the configured cooldown compactly (hidden when 0 to avoid clutter).
+        if (IsSequenceMode(_activeWorkspace) && timeline.CooldownMs > 0)
+            meta += $"     CD {FormatTimelineHeaderDelay(timeline.CooldownMs)}";
+
+        return meta;
+    }
+
+    private UIElement CreatePendingDeleteHeaderContent(MacroTimeline timeline)
+    {
         return new StackPanel
         {
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -163,12 +274,14 @@ public partial class MainWindow
                     Text = timeline.Name,
                     FontWeight = FontWeights.Black,
                     FontSize = 13,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
                     TextAlignment = TextAlignment.Center,
+                    MaxWidth = Math.Max(40, TimelineHeaderWidth - 14),
                     Foreground = new SolidColorBrush(Color.FromRgb(254, 202, 202))
                 },
                 new TextBlock
                 {
-                    Text = "Confirm",
+                    Text = "Confirm delete",
                     FontWeight = FontWeights.SemiBold,
                     FontSize = 8,
                     TextAlignment = TextAlignment.Center,
@@ -179,6 +292,7 @@ public partial class MainWindow
     }
 
     private const string CollapseToggleTag = "collapse-toggle";
+    private const string CollapsedStatusTag = "collapsed-status";
 
     private UIElement CreateCollapseChevron(MacroTimeline timeline, bool isCollapsed)
     {
@@ -189,7 +303,7 @@ public partial class MainWindow
             Cursor = Cursors.Hand,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(1, 0, 5, 0),
+            Padding = new Thickness(0, 0, 4, 0),
             ToolTip = isCollapsed ? "Expand timeline" : "Collapse timeline",
             Child = new TextBlock
             {
@@ -268,20 +382,6 @@ public partial class MainWindow
             UpdateTimelineHeaderStatusTextBlock(timeline, statusTextBlock);
     }
 
-    private string BuildTimelineHeaderDetailText(MacroTimeline timeline, bool isHook)
-    {
-        if (isHook)
-            return string.Empty;
-
-        var detail = $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}";
-
-        // In Sequence/Random, show the configured cooldown compactly (hidden when 0 to avoid clutter).
-        if (IsSequenceMode(_activeWorkspace) && timeline.CooldownMs > 0)
-            detail += $"\nC{FormatTimelineHeaderDelay(timeline.CooldownMs)}";
-
-        return detail;
-    }
-
     // Sequence/Random "Ready" / "CD <remaining>" status shown on normal timeline headers while the
     // macro is not playing. Returns false when the default playback status should be used instead.
     private bool TryGetSequenceHeaderStatus(MacroTimeline timeline, out string text, out Color color)
@@ -329,44 +429,81 @@ public partial class MainWindow
 
     private void UpdateTimelineHeaderStatusTextBlock(MacroTimeline timeline, TextBlock statusTextBlock)
     {
-        if (TryGetSequenceHeaderStatus(timeline, out var sequenceText, out var sequenceColor))
+        var (text, color, fontSize, tooltip) = ResolveHeaderStatus(timeline);
+        var isCollapsedStatus = (statusTextBlock.Tag as string) == CollapsedStatusTag;
+
+        // Status text is single-line in the new card; flatten any multi-line status (e.g. "Ready\nNext").
+        text = text.Replace("\n", " ");
+
+        // Collapsed cards have a single tight line, so the name takes priority: only surface the
+        // status word there for active/transient states (countdown, running, etc.). Idle "Ready"
+        // and stopped states fall back to the loop count and let the colored dot carry the status.
+        var showActiveWord = !string.IsNullOrEmpty(text) &&
+                             (text.StartsWith("Running") || text.StartsWith("Waiting") ||
+                              text.StartsWith("CD") || text.StartsWith("Warning"));
+
+        if (isCollapsedStatus && !showActiveWord)
         {
-            statusTextBlock.Text = sequenceText;
+            statusTextBlock.Text = $"↻ {FormatTimelineHeaderLoopCount(timeline)}";
+            statusTextBlock.Foreground = new SolidColorBrush(HeaderMetaColor);
+            statusTextBlock.FontWeight = FontWeights.SemiBold;
+            statusTextBlock.FontSize = 9.5;
             statusTextBlock.ToolTip = null;
-            statusTextBlock.Foreground = new SolidColorBrush(sequenceColor);
-            statusTextBlock.FontSize = 8.5;
-            return;
+            statusTextBlock.Visibility = Visibility.Visible;
         }
+        else if (string.IsNullOrEmpty(text))
+        {
+            statusTextBlock.Text = string.Empty;
+            statusTextBlock.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            statusTextBlock.Text = text;
+            statusTextBlock.Foreground = new SolidColorBrush(color);
+            statusTextBlock.FontWeight = FontWeights.Bold;
+            statusTextBlock.FontSize = fontSize;
+            statusTextBlock.ToolTip = tooltip;
+            statusTextBlock.Visibility = Visibility.Visible;
+        }
+
+        if (_timelineHeaderStatusDots.TryGetValue(timeline, out var dot))
+            dot.Background = new SolidColorBrush(color);
+    }
+
+    // Resolves the status word/color for a header, falling back to playback status when no
+    // Sequence/Random status applies. An empty Text means "idle" (dot shown in the muted color).
+    private (string Text, Color Color, double FontSize, string? Tooltip) ResolveHeaderStatus(MacroTimeline timeline)
+    {
+        if (TryGetSequenceHeaderStatus(timeline, out var sequenceText, out var sequenceColor))
+            return (sequenceText, sequenceColor, 9.5, null);
 
         var status = GetTimelinePlaybackStatusForHeader(timeline);
 
-        statusTextBlock.Text = status switch
+        var text = status switch
         {
-            TimelinePlaybackStatus.Running => "Running...",
-            TimelinePlaybackStatus.Waiting => "Waiting...",
+            TimelinePlaybackStatus.Running => "Running…",
+            TimelinePlaybackStatus.Waiting => "Waiting…",
             TimelinePlaybackStatus.Stopped => "Stopped",
             TimelinePlaybackStatus.Warning => "Warning!",
             _ => string.Empty
         };
 
-        statusTextBlock.ToolTip = status == TimelinePlaybackStatus.Warning
-            ? "Chain mode will not reach later timelines because this timeline is infinite."
-            : null;
-
-        statusTextBlock.Foreground = new SolidColorBrush(status switch
+        var color = status switch
         {
             TimelinePlaybackStatus.Running => Color.FromRgb(52, 211, 153),
             TimelinePlaybackStatus.Waiting => Color.FromRgb(253, 230, 138),
             TimelinePlaybackStatus.Stopped => Color.FromRgb(100, 116, 139),
             TimelinePlaybackStatus.Warning => Color.FromRgb(251, 113, 133),
             _ => Color.FromRgb(100, 116, 139)
-        });
-
-        statusTextBlock.FontSize = status switch
-        {
-            TimelinePlaybackStatus.Warning => 11,
-            _ => 9
         };
+
+        var tooltip = status == TimelinePlaybackStatus.Warning
+            ? "Chain mode will not reach later timelines because this timeline is infinite."
+            : null;
+
+        var fontSize = status == TimelinePlaybackStatus.Warning ? 10.5 : 9.5;
+
+        return (text, color, fontSize, tooltip);
     }
 
     private static string FormatTimelineHeaderLoopCount(MacroTimeline timeline)

@@ -199,10 +199,10 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Column 0: fixed connected timeline header column -->
+                        <!-- Column 0: timeline header cards. Lives in row 1 (the content row) so the
+                             cards share the same vertical origin as the scrollable node rows. -->
                         <Grid x:Name="TimelineHeaderGrid"
-                              Grid.Row="0"
-                              Grid.RowSpan="2"
+                              Grid.Row="1"
                               Grid.Column="0"
                               Background="Transparent" />
 

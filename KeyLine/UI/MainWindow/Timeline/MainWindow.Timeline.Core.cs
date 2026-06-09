@@ -39,6 +39,7 @@ public partial class MainWindow
 
     private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
     private readonly Dictionary<MacroTimeline, TextBlock> _timelineHeaderStatusTextBlocks = new();
+    private readonly Dictionary<MacroTimeline, Border> _timelineHeaderStatusDots = new();
 
     // The ordered timelines shown in the strip: enabled Start hook, normal timelines, enabled End hook.
     // Rendering uses this list; logic (playback selection, reorder, delete) uses Document.Timelines.
@@ -170,6 +171,7 @@ public partial class MainWindow
         TimelineHeaderGrid.Children.Clear();
         TimelineHeaderGrid.RowDefinitions.Clear();
         _timelineHeaderStatusTextBlocks.Clear();
+        _timelineHeaderStatusDots.Clear();
 
         var displayTimelines = GetDisplayTimelines();
         var displayCount = displayTimelines.Count;
@@ -204,19 +206,6 @@ public partial class MainWindow
                     GetDisplayRowGap(timeline),
                     TimelineHeaderBottomExtra));
         }
-
-        var headerColumnBackplate = new Border
-        {
-            CornerRadius = new CornerRadius(8, 0, 0, 8),
-            Background = new SolidColorBrush(Color.FromRgb(8, 17, 31)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(30, 64, 100)),
-            BorderThickness = new Thickness(1, 1, 1, 1),
-            IsHitTestVisible = false
-        };
-
-        Grid.SetRow(headerColumnBackplate, 0);
-        Grid.SetRowSpan(headerColumnBackplate, TimelineHeaderGrid.RowDefinitions.Count);
-        TimelineHeaderGrid.Children.Add(headerColumnBackplate);
     }
 
     private void AddTimelineHeaderToGrid(MacroTimeline timeline, int timelineIndex, bool isActive, bool isSelected)

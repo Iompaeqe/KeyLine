@@ -25,16 +25,18 @@ public static class TimelineLayoutCalculator
         return connectorY - (connectorThickness / 2.0);
     }
 
+    // Each header is its own card aligned to exactly its timeline content row (row 0 is the top
+    // spacer, then content/gap rows alternate). Mapping to the content row only — rather than
+    // spanning the spacer or the trailing stretch row — lets every header, including the first and
+    // last, collapse to its row height instead of staying tall.
     public static int GetHeaderGridRow(int timelineIndex)
     {
-        return timelineIndex == 0
-            ? 0
-            : 1 + (timelineIndex * 2);
+        return 1 + (timelineIndex * 2);
     }
 
     public static int GetHeaderGridRowSpan(int timelineIndex)
     {
-        return timelineIndex == 0 ? 3 : 2;
+        return 1;
     }
 
     public static double GetTimelineAreaHeight(

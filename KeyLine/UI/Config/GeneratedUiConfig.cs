@@ -18,7 +18,7 @@ public sealed class TimelineUiConfig
 {
     public double RowHeight { get; init; } = 72;
     public double RowGap { get; init; } = 30;
-    public double HeaderWidth { get; init; } = 66;
+    public double HeaderWidth { get; init; } = 140;
 
     public double FirstItemLeft { get; init; } = 12;
     public double ItemGap { get; init; } = 0;
