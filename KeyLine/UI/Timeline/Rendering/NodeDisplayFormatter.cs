@@ -100,7 +100,7 @@ public static class NodeDisplayFormatter
             MacroConditionType.PixelColor => "If Pixel Matches",
             MacroConditionType.RandomChance => $"If Random {Math.Clamp(node.ConditionChancePercent, 0, 100)}%",
             MacroConditionType.LoopContext => GetLoopConditionSummary(node),
-            MacroConditionType.TargetWindowFocused => $"{GetIfPrefix(node)}Target Window Focused",
+            MacroConditionType.TargetWindowFocused => $"{GetIfPrefix(node)}Window Focused: {GetFocusedWindowReferenceSummary(node)}",
             MacroConditionType.WindowExists => $"{GetIfPrefix(node)}Window Exists: {GetWindowReferenceSummary(node)}",
             MacroConditionType.MacroRunning =>
                 $"{GetIfPrefix(node)}Macro \"{GetMacroReferenceSummary(node.ConditionMacroId, resolveMacroName)}\" Is Running",
@@ -117,7 +117,7 @@ public static class NodeDisplayFormatter
             MacroConditionType.PixelColor => "Pixel matches",
             MacroConditionType.RandomChance => "Random chance",
             MacroConditionType.LoopContext => "Loop context",
-            MacroConditionType.TargetWindowFocused => "Target Window Focused",
+            MacroConditionType.TargetWindowFocused => "Window Focused",
             MacroConditionType.WindowExists => "Window Exists",
             MacroConditionType.MacroRunning => "Macro Running",
             MacroConditionType.TimePassed => "Time Passed",
@@ -279,6 +279,20 @@ public static class NodeDisplayFormatter
             WindowReferenceType.CustomTitle => GetCustomWindowTitleSummary(reference.CustomTitle),
             _ => "Window"
         };
+    }
+
+    public static string GetFocusedWindowReferenceSummary(MacroNode node)
+    {
+        var reference = node.GetEffectiveWindowReference();
+
+        // Legacy focused nodes had no reference and always meant the selected target window.
+        if (reference.Type == WindowReferenceType.CustomTitle &&
+            string.IsNullOrWhiteSpace(reference.CustomTitle))
+        {
+            return "Selected Target Window";
+        }
+
+        return GetWindowReferenceSummary(node);
     }
 
     private static string GetCustomWindowTitleSummary(string title)

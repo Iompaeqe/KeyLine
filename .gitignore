@@ -116,3 +116,6 @@ obj/
 *.pdb
 *.cache
 *.log
+
+# Claude Code
+CLAUDE.md

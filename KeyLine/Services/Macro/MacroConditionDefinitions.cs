@@ -16,7 +16,7 @@ public static class MacroConditionDefinitions
             [MacroConditionType.PixelColor] = new(MacroConditionType.PixelColor, "Pixel matches", false),
             [MacroConditionType.RandomChance] = new(MacroConditionType.RandomChance, "Random chance", false),
             [MacroConditionType.LoopContext] = new(MacroConditionType.LoopContext, "Loop context", false),
-            [MacroConditionType.TargetWindowFocused] = new(MacroConditionType.TargetWindowFocused, "Target Window Focused", true),
+            [MacroConditionType.TargetWindowFocused] = new(MacroConditionType.TargetWindowFocused, "Window Focused", true),
             [MacroConditionType.WindowExists] = new(MacroConditionType.WindowExists, "Window Exists", true),
             [MacroConditionType.MacroRunning] = new(MacroConditionType.MacroRunning, "Macro Running", true),
             [MacroConditionType.TimePassed] = new(MacroConditionType.TimePassed, "Time Passed", false)

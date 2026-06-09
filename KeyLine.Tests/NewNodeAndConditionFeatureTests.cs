@@ -33,7 +33,7 @@ public sealed class NewNodeAndConditionFeatureTests
             ConditionTimePassedMs = 1000
         };
 
-        Assert.Equal("If NOT Target Window Focused", NodeDisplayFormatter.GetConditionSummary(focused));
+        Assert.Equal("If NOT Window Focused: Selected Target Window", NodeDisplayFormatter.GetConditionSummary(focused));
         Assert.Equal("If 1s Passed", NodeDisplayFormatter.GetConditionSummary(timePassed));
     }
 

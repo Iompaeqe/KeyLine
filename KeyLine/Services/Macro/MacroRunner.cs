@@ -302,7 +302,7 @@ public sealed class MacroRunner
             MacroConditionType.PixelColor => IsPixelMatch(node, context.CurrentTargetWindowHandle),
             MacroConditionType.RandomChance => IsRandomChanceHit(node.ConditionChancePercent),
             MacroConditionType.LoopContext => IsLoopContextMatch(node, currentLoop, loopCount, repeatStack),
-            MacroConditionType.TargetWindowFocused => IsTargetWindowFocused(context),
+            MacroConditionType.TargetWindowFocused => IsWindowFocused(node, context),
             MacroConditionType.WindowExists => DoesWindowExist(node, context),
             MacroConditionType.MacroRunning => IsMacroRunning(node, context),
             MacroConditionType.TimePassed => context.HasTimePassed(
@@ -385,17 +385,32 @@ public sealed class MacroRunner
         };
     }
 
-    private static bool IsTargetWindowFocused(MacroRunContext context)
+    private static bool IsWindowFocused(MacroNode node, MacroRunContext context)
     {
-        var target = context.CurrentTargetWindowHandle;
-        if (!IsValidWindow(target))
+        var reference = GetFocusedConditionReference(node);
+        var handle = ResolveWindowReference(reference, context, out _);
+        if (!IsValidWindow(handle))
             return false;
 
         var foreground = NativeMethods.GetForegroundWindow();
         if (!IsValidWindow(foreground))
             return false;
 
-        return GetRootWindow(target) == GetRootWindow(foreground);
+        return GetRootWindow(handle) == GetRootWindow(foreground);
+    }
+
+    private static WindowReference GetFocusedConditionReference(MacroNode node)
+    {
+        var reference = node.GetEffectiveWindowReference();
+
+        // Legacy nodes had no window reference and always meant the selected target window.
+        if (reference.Type == WindowReferenceType.CustomTitle &&
+            string.IsNullOrWhiteSpace(reference.CustomTitle))
+        {
+            reference.Type = WindowReferenceType.SelectedTarget;
+        }
+
+        return reference;
     }
 
     private static bool DoesWindowExist(MacroNode node, MacroRunContext context)

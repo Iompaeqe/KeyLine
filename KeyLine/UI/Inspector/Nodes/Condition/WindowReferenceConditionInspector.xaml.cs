@@ -1,11 +1,11 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using KeyLine.Domain;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
-public partial class WindowExistsConditionInspector
+public partial class WindowReferenceConditionInspector
 {
     private static readonly IReadOnlyList<WindowReferenceTypeOption> WindowReferenceTypeOptions =
     [
@@ -19,7 +19,7 @@ public partial class WindowExistsConditionInspector
     private ComboBox WindowSourceCombo =>
         WindowSourceRow.GetContent<ComboBox>()!;
 
-    public WindowExistsConditionInspector()
+    public WindowReferenceConditionInspector()
     {
         InitializeComponent();
     }

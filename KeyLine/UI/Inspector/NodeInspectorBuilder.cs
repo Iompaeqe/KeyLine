@@ -250,11 +250,9 @@ public sealed class NodeInspectorBuilder
             }
 
             case MacroConditionType.TargetWindowFocused:
-                break;
-
             case MacroConditionType.WindowExists:
             {
-                var inspector = new WindowExistsConditionInspector();
+                var inspector = new WindowReferenceConditionInspector();
                 inspector.Bind(_context, node, isEnabled);
                 section.Children.Add(inspector);
                 break;

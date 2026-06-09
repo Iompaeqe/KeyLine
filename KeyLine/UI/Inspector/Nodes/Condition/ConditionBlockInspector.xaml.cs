@@ -16,7 +16,7 @@ public partial class ConditionBlockInspector
         new("Pixel matches", MacroConditionType.PixelColor),
         new("Random chance", MacroConditionType.RandomChance),
         new("Loop context", MacroConditionType.LoopContext),
-        new("Target Window Focused", MacroConditionType.TargetWindowFocused),
+        new("Window Focused", MacroConditionType.TargetWindowFocused),
         new("Window Exists", MacroConditionType.WindowExists),
         new("Macro Running", MacroConditionType.MacroRunning),
         new("Time Passed", MacroConditionType.TimePassed)
@@ -188,7 +188,7 @@ public partial class ConditionBlockInspector
             MacroConditionType.PixelColor => "Pixel color",
             MacroConditionType.RandomChance => "Random chance",
             MacroConditionType.LoopContext => "Loop rule",
-            MacroConditionType.TargetWindowFocused => "Target focused",
+            MacroConditionType.TargetWindowFocused => "Window focused",
             MacroConditionType.WindowExists => "Window exists",
             MacroConditionType.MacroRunning => "Macro running",
             MacroConditionType.TimePassed => "Time passed",
@@ -217,7 +217,7 @@ public partial class ConditionBlockInspector
         node.ConditionLoopInterval = Math.Max(1, node.ConditionLoopInterval);
         node.ConditionTimePassedMs = Math.Max(1, node.ConditionTimePassedMs);
 
-        if (node.ConditionType == MacroConditionType.WindowExists &&
+        if (node.ConditionType is MacroConditionType.WindowExists or MacroConditionType.TargetWindowFocused &&
             node.WindowReference.Type == WindowReferenceType.CustomTitle &&
             string.IsNullOrWhiteSpace(node.WindowReference.CustomTitle))
         {
