@@ -84,6 +84,29 @@ public partial class KeyNode : NodeBase
         SetKeyText(keyText, UiBrushes.Get(Color.FromRgb(45, 212, 191)));
         UpArrow.Foreground = UiBrushes.Get(fg);
         DownArrow.Foreground = UiBrushes.Get(fg);
+
+        UpdateToggleBadge(step);
+    }
+
+    private void UpdateToggleBadge(MacroNode step)
+    {
+        var badge = NodeDisplayFormatter.GetToggleModeBadge(step);
+        if (badge == null)
+        {
+            ModeBadgeText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var badgeFg = step.ToggleKeyMode switch
+        {
+            ToggleKeyMode.ToggleOn => Colors.Cyan,
+            ToggleKeyMode.ToggleOff => Color.FromRgb(100, 116, 139),
+            _ => Color.FromRgb(245, 158, 11)
+        };
+
+        ModeBadgeText.Text = badge;
+        ModeBadgeText.Foreground = UiBrushes.Get(badgeFg);
+        ModeBadgeText.Visibility = Visibility.Visible;
     }
 
     private void SetKeyText(string text, Brush mouseBrush)

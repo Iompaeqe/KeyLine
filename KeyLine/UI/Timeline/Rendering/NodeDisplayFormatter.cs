@@ -1,4 +1,5 @@
 using KeyLine.Domain;
+using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.Macro;
 using KeyLine.UI.Config;
@@ -11,12 +12,26 @@ public static class NodeDisplayFormatter
     public static string GetKeyText(MacroNode node)
     {
         if (node.IsSyntheticDisplayNode && !string.IsNullOrWhiteSpace(node.KeyName))
-            return GetToggleKeyText(node, node.KeyName);
+            return GetToggleKeyLabel(node);
 
         if (node.Type is MacroNodeType.MouseDown or MacroNodeType.MouseUp)
             return $"M{NormalizeMouseButton(node.MouseButton)}";
 
-        return GetToggleKeyText(node, node.KeyName);
+        return GetToggleKeyLabel(node);
+    }
+
+    public static string? GetToggleModeBadge(MacroNode node)
+    {
+        if (!ToggleKeyService.IsToggleKey(node.VirtualKey))
+            return null;
+
+        return node.ToggleKeyMode switch
+        {
+            ToggleKeyMode.Toggle => "TOG",
+            ToggleKeyMode.ToggleOn => "ON",
+            ToggleKeyMode.ToggleOff => "OFF",
+            _ => null
+        };
     }
 
     public static bool IsComboKey(string keyText)
@@ -327,20 +342,15 @@ public static class NodeDisplayFormatter
         };
     }
 
-    private static string GetToggleKeyText(MacroNode node, string keyName)
+    private static string GetToggleKeyLabel(MacroNode node)
     {
-        if (!ToggleKeyService.IsToggleKey(node.VirtualKey) ||
-            node.ToggleKeyMode == ToggleKeyMode.Normal)
+        // Toggle keys get a short cap label; the toggle mode is shown as a separate badge.
+        return node.VirtualKey switch
         {
-            return keyName;
-        }
-
-        return node.ToggleKeyMode switch
-        {
-            ToggleKeyMode.Toggle => $"{keyName} Toggle",
-            ToggleKeyMode.ToggleOn => $"{keyName} Toggle On",
-            ToggleKeyMode.ToggleOff => $"{keyName} Toggle Off",
-            _ => keyName
+            NativeMethods.VK_CAPITAL => "Caps",
+            NativeMethods.VK_NUMLOCK => "Num",
+            NativeMethods.VK_SCROLL => "Scroll",
+            _ => node.KeyName
         };
     }
 

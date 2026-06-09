@@ -133,7 +133,9 @@ public sealed class NewNodeAndConditionFeatureTests
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown).Single();
 
-        Assert.Equal("Caps Lock Toggle On", NodeDisplayFormatter.GetKeyText(keyDown));
-        Assert.Equal("Caps Lock Toggle On", NodeDisplayFormatter.GetKeyText(synthetic));
+        Assert.Equal("Caps", NodeDisplayFormatter.GetKeyText(keyDown));
+        Assert.Equal("Caps", NodeDisplayFormatter.GetKeyText(synthetic));
+        Assert.Equal("ON", NodeDisplayFormatter.GetToggleModeBadge(keyDown));
+        Assert.Equal("ON", NodeDisplayFormatter.GetToggleModeBadge(synthetic));
     }
 }
