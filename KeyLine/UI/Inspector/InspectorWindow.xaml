@@ -55,13 +55,15 @@
         </Border.Effect>
 
         <Grid>
+            
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
+            <Border x:Name="InspectorFocusSink" Width="1" Height="1" Opacity="0" Focusable="True" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" />
 
             <!-- INSPECTOR -->
-            <Border Background="#1A2433" Padding="10,6" CornerRadius="0,7,0,0" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" Background="#1A2433" Padding="10,6" CornerRadius="0,7,0,0" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                 <TextBlock Text="INSPECTOR" Style="{StaticResource Cap}" Margin="0" HorizontalAlignment="Left" />
             </Border>
 

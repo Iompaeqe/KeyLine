@@ -176,9 +176,7 @@ public sealed class InspectorController
     private void CommitCooldown(int value)
     {
         var timeline = _getCurrentTimeline();
-        // Full refresh so the timeline header's compact cooldown text updates immediately.
-        _commitService.CommitTimelineChange(timeline, () => timeline.CooldownMs = value);
-        Refresh();
+        _commitService.CommitTimelineValueChange(timeline, () => timeline.CooldownMs = value);
     }
 
     private void ToggleInputType()

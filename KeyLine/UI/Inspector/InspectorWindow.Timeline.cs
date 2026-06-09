@@ -9,6 +9,9 @@ namespace KeyLine.UI.Inspector;
 
 public partial class InspectorWindow
 {
+    private readonly List<Action> _finishInspectorEditActions = new();
+    private bool _isFinishingInspectorEdits;
+    
     private bool _isSettingTimelineState;
     private bool _isEditingEnabled = true;
     private bool _isNameReadOnly;
@@ -67,11 +70,13 @@ public partial class InspectorWindow
             if (e.Key == Key.Enter)
             {
                 CommitTimelineNameEdit();
+                DefocusInspectorField(TimelineNameEditTextBox);
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape)
             {
                 CancelTimelineNameEdit();
+                DefocusInspectorField(TimelineNameEditTextBox);
                 e.Handled = true;
             }
         };
@@ -113,6 +118,18 @@ public partial class InspectorWindow
                 _cooldownMs = value;
                 TimelineCooldownCommitted?.Invoke(value);
             });
+        
+        Deactivated += (_, _) =>
+        {
+            if (_isTimelineNameEditing)
+                CommitTimelineNameEdit();
+        };
+        
+        InputManager.Current.PreProcessInput += OnApplicationPreProcessInput;
+        Closed += (_, _) =>
+        {
+            InputManager.Current.PreProcessInput -= OnApplicationPreProcessInput;
+        };
 
         InputTypePager.PageRequested += (_, _) => RequestInputTypeChange();
 
@@ -232,17 +249,47 @@ public partial class InspectorWindow
 
     private void WireNumberTextBox(TextBox textBox, Func<int> currentValue, Action<int> commit)
     {
+        var isEditing = false;
+
+        void FinishNumberEdit()
+        {
+            if (!isEditing)
+                return;
+
+            CommitNumberText(textBox, currentValue(), commit);
+            isEditing = false;
+        }
+
+        _finishInspectorEditActions.Add(FinishNumberEdit);
+
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
-        textBox.GotKeyboardFocus += (_, _) => textBox.SelectAll();
-        textBox.LostFocus += (_, _) => CommitNumberText(textBox, currentValue(), commit);
-        textBox.TextChanged += (_, _) => CommitNumberText(textBox, currentValue(), commit);
+
+        textBox.GotKeyboardFocus += (_, _) =>
+        {
+            isEditing = true;
+            textBox.SelectAll();
+        };
+
+        textBox.LostFocus += (_, _) =>
+        {
+            FinishNumberEdit();
+        };
+
+        textBox.TextChanged += (_, _) =>
+        {
+            if (!isEditing)
+                return;
+
+            CommitNumberText(textBox, currentValue(), commit);
+        };
+
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
                 return;
 
-            CommitNumberText(textBox, currentValue(), commit);
-            Keyboard.ClearFocus();
+            FinishNumberEdit();
+            DefocusInspectorField(textBox);
             e.Handled = true;
         };
     }
@@ -280,19 +327,32 @@ public partial class InspectorWindow
             }
         }
 
+        void FinishDelayEdit()
+        {
+            if (!isEditing)
+                return;
+
+            CommitDelayText(entry, currentValue(), commit);
+            isEditing = false;
+            SetDisplayText(currentValue());
+        }
+
+        _finishInspectorEditActions.Add(FinishDelayEdit);
+
         textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
+
         textBox.GotKeyboardFocus += (_, _) =>
         {
             isEditing = true;
             SetEditText(currentValue());
             textBox.SelectAll();
         };
+
         textBox.LostFocus += (_, _) =>
         {
-            CommitDelayText(entry, currentValue(), commit);
-            isEditing = false;
-            SetDisplayText(currentValue());
+            FinishDelayEdit();
         };
+
         textBox.TextChanged += (_, _) =>
         {
             if (!isEditing || isSettingText)
@@ -300,16 +360,20 @@ public partial class InspectorWindow
 
             CommitDelayText(entry, currentValue(), commit);
         };
+
         textBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter)
                 return;
 
-            CommitDelayText(entry, currentValue(), commit);
-            isEditing = false;
-            SetDisplayText(currentValue());
-            Keyboard.ClearFocus();
+            FinishDelayEdit();
+            DefocusInspectorField(textBox);
             e.Handled = true;
+        };
+
+        Deactivated += (_, _) =>
+        {
+            FinishDelayEdit();
         };
     }
 
@@ -358,5 +422,83 @@ public partial class InspectorWindow
     {
         if (!_isSettingTimelineState && _isEditingEnabled)
             TimelineShowKeyUpDownChanged?.Invoke(value);
+    }
+    
+    private void DefocusInspectorField(TextBox? sourceTextBox = null)
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ContextIdle,
+            new Action(() =>
+            {
+                if (sourceTextBox != null)
+                {
+                    var sourceScope = FocusManager.GetFocusScope(sourceTextBox);
+                    FocusManager.SetFocusedElement(sourceScope, InspectorFocusSink);
+                }
+
+                var sinkScope = FocusManager.GetFocusScope(InspectorFocusSink);
+                FocusManager.SetFocusedElement(sinkScope, InspectorFocusSink);
+
+                Keyboard.ClearFocus();
+                InspectorFocusSink.Focus();
+                Keyboard.Focus(InspectorFocusSink);
+            }));
+    }
+    
+    private void OnApplicationPreProcessInput(object sender, PreProcessInputEventArgs e)
+    {
+        if (_isFinishingInspectorEdits)
+            return;
+
+        if (e.StagingItem.Input is not MouseButtonEventArgs mouseArgs)
+            return;
+
+        if (mouseArgs.RoutedEvent != Mouse.PreviewMouseDownEvent &&
+            mouseArgs.RoutedEvent != Mouse.MouseDownEvent)
+            return;
+
+        var source = mouseArgs.OriginalSource as DependencyObject;
+
+        // Click is inside the inspector, normal WPF focus/lost-focus can handle it.
+        if (source != null && ReferenceEquals(Window.GetWindow(source), this))
+            return;
+
+        // Click is outside the inspector, but the inspector currently owns keyboard focus.
+        if (Keyboard.FocusedElement is not DependencyObject focusedElement)
+            return;
+
+        if (!ReferenceEquals(Window.GetWindow(focusedElement), this))
+            return;
+
+        FinishInspectorEditsFromOutsideClick();
+    }
+    
+    private void FinishInspectorEditsFromOutsideClick()
+    {
+        if (_isFinishingInspectorEdits)
+            return;
+
+        _isFinishingInspectorEdits = true;
+
+        try
+        {
+            if (_isTimelineNameEditing)
+                CommitTimelineNameEdit();
+
+            foreach (var finishEdit in _finishInspectorEditActions.ToArray())
+                finishEdit();
+
+            if (Keyboard.FocusedElement is DependencyObject focusedElement)
+            {
+                var focusScope = FocusManager.GetFocusScope(focusedElement);
+                FocusManager.SetFocusedElement(focusScope, null);
+            }
+
+            Keyboard.ClearFocus();
+        }
+        finally
+        {
+            _isFinishingInspectorEdits = false;
+        }
     }
 }

@@ -24,7 +24,7 @@
                                       VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsFocused" Value="True">
+                        <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter Property="BorderBrush" Value="#38BDF8" />
                         </Trigger>
                     </ControlTemplate.Triggers>
