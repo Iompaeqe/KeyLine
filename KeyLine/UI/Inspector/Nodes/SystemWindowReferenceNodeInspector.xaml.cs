@@ -20,9 +20,6 @@ public partial class SystemWindowReferenceNodeInspector
         new("Custom Window Title", WindowReferenceType.CustomTitle)
     ];
 
-    private TextBlock SummaryText =>
-        SummaryRow.GetContent<TextBlock>()!;
-
     private ComboBox WindowSourceCombo =>
         WindowSourceRow.GetContent<ComboBox>()!;
 
@@ -157,8 +154,6 @@ public partial class SystemWindowReferenceNodeInspector
         MacroNode node,
         SystemWindowReferenceInspectorMode? mode)
     {
-        SummaryText.Text = NodeDisplayFormatter.GetSystemNodeTooltip(node);
-
         CustomTitlePanel.Visibility =
             node.GetEffectiveWindowReference().Type == WindowReferenceType.CustomTitle
                 ? Visibility.Visible

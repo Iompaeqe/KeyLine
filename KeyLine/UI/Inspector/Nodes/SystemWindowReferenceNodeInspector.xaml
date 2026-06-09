@@ -6,14 +6,6 @@
 
     <Border Background="{StaticResource Surface}">
         <StackPanel>
-            <layout:InspectorRow x:Name="SummaryRow"
-                                 Label="Summary">
-                <TextBlock TextWrapping="Wrap"
-                           TextTrimming="CharacterEllipsis"
-                           MaxWidth="190"
-                           Style="{DynamicResource InspectorValue}" />
-            </layout:InspectorRow>
-
             <layout:InspectorRow x:Name="WindowSourceRow"
                                  Label="Window Source">
                 <ComboBox Width="120"
