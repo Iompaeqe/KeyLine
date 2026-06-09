@@ -46,6 +46,27 @@ public partial class MainWindow
 
     private bool IsHookTimeline(MacroTimeline timeline) => _activeWorkspace.IsHookTimeline(timeline);
 
+    private const double CollapsedRowHeight = 30;
+    private const double CollapsedRowGap = 6;
+
+    // Collapse only takes visual effect when the header column (and its chevron) is shown, i.e.
+    // when there is more than one display timeline — otherwise a lone timeline could not be expanded.
+    private bool IsEffectivelyCollapsed(MacroTimeline timeline) =>
+        timeline.IsCollapsed && GetDisplayTimelines().Count > 1;
+
+    private double GetDisplayRowHeight(MacroTimeline timeline) =>
+        IsEffectivelyCollapsed(timeline) ? CollapsedRowHeight : TimelineRowHeight;
+
+    private double GetDisplayRowGap(MacroTimeline timeline) =>
+        IsEffectivelyCollapsed(timeline) ? CollapsedRowGap : TimelineRowGap;
+
+    private void ToggleTimelineCollapsed(MacroTimeline timeline)
+    {
+        timeline.IsCollapsed = !timeline.IsCollapsed;
+        RefreshTimeline();
+        ScheduleSaveState();
+    }
+
     // A hook header highlights as "active" when it is the current selection; normal timelines
     // keep their existing active-timeline highlight.
     private bool IsActiveDisplayTimeline(MacroTimeline timeline) =>
@@ -150,7 +171,8 @@ public partial class MainWindow
         TimelineHeaderGrid.RowDefinitions.Clear();
         _timelineHeaderStatusTextBlocks.Clear();
 
-        var displayCount = GetDisplayTimelines().Count;
+        var displayTimelines = GetDisplayTimelines();
+        var displayCount = displayTimelines.Count;
         var showHeaderColumn = displayCount > 1;
 
         TimelineHeaderColumn.Width = showHeaderColumn
@@ -170,14 +192,16 @@ public partial class MainWindow
 
         for (var i = 0; i < displayCount; i++)
         {
+            var timeline = displayTimelines[i];
+
             TimelineHeaderGrid.RowDefinitions.Add(
-                TimelineLayoutCalculator.CreateTimelineHeaderContentRow(TimelineRowHeight));
+                TimelineLayoutCalculator.CreateTimelineHeaderContentRow(GetDisplayRowHeight(timeline)));
 
             TimelineHeaderGrid.RowDefinitions.Add(
                 TimelineLayoutCalculator.CreateTimelineHeaderGapRow(
                     i,
                     displayCount,
-                    TimelineRowGap,
+                    GetDisplayRowGap(timeline),
                     TimelineHeaderBottomExtra));
         }
 

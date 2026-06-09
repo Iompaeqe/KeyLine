@@ -25,6 +25,15 @@ public partial class MainWindow
     {
         element.PreviewMouseLeftButtonDown += (_, e) =>
         {
+            // The collapse chevron lives inside the draggable header, so intercept its click here
+            // (the preview/tunneling phase) before any drag or selection begins.
+            if (IsCollapseToggleSource(e.OriginalSource as DependencyObject))
+            {
+                ToggleTimelineCollapsed(timeline);
+                e.Handled = true;
+                return;
+            }
+
             EnsureTimelineDragGlobalHandlers();
 
             if (ReferenceEquals(_pendingDeleteTimeline, timeline))
@@ -151,7 +160,7 @@ public partial class MainWindow
         if (currentIndex < 0)
             return;
 
-        var rowStride = TimelineRowHeight + TimelineRowGap;
+        var rowStride = GetDisplayRowHeight(draggedTimeline) + GetDisplayRowGap(draggedTimeline);
         var deltaY = mouseY - _drag.HeaderDragStartPoint.Y;
         var targetIndex = _drag.HeaderDragStartIndex + (int)Math.Round(deltaY / rowStride);
         targetIndex = Math.Clamp(targetIndex, 0, _document.Timelines.Count - 1);

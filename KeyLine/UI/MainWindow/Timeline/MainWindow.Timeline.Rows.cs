@@ -69,14 +69,16 @@ public partial class MainWindow
     private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<TimelineVisualItem> visualItems,
         double canvasWidth, bool isFirstRow, bool isLastRow)
     {
+        var rowHeight = GetDisplayRowHeight(timeline);
+
         var row = new Grid
         {
-            Height = TimelineRowHeight,
+            Height = rowHeight,
             Margin = new Thickness(
                 0,
                 0,
                 0,
-                TimelineLayoutCalculator.GetRowBottomMargin(isLastRow, TimelineRowGap)),
+                TimelineLayoutCalculator.GetRowBottomMargin(isLastRow, GetDisplayRowGap(timeline))),
             Tag = timeline,
             VerticalAlignment = VerticalAlignment.Top
         };
@@ -84,13 +86,20 @@ public partial class MainWindow
         var canvas = new Canvas
         {
             Width = canvasWidth,
-            Height = TimelineRowHeight,
+            Height = rowHeight,
             Background = Brushes.Transparent,
             Tag = timeline,
             VerticalAlignment = VerticalAlignment.Top
         };
 
         row.Children.Add(canvas);
+
+        if (IsEffectivelyCollapsed(timeline))
+        {
+            AddCollapsedRowSummary(canvas, timeline, rowHeight);
+            RegisterTimelineRowState(timeline, canvas, connector: null, visualItems);
+            return row;
+        }
 
         AddBlockBackgrounds(canvas, timeline, visualItems, isFirstRow);
 
@@ -106,10 +115,33 @@ public partial class MainWindow
         return row;
     }
 
+    // A collapsed row hides its nodes and shows a faint node-count summary instead.
+    private void AddCollapsedRowSummary(Canvas canvas, MacroTimeline timeline, double rowHeight)
+    {
+        var nodeCount = timeline.Nodes.Count(node => !node.IsSyntheticDisplayNode);
+        var summary = new TextBlock
+        {
+            Text = nodeCount == 1 ? "1 node" : $"{nodeCount} nodes",
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(94, 113, 137)),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        Canvas.SetLeft(summary, TimelineFirstItemLeft);
+        Canvas.SetTop(summary, (rowHeight - 16) / 2.0);
+        canvas.Children.Add(summary);
+    }
+
     private List<TimelineVisualItem> BuildTimelineVisualItems(MacroTimeline timeline,
         IReadOnlyList<MacroNode> visibleSteps)
     {
         var visualItems = new List<TimelineVisualItem>();
+
+        // Collapsed timelines render no node items (a summary is drawn by the row builder).
+        if (IsEffectivelyCollapsed(timeline))
+            return visualItems;
+
         var currentLeft = TimelineFirstItemLeft;
 
         var isDraggingThisTimeline =

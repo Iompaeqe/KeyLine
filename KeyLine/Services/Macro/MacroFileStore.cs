@@ -137,6 +137,7 @@ public static class MacroFileStore
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
             CooldownMs = GetPersistedDelayMs(timeline.CooldownMs),
+            IsCollapsed = timeline.IsCollapsed,
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -271,7 +272,8 @@ public static class MacroFileStore
             UseTextInputMode = persisted.UseTextInputMode,
             LoopCount = Math.Max(0, persisted.LoopCount ?? fallbackLoopCount),
             BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs ?? fallbackBaseDelayMs),
-            CooldownMs = GetPersistedDelayMs(persisted.CooldownMs)
+            CooldownMs = GetPersistedDelayMs(persisted.CooldownMs),
+            IsCollapsed = persisted.IsCollapsed
         };
 
         foreach (var step in persisted.Nodes)
@@ -672,6 +674,7 @@ public static class MacroFileStore
         public int? LoopCount { get; set; }
         public int? BaseDelayMs { get; set; }
         public int CooldownMs { get; set; }
+        public bool IsCollapsed { get; set; }
         public List<PersistedStep> Nodes { get; set; } = new();
     }
 

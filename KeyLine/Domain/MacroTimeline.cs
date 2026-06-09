@@ -27,6 +27,10 @@ public sealed class MacroTimeline
     // Active (runtime) cooldown timers are tracked separately and are not persisted.
     public int CooldownMs { get; set; }
 
+    // Collapsed timelines render as a short summary row (name + status) with nodes hidden,
+    // so many timelines fit on screen. Persisted so the layout survives restarts.
+    public bool IsCollapsed { get; set; }
+
     public bool HasNodes => Nodes.Count > 0;
 
     public List<MacroNode> ToPlaybackList()

@@ -76,7 +76,8 @@ public static class MacroCloneService
             UseTextInputMode = source.UseTextInputMode,
             LoopCount = source.LoopCount,
             BaseDelayMs = source.BaseDelayMs,
-            CooldownMs = source.CooldownMs
+            CooldownMs = source.CooldownMs,
+            IsCollapsed = source.IsCollapsed
         };
 
         foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode), macroIdMap))

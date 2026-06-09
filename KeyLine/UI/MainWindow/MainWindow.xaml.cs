@@ -128,8 +128,42 @@ public partial class MainWindow : Window
 
         RefreshTimeline();
         UpdateTimelineScrollIndicator();
+        RefitTimelineWidthOnceViewportSettles();
 
         _ = CompleteDeferredStartupAsync();
+    }
+
+    // The first timeline layout can run before the scroll viewport has its final measured width,
+    // which leaves nodes rendered off-position (they only snap to the correct left layout after the
+    // next user action / relayout). Wait until the viewport width stops changing, then do one full
+    // timeline rebuild - the same thing a node edit or resize does - so the macro opens correctly.
+    private void RefitTimelineWidthOnceViewportSettles()
+    {
+        if (TimelineScrollViewer == null)
+            return;
+
+        var lastViewportWidth = -1.0;
+
+        void OnLayoutUpdated(object? sender, EventArgs e)
+        {
+            var viewportWidth = TimelineScrollViewer.ViewportWidth;
+            if (viewportWidth <= 0)
+                return;
+
+            // Keep widths fitted as the viewport settles, then rebuild once it is stable.
+            EnsureTimelineCanvasWidthForAllRows(GetMinimumTimelineCanvasWidth());
+
+            if (Math.Abs(viewportWidth - lastViewportWidth) < 0.5)
+            {
+                TimelineScrollViewer.LayoutUpdated -= OnLayoutUpdated;
+                RefreshTimelineWithoutInspector();
+                UpdateTimelineScrollIndicator();
+            }
+
+            lastViewportWidth = viewportWidth;
+        }
+
+        TimelineScrollViewer.LayoutUpdated += OnLayoutUpdated;
     }
 
     private async Task CompleteDeferredStartupAsync()
@@ -165,6 +199,14 @@ public partial class MainWindow : Window
         {
             // Keep startup usable even if the OS rejects hook installation.
         }
+
+        // Final guaranteed rebuild once startup is fully complete (styles/resources are live, so
+        // node widths measure correctly). Ensures the opened macro is laid out left-aligned.
+        await Dispatcher.InvokeAsync(() =>
+        {
+            RefreshTimelineWithoutInspector();
+            UpdateTimelineScrollIndicator();
+        }, DispatcherPriority.Background);
 
         BeginSettingsUpdateCheck();
     }

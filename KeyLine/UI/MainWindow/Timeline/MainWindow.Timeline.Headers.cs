@@ -70,18 +70,24 @@ public partial class MainWindow
         if (!isPendingDelete)
         {
             var isHook = IsHookTimeline(timeline);
-            var useVerticalText = timeline.Name.Length > 4;
+            var isCollapsed = IsEffectivelyCollapsed(timeline);
             var content = new Grid
             {
-                Margin = new Thickness(2, 4, 2, 4),
+                Margin = isCollapsed ? new Thickness(2, 1, 2, 1) : new Thickness(2, 3, 2, 4),
                 ToolTip = isHook
                     ? $"{timeline.Name} hook\nWraps macro execution. Pinned and not reorderable."
                     : $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
             };
 
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
+            // Row 0: collapse chevron + status. Row 1: name (wrapped). Row 2: details (expanded only).
+            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(isCollapsed ? 11 : 13) });
             content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
+            if (!isCollapsed)
+                content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+
+            var chevron = CreateCollapseChevron(timeline, isCollapsed);
+            Grid.SetRow(chevron, 0);
+            content.Children.Add(chevron);
 
             var statusText = new TextBlock
             {
@@ -91,7 +97,7 @@ public partial class MainWindow
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = Math.Max(28, TimelineHeaderWidth - 6)
+                MaxWidth = Math.Max(28, TimelineHeaderWidth - 18)
             };
 
             _timelineHeaderStatusTextBlocks[timeline] = statusText;
@@ -99,19 +105,21 @@ public partial class MainWindow
             Grid.SetRow(statusText, 0);
             content.Children.Add(statusText);
 
+            // Horizontal wrapped name (e.g. "Power Song" -> two centered lines) instead of rotated
+            // vertical text, so longer names stay readable within the same header width.
             var nameText = new TextBlock
             {
                 Text = timeline.Name,
                 FontWeight = FontWeights.Black,
-                FontSize = useVerticalText ? 11 : 13,
-                MaxWidth = useVerticalText
-                    ? Math.Max(26, TimelineRowHeight - 34)
-                    : Math.Max(28, TimelineHeaderWidth - 8),
+                FontSize = isCollapsed ? 11 : 12,
+                LineHeight = isCollapsed ? 12 : 14,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
+                TextWrapping = isCollapsed ? TextWrapping.NoWrap : TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                LayoutTransform = useVerticalText ? new RotateTransform(-90) : null,
                 Foreground = new SolidColorBrush(isActive
                     ? Color.FromRgb(224, 242, 254)
                     : Color.FromRgb(148, 163, 184))
@@ -120,24 +128,25 @@ public partial class MainWindow
             Grid.SetRow(nameText, 1);
             content.Children.Add(nameText);
 
-            var detailText = new TextBlock
+            if (!isCollapsed)
             {
-                Text = BuildTimelineHeaderDetailText(timeline, isHook),
-                FontSize = 10,
-                Height = 50,
-                Width = 45,
-                Padding = new Thickness(4, 0, 0, 0),
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                TextAlignment = TextAlignment.Left,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
-                Foreground = new SolidColorBrush(Color.FromRgb(120, 136, 149))
-            };
+                var detailText = new TextBlock
+                {
+                    Text = BuildTimelineHeaderDetailText(timeline, isHook),
+                    FontSize = 10,
+                    Padding = new Thickness(4, 0, 0, 0),
+                    FontWeight = FontWeights.SemiBold,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    TextAlignment = TextAlignment.Left,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    MaxWidth = Math.Max(28, TimelineHeaderWidth - 6),
+                    Foreground = new SolidColorBrush(Color.FromRgb(120, 136, 149))
+                };
 
-            Grid.SetRow(detailText, 2);
-            content.Children.Add(detailText);
+                Grid.SetRow(detailText, 2);
+                content.Children.Add(detailText);
+            }
 
             return content;
         }
@@ -167,6 +176,43 @@ public partial class MainWindow
                 }
             }
         };
+    }
+
+    private const string CollapseToggleTag = "collapse-toggle";
+
+    private UIElement CreateCollapseChevron(MacroTimeline timeline, bool isCollapsed)
+    {
+        return new Border
+        {
+            Tag = CollapseToggleTag,
+            Background = Brushes.Transparent,
+            Cursor = Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(1, 0, 5, 0),
+            ToolTip = isCollapsed ? "Expand timeline" : "Collapse timeline",
+            Child = new TextBlock
+            {
+                Text = isCollapsed ? "▸" : "▾",
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                IsHitTestVisible = false,
+                Foreground = new SolidColorBrush(Color.FromRgb(140, 160, 182))
+            }
+        };
+    }
+
+    private static bool IsCollapseToggleSource(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is FrameworkElement element && (element.Tag as string) == CollapseToggleTag)
+                return true;
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return false;
     }
 
     private ContextMenu CreateTimelineHeaderContextMenu(MacroTimeline timeline)
@@ -355,13 +401,19 @@ public partial class MainWindow
 
     private void UpdateWindowHeightForTimelineCount()
     {
-        var timelineCount = Math.Max(1, GetDisplayTimelines().Count);
+        var displayTimelines = GetDisplayTimelines();
 
-        var timelineAreaHeight = TimelineLayoutCalculator.GetTimelineAreaHeight(
-            timelineCount,
-            TimelineRowHeight,
-            TimelineRowGap,
-            52);
+        // Sum per-row heights and gaps so collapsed rows shrink the window accordingly.
+        var timelineAreaHeight = 52.0;
+        for (var i = 0; i < displayTimelines.Count; i++)
+        {
+            timelineAreaHeight += GetDisplayRowHeight(displayTimelines[i]);
+            if (i < displayTimelines.Count - 1)
+                timelineAreaHeight += GetDisplayRowGap(displayTimelines[i]);
+        }
+
+        if (displayTimelines.Count == 0)
+            timelineAreaHeight += TimelineRowHeight;
 
         var wantedHeight = 252 + timelineAreaHeight;
 

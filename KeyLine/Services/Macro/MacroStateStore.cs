@@ -373,7 +373,8 @@ public static class MacroStateStore
             UseTextInputMode = persistedTimeline.UseTextInputMode,
             LoopCount = Math.Max(0, persistedTimeline.LoopCount ?? fallbackLoopCount),
             BaseDelayMs = GetPersistedDelayMs(persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs),
-            CooldownMs = GetPersistedDelayMs(persistedTimeline.CooldownMs)
+            CooldownMs = GetPersistedDelayMs(persistedTimeline.CooldownMs),
+            IsCollapsed = persistedTimeline.IsCollapsed
         };
 
         foreach (var persistedStep in persistedTimeline.Nodes)
@@ -635,6 +636,7 @@ public static class MacroStateStore
             LoopCount = Math.Max(0, timeline.LoopCount),
             BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
             CooldownMs = GetPersistedDelayMs(timeline.CooldownMs),
+            IsCollapsed = timeline.IsCollapsed,
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -1031,6 +1033,7 @@ public static class MacroStateStore
         public int? LoopCount { get; set; }
         public int? BaseDelayMs { get; set; }
         public int CooldownMs { get; set; }
+        public bool IsCollapsed { get; set; }
         public List<PersistedStep> Nodes { get; set; } = new();
     }
 
