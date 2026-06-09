@@ -19,10 +19,6 @@ public partial class SystemVolumeNodeInspector
         new("Unmute", SystemVolumeAction.Unmute),
         new("Set Volume %", SystemVolumeAction.SetVolumePercent)
     ];
-
-    private TextBlock SummaryText =>
-        SummaryRow.GetContent<TextBlock>()!;
-
     private ComboBox ActionCombo =>
         ActionRow.GetContent<ComboBox>()!;
 
@@ -89,8 +85,6 @@ public partial class SystemVolumeNodeInspector
 
     private void RefreshDynamicState(MacroNode node)
     {
-        SummaryText.Text = NodeDisplayFormatter.GetSystemNodeTooltip(node);
-
         VolumeRow.Visibility = node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent
             ? Visibility.Visible
             : Visibility.Collapsed;

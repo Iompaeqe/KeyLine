@@ -18,10 +18,6 @@ public partial class SystemLaunchNodeInspector
         new("Folder", SystemLaunchKind.Folder),
         new("URL", SystemLaunchKind.Url)
     ];
-
-    private TextBlock SummaryText =>
-        SummaryRow.GetContent<TextBlock>()!;
-
     private ComboBox KindCombo =>
         KindRow.GetContent<ComboBox>()!;
 
@@ -130,8 +126,6 @@ public partial class SystemLaunchNodeInspector
 
     private void RefreshDynamicState(MacroNode node)
     {
-        SummaryText.Text = NodeDisplayFormatter.GetSystemNodeTooltip(node);
-
         TargetTextBox.ToolTip = GetLaunchTargetTooltip(node.SystemLaunchKind);
 
         BrowseButton.Visibility = node.SystemLaunchKind == SystemLaunchKind.Url

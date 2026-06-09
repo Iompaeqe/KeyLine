@@ -7,9 +7,6 @@ namespace KeyLine.UI.Inspector.Nodes;
 
 public partial class RunMacroNodeInspector
 {
-    private TextBlock SummaryText =>
-        SummaryRow.GetContent<TextBlock>()!;
-
     private ComboBox MacroCombo =>
         MacroRow.GetContent<ComboBox>()!;
 
@@ -20,10 +17,6 @@ public partial class RunMacroNodeInspector
 
     public void Bind(NodeInspectorContext context, MacroNode node)
     {
-        SummaryText.Text = NodeDisplayFormatter.GetSystemNodeTooltip(
-            node,
-            macroId => ResolveMacroName(context, macroId));
-
         BindMacroCombo(
             context,
             node,
