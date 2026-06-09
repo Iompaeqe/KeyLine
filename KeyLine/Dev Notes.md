@@ -1,37 +1,20 @@
 ﻿
 # Known Bugs
 
-- [] 
+- [ ] open restarting nodes will start from center/center-ish position.
+
 # Feedbacks
 
 - [ ] 
 
 # To Do
 
-1.9 
-1. Toggle Loop Mode, adds 2 fixed position timelines, macro start as first and macro end as last.
-this one can cause weird behavior if macro end has delay, so i gotta keep it consistent
-for the users. if macro end has delay, macro should run until macro end timeline is over, 
-cannot be restarted or started a 2nd time. 
-i currently don't support 1 macro running 2 instances. maybe later i can look into that. 
-
-2. Sequence mode, each run of the macro, will play only 1 timeline and move to the next
-with each press. play them in order with only 1 shortcut. 
-this should have a reset shortcut, which can be set up next to the loop modes in macro options.
-should also show which timeline is played last and what is the next timeline to play.
-each timeline should have a Cooldown value that prevents them from playing again until the cooldown is over.
-if a timeline is on cooldown, skip it and play the next. 
-if all timelines are on cooldown, skip all, and wait for the cooldown to finish.
-
-3. Random Mode, play timelines at random. with each run. can be automated by a 2nd macro using "Run Macro"
-should also show which timeline is played last and what is the next timeline to play.
-
----
-
-maybe later 4. Conditional Sequence
-make timeline run conditions such as
-If timeline 1 is played, next play 2 and skip 3, if not, skip 2 and play 3. needs more details on how it can work.
-
+1.9
+- add Disable timeline that will allow removing the timeline from macro without deleting it. so they can be activated later.
+- better timeline header
+- fix reset button
+- fix loops delay on non-loop timelines
+- fix name change focus
 
 2.0
 - add controller support
@@ -46,6 +29,20 @@ If timeline 1 is played, next play 2 and skip 3, if not, skip 2 and play 3. need
 - add a Feedback/bug report options in About page.
 
 
+
+
+3.0???
+![img.png](img.png)
+
+After KeyLine 2.0 mouse/gamepad updates, start a major Logic Editor update.
+This update should be a large UI-focused push, not a small inspector feature.
+Direction: Warcraft 3 Map Editor-style visual scripting, not full programming or Blueprint complexity.
+Users create simple macro variables/state from the UI, then select them through dropdowns.
+Initial state types should be limited to Counters, Flags, and Timers.
+Conditions should operate only on KeyLine’s own internal state, input state, macro state, and window state.
+Add visual logic/control nodes such as If, Repeat, Set Counter, Toggle Flag, Reset Timer, Run Macro, Stop Macro.
+Keep the system structured and readable, avoiding freeform expressions or script boxes.
+Redesign the editor UI around visual flow so logic, conditions, and state changes are easy to understand.
 
 
 ### notes
