@@ -76,7 +76,7 @@ public partial class MainWindow
         StartPlaybackTimer(workspace, timerMs);
         UpdatePlaybackStatusText();
 
-        await RunPlaybackForLoopMode(
+        await RunWrappedPlaybackAsync(
             target.Handle,
             workspace,
             runnableTimelines,
@@ -114,7 +114,9 @@ public partial class MainWindow
 
     private void StopPlaybackButton_Click(object sender, RoutedEventArgs e)
     {
+        // Pause > Stop is a hard stop: the End hook is skipped.
         _restoreInputsOnStop = true;
+        RequestHardStop(_activeWorkspace);
         StopWorkspaceRunners(_activeWorkspace);
         SetStoppedStatus(true);
     }
@@ -216,7 +218,7 @@ public partial class MainWindow
             StartPlaybackTimer(workspace, timerMs, updateUi: false);
         }
 
-        var completionTask = RunPlaybackForLoopMode(
+        var completionTask = RunWrappedPlaybackAsync(
             target.Handle,
             workspace,
             runnableTimelines,
@@ -248,7 +250,9 @@ public partial class MainWindow
 
     private void StopAllPlaybackFromGlobalShortcut()
     {
+        // Emergency stop is a hard stop: End hooks are skipped for every workspace.
         _restoreInputsOnStop = true;
+        RequestHardStopAll();
         StopAllRunners();
         SetStoppedStatus(restoreInputs: true, clearAllStates: true);
         PlayMacroSound();

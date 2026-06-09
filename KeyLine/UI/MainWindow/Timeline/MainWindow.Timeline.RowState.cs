@@ -26,7 +26,8 @@ public partial class MainWindow
         if (TimelineRowsPanel == null)
             return;
 
-        var rowIndex = _document.Timelines.IndexOf(timeline);
+        var displayTimelines = GetDisplayTimelines();
+        var rowIndex = displayTimelines.IndexOf(timeline);
         if (rowIndex < 0 || rowIndex >= TimelineRowsPanel.Children.Count)
         {
             RefreshTimeline();
@@ -45,7 +46,7 @@ public partial class MainWindow
             visibleSteps,
             canvasWidth,
             rowIndex == 0,
-            rowIndex == _document.Timelines.Count - 1);
+            rowIndex == displayTimelines.Count - 1);
 
         TimelineRowsPanel.Children.RemoveAt(rowIndex);
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
@@ -318,7 +319,7 @@ public partial class MainWindow
         if (TimelineGrid == null || TimelineGrid.ActualWidth <= 0)
             return measuredViewportWidth;
 
-        var headerWidth = _document.Timelines.Count > 1
+        var headerWidth = GetDisplayTimelines().Count > 1
             ? TimelineHeaderWidth
             : 0;
 

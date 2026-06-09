@@ -57,13 +57,13 @@ public sealed class PlaybackController : IMacroRunHost
         if (_shortcutStartingWorkspaces.Contains(workspace))
             return true;
 
-        return workspace.Document.Timelines.Any(timeline =>
+        return EnumerateWorkspaceTimelines(workspace).Any(timeline =>
             _runners.TryGetValue(timeline, out var runner) && runner.IsRunning);
     }
 
     public bool IsWorkspacePaused(MacroWorkspace workspace)
     {
-        return workspace.Document.Timelines.Any(timeline =>
+        return EnumerateWorkspaceTimelines(workspace).Any(timeline =>
             _runners.TryGetValue(timeline, out var runner) &&
             runner.IsRunning &&
             runner.IsPaused);
@@ -81,7 +81,7 @@ public sealed class PlaybackController : IMacroRunHost
     {
         StopRequested = true;
 
-        foreach (var timeline in workspace.Document.Timelines)
+        foreach (var timeline in EnumerateWorkspaceTimelines(workspace))
         {
             if (_runners.TryGetValue(timeline, out var runner))
                 runner.Stop();
@@ -92,7 +92,7 @@ public sealed class PlaybackController : IMacroRunHost
 
     public void PauseWorkspace(MacroWorkspace workspace)
     {
-        foreach (var timeline in workspace.Document.Timelines)
+        foreach (var timeline in EnumerateWorkspaceTimelines(workspace))
         {
             if (_runners.TryGetValue(timeline, out var runner))
                 runner.Pause();
@@ -101,11 +101,54 @@ public sealed class PlaybackController : IMacroRunHost
 
     public void ResumeWorkspace(MacroWorkspace workspace)
     {
-        foreach (var timeline in workspace.Document.Timelines)
+        foreach (var timeline in EnumerateWorkspaceTimelines(workspace))
         {
             if (_runners.TryGetValue(timeline, out var runner))
                 runner.Resume();
         }
+    }
+
+    // Normal timelines plus the workspace's Start/End hook timelines (which run their own
+    // single-pass runners and must be stoppable/pausable alongside the body).
+    private static IEnumerable<MacroTimeline> EnumerateWorkspaceTimelines(MacroWorkspace workspace)
+    {
+        foreach (var timeline in workspace.Document.Timelines)
+            yield return timeline;
+
+        yield return workspace.StartHookTimeline;
+        yield return workspace.EndHookTimeline;
+    }
+
+    /// <summary>
+    /// Runs a single timeline a single finite pass (used for Start/End hook timelines, and for
+    /// Sequence/Random's one-timeline body). The loop count is forced to 1 so an infinite-loop
+    /// hook can never hang the macro.
+    /// </summary>
+    public Task RunSingleTimelineAsync(
+        nint targetHwnd,
+        MacroWorkspace workspace,
+        IReadOnlyList<MacroWorkspace> activeProfileWorkspaces,
+        MacroTimeline timeline,
+        bool followForegroundWindow = false,
+        Action<string>? onPlaybackFailure = null,
+        MacroRunContext? runContext = null)
+    {
+        StopRequested = false;
+        runContext ??= CreateRunContext(targetHwnd, workspace, activeProfileWorkspaces, followForegroundWindow);
+
+        var runner = GetRunner(timeline);
+        var steps = timeline.Nodes.ToList();
+
+        return runner.StartAsync(
+            targetHwnd,
+            steps,
+            loopCount: 1,
+            baseDelayMs: Math.Max(0, timeline.BaseDelayMs),
+            useStandardDelay: timeline.UseStandardDelay,
+            standardDelayMs: timeline.StandardDelayMs,
+            useTextInputMode: timeline.UseTextInputMode,
+            runContext: runContext,
+            reportFailure: onPlaybackFailure);
     }
 
     public void PauseAll()

@@ -83,6 +83,8 @@ public partial class MainWindow
             return;
         }
 
+        // Closing KeyLine is a hard stop: End hooks are skipped.
+        _appIsClosing = true;
         StopAllRunners();
         StopGlobalShortcutHook();
         ShutdownInspector();

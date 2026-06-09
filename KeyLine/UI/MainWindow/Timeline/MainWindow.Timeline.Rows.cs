@@ -23,11 +23,12 @@ public partial class MainWindow
 {
     private List<TimelineRowVisualModel> BuildTimelineRowVisualModels()
     {
-        var rows = new List<TimelineRowVisualModel>(_document.Timelines.Count);
+        var displayTimelines = GetDisplayTimelines();
+        var rows = new List<TimelineRowVisualModel>(displayTimelines.Count);
 
-        for (var i = 0; i < _document.Timelines.Count; i++)
+        for (var i = 0; i < displayTimelines.Count; i++)
         {
-            var timeline = _document.Timelines[i];
+            var timeline = displayTimelines[i];
             var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
                 GetTimelineRenderRawSteps(timeline).ToList(),
                 timeline.UseStandardDelay,
@@ -38,7 +39,7 @@ public partial class MainWindow
                 Timeline = timeline,
                 VisualItems = BuildTimelineVisualItems(timeline, visibleSteps),
                 IsFirstRow = i == 0,
-                IsLastRow = i == _document.Timelines.Count - 1
+                IsLastRow = i == displayTimelines.Count - 1
             });
         }
 

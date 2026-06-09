@@ -87,6 +87,41 @@
                             </TextBlock>
                         </ComboBox.ToolTip>
                     </ComboBox>
+
+                    <entryBlocks:OptionsPillBlock x:Name="HooksPill"
+                                                  Text="Hooks"
+                                                  Margin="6,0,0,0"
+                                                  ToolTip="Macro Hooks: optional Start/End timelines that wrap macro execution." />
+
+                    <Popup x:Name="HooksPopup"
+                           PlacementTarget="{Binding ElementName=HooksPill}"
+                           Placement="Bottom"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           HorizontalOffset="0"
+                           VerticalOffset="4">
+                        <Border Background="{DynamicResource Surface}"
+                                BorderBrush="{DynamicResource Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,8">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.4" Color="#000000" />
+                            </Border.Effect>
+                            <StackPanel x:Name="HooksPopupRows" MinWidth="120">
+                                <TextBlock Text="MACRO HOOKS"
+                                           Style="{DynamicResource Cap}"
+                                           Margin="0,0,0,6" />
+                                <CheckBox x:Name="StartHookCheckBox"
+                                          Content="Start"
+                                          Margin="0,0,0,4"
+                                          ToolTip="Run the Start timeline before the macro body." />
+                                <CheckBox x:Name="EndHookCheckBox"
+                                          Content="End"
+                                          ToolTip="Run the End timeline after the macro body (skipped on hard stops)." />
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </StackPanel>
             </Grid>
         </StackPanel>

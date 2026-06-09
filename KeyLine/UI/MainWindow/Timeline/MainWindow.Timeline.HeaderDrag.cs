@@ -47,8 +47,9 @@ public partial class MainWindow
                 return;
             }
 
-            if (!_isTimelineEditingEnabled)
+            if (!_isTimelineEditingEnabled || IsHookTimeline(timeline))
             {
+                // Hook timelines are selectable but pinned (not drag-reorderable).
                 e.Handled = true;
                 return;
             }
@@ -70,8 +71,9 @@ public partial class MainWindow
 
             CancelTimelineDragState();
 
-            if (!_isTimelineEditingEnabled)
+            if (!_isTimelineEditingEnabled || IsHookTimeline(timeline))
             {
+                // Hook timelines cannot be deleted; middle-click just selects them.
                 SelectTimeline(timeline);
                 _selection.SelectTimeline(timeline);
                 RefreshInspector();
@@ -174,7 +176,7 @@ public partial class MainWindow
 
     private void BeginTimelineHeaderRename(MacroTimeline timeline)
     {
-        if (!_isTimelineEditingEnabled)
+        if (!_isTimelineEditingEnabled || IsHookTimeline(timeline))
             return;
 
         ResetTimelineDeleteConfirmation();
@@ -186,7 +188,7 @@ public partial class MainWindow
 
     private void BeginTimelineDeleteConfirmation(MacroTimeline timeline)
     {
-        if (_document.Timelines.Count <= 1)
+        if (_document.Timelines.Count <= 1 || IsHookTimeline(timeline))
             return;
 
         SelectTimeline(timeline);

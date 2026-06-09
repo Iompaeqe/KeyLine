@@ -69,12 +69,14 @@ public partial class MainWindow
     {
         if (!isPendingDelete)
         {
+            var isHook = IsHookTimeline(timeline);
             var useVerticalText = timeline.Name.Length > 4;
             var content = new Grid
             {
                 Margin = new Thickness(2, 4, 2, 4),
-                ToolTip =
-                    $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
+                ToolTip = isHook
+                    ? $"{timeline.Name} hook\nWraps macro execution. Pinned and not reorderable."
+                    : $"{timeline.Name}\nLoops: {FormatTimelineHeaderLoopCount(timeline)}\nLoop Delay: {FormatTimelineHeaderDelay(timeline.BaseDelayMs)}\nMiddle-click to delete. Right-click for options."
             };
 
             content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
@@ -120,8 +122,9 @@ public partial class MainWindow
 
             var detailText = new TextBlock
             {
-                Text =
-                    $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
+                Text = isHook
+                    ? string.Empty
+                    : $"L{FormatTimelineHeaderLoopCount(timeline)} \nD{FormatTimelineHeaderDelay(timeline.BaseDelayMs)}",
                 FontSize = 10,
                 Height = 50,
                 Width = 45,
@@ -173,10 +176,13 @@ public partial class MainWindow
         var contextMenu = new ContextMenu();
         contextMenu.SetResourceReference(FrameworkElement.StyleProperty, "KeyLineContextMenu");
 
+        // Hook timelines (Start/End) are pinned and fixed: no duplicate/rename/delete.
+        var isHook = IsHookTimeline(timeline);
+
         var duplicateItem = new MenuItem
         {
             Header = "Duplicate",
-            IsEnabled = _isTimelineEditingEnabled
+            IsEnabled = _isTimelineEditingEnabled && !isHook
         };
         duplicateItem.Click += (_, _) =>
         {
@@ -187,14 +193,14 @@ public partial class MainWindow
         var renameItem = new MenuItem
         {
             Header = "Rename",
-            IsEnabled = _isTimelineEditingEnabled
+            IsEnabled = _isTimelineEditingEnabled && !isHook
         };
         renameItem.Click += (_, _) => BeginTimelineHeaderRename(timeline);
 
         var deleteItem = new MenuItem
         {
             Header = "Delete",
-            IsEnabled = _isTimelineEditingEnabled && _document.Timelines.Count > 1
+            IsEnabled = _isTimelineEditingEnabled && !isHook && _document.Timelines.Count > 1
         };
         deleteItem.Click += (_, _) => BeginTimelineDeleteConfirmation(timeline);
 
@@ -269,7 +275,7 @@ public partial class MainWindow
         if (SingleTimelineMetadataText == null)
             return;
 
-        if (_document.Timelines.Count != 1)
+        if (GetDisplayTimelines().Count != 1)
         {
             SingleTimelineMetadataText.Visibility = Visibility.Collapsed;
             return;
@@ -283,7 +289,7 @@ public partial class MainWindow
 
     private void UpdateWindowHeightForTimelineCount()
     {
-        var timelineCount = Math.Max(1, _document.Timelines.Count);
+        var timelineCount = Math.Max(1, GetDisplayTimelines().Count);
 
         var timelineAreaHeight = TimelineLayoutCalculator.GetTimelineAreaHeight(
             timelineCount,

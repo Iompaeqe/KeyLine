@@ -40,6 +40,19 @@ public partial class MainWindow
     private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
     private readonly Dictionary<MacroTimeline, TextBlock> _timelineHeaderStatusTextBlocks = new();
 
+    // The ordered timelines shown in the strip: enabled Start hook, normal timelines, enabled End hook.
+    // Rendering uses this list; logic (playback selection, reorder, delete) uses Document.Timelines.
+    private List<MacroTimeline> GetDisplayTimelines() => _activeWorkspace.EnumerateDisplayTimelines().ToList();
+
+    private bool IsHookTimeline(MacroTimeline timeline) => _activeWorkspace.IsHookTimeline(timeline);
+
+    // A hook header highlights as "active" when it is the current selection; normal timelines
+    // keep their existing active-timeline highlight.
+    private bool IsActiveDisplayTimeline(MacroTimeline timeline) =>
+        IsHookTimeline(timeline)
+            ? ReferenceEquals(timeline, _selection.SelectedTimeline)
+            : ReferenceEquals(timeline, _document.ActiveTimeline);
+
     private sealed class TimelineRowVisualModel
     {
         public required MacroTimeline Timeline { get; init; }
@@ -105,9 +118,9 @@ public partial class MainWindow
             var rowModel = rowModels[i];
             var timeline = rowModel.Timeline;
 
-            if (_document.Timelines.Count > 1)
+            if (rowModels.Count > 1)
             {
-                var isActive = ReferenceEquals(timeline, _document.ActiveTimeline);
+                var isActive = IsActiveDisplayTimeline(timeline);
                 var isSelected = _selection.IsTimelineSelected(timeline);
 
                 AddTimelineHeaderToGrid(
@@ -137,7 +150,8 @@ public partial class MainWindow
         TimelineHeaderGrid.RowDefinitions.Clear();
         _timelineHeaderStatusTextBlocks.Clear();
 
-        var showHeaderColumn = _document.Timelines.Count > 1;
+        var displayCount = GetDisplayTimelines().Count;
+        var showHeaderColumn = displayCount > 1;
 
         TimelineHeaderColumn.Width = showHeaderColumn
             ? new GridLength(TimelineHeaderWidth)
@@ -154,7 +168,7 @@ public partial class MainWindow
         TimelineHeaderGrid.RowDefinitions.Add(
             TimelineLayoutCalculator.CreateHeaderTopExtraRow(TimelineHeaderTopExtra));
 
-        for (var i = 0; i < _document.Timelines.Count; i++)
+        for (var i = 0; i < displayCount; i++)
         {
             TimelineHeaderGrid.RowDefinitions.Add(
                 TimelineLayoutCalculator.CreateTimelineHeaderContentRow(TimelineRowHeight));
@@ -162,7 +176,7 @@ public partial class MainWindow
             TimelineHeaderGrid.RowDefinitions.Add(
                 TimelineLayoutCalculator.CreateTimelineHeaderGapRow(
                     i,
-                    _document.Timelines.Count,
+                    displayCount,
                     TimelineRowGap,
                     TimelineHeaderBottomExtra));
         }
@@ -184,7 +198,7 @@ public partial class MainWindow
     private void AddTimelineHeaderToGrid(MacroTimeline timeline, int timelineIndex, bool isActive, bool isSelected)
     {
         var isFirst = timelineIndex == 0;
-        var isLast = timelineIndex == _document.Timelines.Count - 1;
+        var isLast = timelineIndex == GetDisplayTimelines().Count - 1;
         var header = CreateTimelineHeader(timeline, isActive, isSelected, isFirst, isLast);
 
         var row = TimelineLayoutCalculator.GetHeaderGridRow(timelineIndex);

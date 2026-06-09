@@ -111,6 +111,8 @@ public partial class MainWindow
             LoopModeComboBox.ItemsSource = LoopModeOptions;
             LoopModeComboBox.SelectionChanged += LoopModeComboBox_SelectionChanged;
 
+            InitializeHooksUi();
+
             TargetWindowSearchPill.MouseLeftButtonDown += TargetWindowSearchPill_MouseLeftButtonDown;
             TargetWindowSearchTextBox.LostFocus += TargetWindowSearchTextBox_LostFocus;
             TargetWindowSearchTextBox.KeyDown += TargetWindowSearchTextBox_KeyDown;
@@ -124,6 +126,7 @@ public partial class MainWindow
             SetFormattedDelayInput(TimerMinutesTextBox, TimerUnitTextBlock, DelayFormatter.ClampMilliseconds(workspace.TimerMs));
 
             SetLoopModeSelection(workspace.LoopMode);
+            ApplyHookOptionsFromWorkspace(workspace);
 
             TargetWindowSearchTextBox.Text = workspace.TargetWindowSearchName;
             UpdateAutoWindowFeatureState(!IsWorkspaceRunning(workspace));
