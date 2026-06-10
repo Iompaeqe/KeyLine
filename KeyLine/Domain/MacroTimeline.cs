@@ -31,6 +31,10 @@ public sealed class MacroTimeline
     // so many timelines fit on screen. Persisted so the layout survives restarts.
     public bool IsCollapsed { get; set; }
 
+    // Disabled timelines stay authored and visible (greyed in the strip) but are skipped by every
+    // loop mode at run time. A way to temporarily exclude a timeline without deleting it. Persisted.
+    public bool IsDisabled { get; set; }
+
     public bool HasNodes => Nodes.Count > 0;
 
     public List<MacroNode> ToPlaybackList()

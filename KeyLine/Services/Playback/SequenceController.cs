@@ -106,7 +106,7 @@ public sealed class SequenceController
     }
 
     private bool IsReady(MacroWorkspace workspace, MacroTimeline timeline, DateTime nowUtc) =>
-        timeline.HasNodes && !IsOnCooldown(workspace, timeline, nowUtc);
+        timeline.HasNodes && !timeline.IsDisabled && !IsOnCooldown(workspace, timeline, nowUtc);
 
     /// <summary>
     /// Records that <paramref name="played"/> was just played: puts it on active cooldown using its

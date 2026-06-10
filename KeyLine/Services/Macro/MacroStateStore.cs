@@ -374,7 +374,8 @@ public static class MacroStateStore
             LoopCount = Math.Max(0, persistedTimeline.LoopCount ?? fallbackLoopCount),
             BaseDelayMs = GetPersistedDelayMs(persistedTimeline.BaseDelayMs ?? fallbackBaseDelayMs),
             CooldownMs = GetPersistedDelayMs(persistedTimeline.CooldownMs),
-            IsCollapsed = persistedTimeline.IsCollapsed
+            IsCollapsed = persistedTimeline.IsCollapsed,
+            IsDisabled = persistedTimeline.IsDisabled
         };
 
         foreach (var persistedStep in persistedTimeline.Nodes)
@@ -637,6 +638,7 @@ public static class MacroStateStore
             BaseDelayMs = GetPersistedDelayMs(timeline.BaseDelayMs),
             CooldownMs = GetPersistedDelayMs(timeline.CooldownMs),
             IsCollapsed = timeline.IsCollapsed,
+            IsDisabled = timeline.IsDisabled,
             Nodes = timeline.Nodes
                 .Where(step => !step.IsSyntheticDisplayNode)
                 .Select(ToPersistedStep)
@@ -1034,6 +1036,7 @@ public static class MacroStateStore
         public int? BaseDelayMs { get; set; }
         public int CooldownMs { get; set; }
         public bool IsCollapsed { get; set; }
+        public bool IsDisabled { get; set; }
         public List<PersistedStep> Nodes { get; set; } = new();
     }
 

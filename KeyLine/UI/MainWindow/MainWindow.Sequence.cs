@@ -69,7 +69,7 @@ public partial class MainWindow
         }
 
         return workspace.Document.Timelines
-            .Where(timeline => timeline.Nodes.Count > 0)
+            .Where(timeline => timeline.Nodes.Count > 0 && !timeline.IsDisabled)
             .ToList();
     }
 
