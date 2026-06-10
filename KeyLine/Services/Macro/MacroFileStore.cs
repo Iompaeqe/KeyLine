@@ -100,6 +100,7 @@ public static class MacroFileStore
             ActiveTimelineIndex = workspace.Document.ActiveTimelineIndex,
             LoopCount = Math.Max(0, workspace.LoopCount),
             LoopMode = workspace.LoopMode,
+            SequenceMode = workspace.SequenceMode,
             TimerMs = GetPersistedDelayMs(workspace.TimerMs),
             BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
             ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(workspace.ShortcutTriggerBehavior),
@@ -210,6 +211,7 @@ public static class MacroFileStore
             Name = string.IsNullOrWhiteSpace(persisted.Name) ? "Imported Macro" : persisted.Name,
             LoopCount = Math.Max(0, persisted.LoopCount),
             LoopMode = GetPersistedLoopMode(persisted),
+            SequenceMode = GetPersistedSequenceMode(persisted),
             TimerMs = GetPersistedTimerMs(persisted),
             BaseDelayMs = GetPersistedDelayMs(persisted.BaseDelayMs),
             ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(persisted.ShortcutTriggerBehavior),
@@ -282,10 +284,23 @@ public static class MacroFileStore
         return timeline;
     }
 
+    // Legacy top-level Random loop mode (enum value 5) maps to Sequence + SequenceMode.Random.
+    private const int LegacyRandomLoopModeValue = 5;
+
     private static MacroLoopMode GetPersistedLoopMode(PersistedWorkspace persisted)
     {
         var loopMode = persisted.LoopType ?? persisted.LoopMode;
+        if ((int)loopMode == LegacyRandomLoopModeValue)
+            return MacroLoopMode.Sequence;
         return Enum.IsDefined(loopMode) ? loopMode : MacroLoopMode.Async;
+    }
+
+    private static SequenceMode GetPersistedSequenceMode(PersistedWorkspace persisted)
+    {
+        var loopMode = persisted.LoopType ?? persisted.LoopMode;
+        if ((int)loopMode == LegacyRandomLoopModeValue)
+            return SequenceMode.Random;
+        return Enum.IsDefined(persisted.SequenceMode) ? persisted.SequenceMode : SequenceMode.Ordered;
     }
 
     private static MacroNode ToStep(PersistedStep persisted)
@@ -641,6 +656,7 @@ public static class MacroFileStore
         public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public MacroLoopMode? LoopType { get; set; }
+        public SequenceMode SequenceMode { get; set; } = SequenceMode.Ordered;
         public int TimerMinutes { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;

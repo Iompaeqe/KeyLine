@@ -25,7 +25,7 @@ public sealed class SequenceControllerTests
         var played = new List<MacroTimeline>();
         for (var i = 0; i < 4; i++)
         {
-            var selected = controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now);
+            var selected = controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now);
             Assert.NotNull(selected);
             controller.MarkPlayed(workspace, timelines, selected!, Now);
             played.Add(selected!);
@@ -43,12 +43,12 @@ public sealed class SequenceControllerTests
         var timelines = new[] { Timeline(10_000), Timeline(10_000), Timeline(0) };
 
         // Play T1, T2, T3 -> pointer wraps to index 0, T1 and T2 still on cooldown.
-        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now)!, Now);
-        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now)!, Now);
-        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now)!, Now);
+        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now)!, Now);
+        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now)!, Now);
+        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now)!, Now);
 
         // Pointer is at index 0 (T1, on cooldown) -> skip T1, skip T2, land on T3.
-        var selected = controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now);
+        var selected = controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now);
 
         Assert.Same(timelines[2], selected);
     }
@@ -60,11 +60,11 @@ public sealed class SequenceControllerTests
         var workspace = new MacroWorkspace();
         var timelines = new[] { Timeline(10_000), Timeline(10_000) };
 
-        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now)!, Now);
-        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now)!, Now);
+        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now)!, Now);
+        controller.MarkPlayed(workspace, timelines, controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now)!, Now);
 
         var pointerBefore = controller.GetNextIndex(workspace, timelines.Length);
-        var selected = controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now);
+        var selected = controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now);
 
         Assert.Null(selected);
         Assert.Equal(pointerBefore, controller.GetNextIndex(workspace, timelines.Length));
@@ -95,7 +95,7 @@ public sealed class SequenceControllerTests
 
         for (var i = 0; i < 30; i++)
         {
-            var selected = controller.SelectNext(workspace, timelines, SequenceSelectionMode.Random, Now);
+            var selected = controller.SelectNext(workspace, timelines, SequenceMode.Random, Now);
             Assert.NotNull(selected);
             Assert.NotSame(timelines[1], selected);
         }
@@ -108,7 +108,7 @@ public sealed class SequenceControllerTests
         var workspace = new MacroWorkspace();
         var timelines = new[] { Timeline(withNode: false), Timeline() };
 
-        var selected = controller.SelectNext(workspace, timelines, SequenceSelectionMode.Sequence, Now);
+        var selected = controller.SelectNext(workspace, timelines, SequenceMode.Ordered, Now);
 
         Assert.Same(timelines[1], selected);
     }
@@ -137,7 +137,55 @@ public sealed class SequenceControllerTests
         var controller = new SequenceController();
         var workspace = new MacroWorkspace();
 
-        Assert.Null(controller.SelectNext(workspace, Array.Empty<MacroTimeline>(), SequenceSelectionMode.Sequence, Now));
-        Assert.Null(controller.SelectNext(workspace, Array.Empty<MacroTimeline>(), SequenceSelectionMode.Random, Now));
+        Assert.Null(controller.SelectNext(workspace, Array.Empty<MacroTimeline>(), SequenceMode.Ordered, Now));
+        Assert.Null(controller.SelectNext(workspace, Array.Empty<MacroTimeline>(), SequenceMode.Random, Now));
+    }
+
+    [Fact]
+    public void Priority_AlwaysScansFromFirstAndDoesNotAdvancePointer()
+    {
+        var controller = new SequenceController();
+        var workspace = new MacroWorkspace();
+        var timelines = new[] { Timeline(), Timeline(), Timeline() };
+
+        for (var i = 0; i < 3; i++)
+        {
+            var selected = controller.SelectNext(workspace, timelines, SequenceMode.Priority, Now);
+            // Index 0 is always available, so Priority must always pick it.
+            Assert.Same(timelines[0], selected);
+            controller.MarkPlayed(workspace, timelines, selected!, Now, SequenceMode.Priority);
+        }
+
+        // Priority never touches the Ordered pointer.
+        Assert.Equal(0, controller.GetNextIndex(workspace, timelines.Length));
+    }
+
+    [Fact]
+    public void Priority_PicksFirstAvailableWhenEarlierAreOnCooldown()
+    {
+        var controller = new SequenceController();
+        var workspace = new MacroWorkspace();
+        var timelines = new[] { Timeline(10_000), Timeline(10_000), Timeline(0) };
+
+        // Put T1 and T2 on active cooldown.
+        controller.MarkPlayed(workspace, timelines, timelines[0], Now, SequenceMode.Priority);
+        controller.MarkPlayed(workspace, timelines, timelines[1], Now, SequenceMode.Priority);
+
+        var selected = controller.SelectNext(workspace, timelines, SequenceMode.Priority, Now);
+
+        Assert.Same(timelines[2], selected);
+    }
+
+    [Fact]
+    public void Priority_SkipsDisabledTimelines()
+    {
+        var controller = new SequenceController();
+        var workspace = new MacroWorkspace();
+        var timelines = new[] { Timeline(), Timeline() };
+        timelines[0].IsDisabled = true;
+
+        var selected = controller.SelectNext(workspace, timelines, SequenceMode.Priority, Now);
+
+        Assert.Same(timelines[1], selected);
     }
 }

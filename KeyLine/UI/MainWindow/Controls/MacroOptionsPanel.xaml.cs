@@ -18,6 +18,8 @@ public partial class MacroOptionsPanel : UserControl
     public TextBlock ShortcutToggleText => ShortcutTogglePill.TextElement;
     public TextBlock ShortcutRemapText => ShortcutRemapPill.TextElement;
     public ComboBox LoopModeSelector => LoopModeComboBox;
+    public ComboBox SequenceModeSelector => SequenceModeComboBox;
+    public System.Windows.Controls.Panel SequenceModePanelControl => SequenceModePanel;
 
     public System.Windows.Controls.Primitives.ToggleButton HooksToggleControl => HooksToggle;
     public System.Windows.Controls.Primitives.Popup HooksPopupControl => HooksPopup;

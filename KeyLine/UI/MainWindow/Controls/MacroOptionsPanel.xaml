@@ -44,12 +44,18 @@
                                                   ToolTip="{x:Static ui:TooltipNotes.MacroShortcutRemap}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="2"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Left"
-                            Margin="0,6,0,-5">
+                <Grid Grid.Row="2" Margin="0,6,0,-5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="Loop Mode"
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+
+                    <TextBlock Text="Loop"
                                Style="{StaticResource Dim}"
                                Margin="0,0,6,0">
 
@@ -88,7 +94,33 @@
                         </ComboBox.ToolTip>
                     </ComboBox>
 
+                    <!-- Sequence sub-mode selector; only shown when Loop Mode is Sequence.
+                         Item order must match the SequenceMode enum (Ordered, Priority, Random). -->
+                    <StackPanel x:Name="SequenceModePanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Visibility="Visible">
+                        <TextBlock Text="Sequence"
+                                   Style="{StaticResource Dim}"
+                                   Margin="10,0,6,0"
+                                   VerticalAlignment="Center" />
+                        <ComboBox x:Name="SequenceModeComboBox"
+                                  Width="85"
+                                  Height="22">
+                            <ComboBoxItem Content="Ordered"
+                                          ToolTip="Runs the next available timeline each time, then advances." />
+                            <ComboBoxItem Content="Priority"
+                                          ToolTip="Always checks from the first timeline and runs the first available timeline." />
+                            <ComboBoxItem Content="Random"
+                                          ToolTip="Randomly picks one available timeline each time." />
+                        </ComboBox>
+                    </StackPanel>
+                    </StackPanel>
+
                     <ToggleButton x:Name="HooksToggle"
+                                  Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
                                   Style="{DynamicResource OptionsDropdownToggle}"
                                   Content="Hooks"
                                   ToolTip="Macro Hooks: optional Start/End timelines that wrap macro execution." />
@@ -125,14 +157,14 @@
                             </StackPanel>
                         </Border>
                     </Popup>
-                </StackPanel>
+                </Grid>
 
                 <entryBlocks:OptionsPillBlock x:Name="ResetPill"
                                               Grid.Row="0"
                                               Text="Reset"
                                               HorizontalAlignment="Right"
                                               VerticalAlignment="Top"
-                                              Visibility="Visible"
+                                              Visibility="Collapsed"
                                               Focusable="True"
                                               ToolTip="Left-click: reset the Sequence/Random pointer and cooldowns now.&#10;Right-click: assign a reset shortcut.&#10;Middle-click: clear the reset shortcut." />
             </Grid>

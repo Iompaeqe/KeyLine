@@ -1070,7 +1070,8 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     [Fact]
     public void SaveAndLoad_KeepsHooksRegardlessOfEnabledAndPreservesCooldown()
     {
-        var workspace = CreateWorkspace("State Hooks", MacroLoopMode.Random);
+        var workspace = CreateWorkspace("State Hooks", MacroLoopMode.Sequence);
+        workspace.SequenceMode = SequenceMode.Random;
         workspace.StartHookEnabled = true;
         workspace.EndHookEnabled = false; // disabled but still kept in local state
         workspace.ResetShortcutKeys = "82";
@@ -1083,7 +1084,8 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
 
         Assert.NotNull(snapshot);
         var loaded = snapshot.Workspaces[0];
-        Assert.Equal(MacroLoopMode.Random, loaded.LoopMode);
+        Assert.Equal(MacroLoopMode.Sequence, loaded.LoopMode);
+        Assert.Equal(SequenceMode.Random, loaded.SequenceMode);
         Assert.True(loaded.StartHookEnabled);
         Assert.False(loaded.EndHookEnabled);
         Assert.Equal("82", loaded.ResetShortcutKeys);

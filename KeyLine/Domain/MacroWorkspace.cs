@@ -6,7 +6,15 @@ public enum MacroLoopMode
     Sync,
     Cycle,
     Chain,
-    Sequence,
+    Sequence
+}
+
+// Sub-mode for LoopMode.Sequence. Sequence runs exactly one eligible normal timeline per activation;
+// this picks which one. The legacy top-level "Random" loop mode migrates to Sequence + Random.
+public enum SequenceMode
+{
+    Ordered,
+    Priority,
     Random
 }
 
@@ -33,6 +41,9 @@ public sealed class MacroWorkspace
     public int BaseDelayMs { get; set; } = 50;
 
     public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
+
+    // Only meaningful when LoopMode == Sequence. Defaults to Ordered (the original Sequence behavior).
+    public SequenceMode SequenceMode { get; set; } = SequenceMode.Ordered;
 
     public string ShortcutKeys { get; set; } = "";
 

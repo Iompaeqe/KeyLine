@@ -22,6 +22,7 @@ public static class MacroCloneService
             TimerMs = source.TimerMs,
             BaseDelayMs = source.BaseDelayMs,
             LoopMode = source.LoopMode,
+            SequenceMode = source.SequenceMode,
             ShortcutKeys = source.ShortcutKeys,
             ShortcutsEnabled = source.ShortcutsEnabled,
             ShortcutTriggerBehavior = source.ShortcutTriggerBehavior,

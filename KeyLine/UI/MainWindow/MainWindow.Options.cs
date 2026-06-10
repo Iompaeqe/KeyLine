@@ -84,17 +84,16 @@ public partial class MainWindow
         private const string LoopModeCycleText = "Cycle";
         private const string LoopModeChainText = "Chain";
         private const string LoopModeSequenceText = "Sequence";
-        private const string LoopModeRandomText = "Random";
         private static readonly string[] LoopModeOptions =
         [
             LoopModeAsyncText,
             LoopModeSyncText,
             LoopModeCycleText,
             LoopModeChainText,
-            LoopModeSequenceText,
-            LoopModeRandomText
+            LoopModeSequenceText
         ];
         private bool _isUpdatingLoopModeSelection;
+        private bool _isUpdatingSequenceModeSelection;
         private bool _isUpdatingTimerInput;
 
         private void InitializeMacroOptions()
@@ -114,6 +113,8 @@ public partial class MainWindow
 
             LoopModeComboBox.ItemsSource = LoopModeOptions;
             LoopModeComboBox.SelectionChanged += LoopModeComboBox_SelectionChanged;
+
+            SequenceModeComboBox.SelectionChanged += SequenceModeComboBox_SelectionChanged;
 
             InitializeHooksUi();
 
@@ -148,6 +149,7 @@ public partial class MainWindow
                 : GetTimerMs();
 
             workspace.LoopMode = GetSelectedMacroLoopMode();
+            workspace.SequenceMode = GetSelectedSequenceMode();
             if (_featureGate.IsEnabled(FeatureId.AutoWindow))
                 workspace.TargetWindowSearchName = TargetWindowSearchTextBox.Text.Trim();
 
@@ -157,6 +159,7 @@ public partial class MainWindow
         private void SetMacroOptionsEditingEnabled(bool isEnabled)
         {
             LoopModeComboBox.IsEnabled = isEnabled;
+            SequenceModeComboBox.IsEnabled = isEnabled;
 
             UpdateAutoWindowFeatureState(isEnabled);
             WindowComboBox.IsEnabled = isEnabled;
@@ -180,10 +183,44 @@ public partial class MainWindow
             if (string.Equals(selectedMode, LoopModeSequenceText, StringComparison.OrdinalIgnoreCase))
                 return MacroLoopMode.Sequence;
 
-            if (string.Equals(selectedMode, LoopModeRandomText, StringComparison.OrdinalIgnoreCase))
-                return MacroLoopMode.Random;
-
             return MacroLoopMode.Async;
+        }
+
+        private SequenceMode GetSelectedSequenceMode()
+        {
+            // ComboBox item order matches the SequenceMode enum (Ordered, Priority, Random).
+            var index = SequenceModeComboBox.SelectedIndex;
+            return index >= 0 ? (SequenceMode)index : _activeWorkspace.SequenceMode;
+        }
+
+        private void SetSequenceModeSelection(SequenceMode sequenceMode)
+        {
+            _isUpdatingSequenceModeSelection = true;
+            try
+            {
+                SequenceModeComboBox.SelectedIndex = (int)sequenceMode;
+            }
+            finally
+            {
+                _isUpdatingSequenceModeSelection = false;
+            }
+        }
+
+        private void SequenceModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isUpdatingSequenceModeSelection)
+                return;
+
+            if (!_isTimelineEditingEnabled)
+            {
+                SetSequenceModeSelection(_activeWorkspace.SequenceMode);
+                return;
+            }
+
+            _activeWorkspace.SequenceMode = GetSelectedSequenceMode();
+            CaptureActiveWorkspaceState();
+            RefreshTimelineHeaderStatuses();
+            ScheduleSaveState();
         }
 
         private void LoopModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -226,7 +263,6 @@ public partial class MainWindow
                 MacroLoopMode.Cycle => LoopModeCycleText,
                 MacroLoopMode.Chain => LoopModeChainText,
                 MacroLoopMode.Sequence => LoopModeSequenceText,
-                MacroLoopMode.Random => LoopModeRandomText,
                 _ => LoopModeAsyncText
             };
         }

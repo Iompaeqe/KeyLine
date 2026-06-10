@@ -76,7 +76,7 @@ public sealed class InspectorController
             var timeline = _getCurrentTimeline();
             var workspace = _getActiveWorkspace();
             var showCooldown =
-                workspace.LoopMode is MacroLoopMode.Sequence or MacroLoopMode.Random &&
+                workspace.LoopMode is MacroLoopMode.Sequence &&
                 !workspace.IsHookTimeline(timeline);
 
             _window.SetTimelineState(new TimelineInspectorState(

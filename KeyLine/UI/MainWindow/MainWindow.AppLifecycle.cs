@@ -48,6 +48,8 @@ public partial class MainWindow
         private TextBlock ShortcutToggleTextBlock => MacroOptionsPanel.ShortcutToggleText;
         private TextBlock ShortcutRemapTextBlock => MacroOptionsPanel.ShortcutRemapText;
         private ComboBox LoopModeComboBox => MacroOptionsPanel.LoopModeSelector;
+        private ComboBox SequenceModeComboBox => MacroOptionsPanel.SequenceModeSelector;
+        private Panel SequenceModePanel => MacroOptionsPanel.SequenceModePanelControl;
         private ToggleButton HooksToggle => MacroOptionsPanel.HooksToggleControl;
         private System.Windows.Controls.Primitives.Popup HooksPopup => MacroOptionsPanel.HooksPopupControl;
         private CheckBox StartHookCheckBox => MacroOptionsPanel.StartHookCheckBoxControl;

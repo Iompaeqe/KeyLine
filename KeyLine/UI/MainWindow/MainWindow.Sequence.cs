@@ -14,19 +14,27 @@ public partial class MainWindow
     private DispatcherTimer? _sequenceHeaderTimer;
 
     private static bool IsSequenceMode(MacroWorkspace workspace) =>
-        workspace.LoopMode is MacroLoopMode.Sequence or MacroLoopMode.Random;
+        workspace.LoopMode is MacroLoopMode.Sequence;
 
-    // Refreshes timeline header status (CD countdown / Ready) while in Sequence/Random and idle,
-    // and shows/hides the Reset option. Called on workspace apply, loop-mode change, and stop/start.
+    // Refreshes timeline header status (CD countdown / Ready) while in Sequence and idle, shows/hides
+    // the Reset option, and shows the Sequence Mode selector only when Loop Mode is Sequence.
+    // Called on workspace apply, loop-mode change, and stop/start.
     private void UpdateSequenceModeUi()
     {
         _sequenceHeaderTimer ??= CreateSequenceHeaderTimer();
 
-        var showsSequenceStatus = IsSequenceMode(_activeWorkspace) && !IsWorkspaceRunning(_activeWorkspace);
+        var isSequence = IsSequenceMode(_activeWorkspace);
+
+        var showsSequenceStatus = isSequence && !IsWorkspaceRunning(_activeWorkspace);
         if (showsSequenceStatus)
             _sequenceHeaderTimer.Start();
         else
             _sequenceHeaderTimer.Stop();
+
+        SequenceModePanel.Visibility = isSequence
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+        SetSequenceModeSelection(_activeWorkspace.SequenceMode);
 
         UpdateResetOptionVisibility();
     }
@@ -54,14 +62,10 @@ public partial class MainWindow
 
         if (IsSequenceMode(workspace))
         {
-            var mode = workspace.LoopMode == MacroLoopMode.Random
-                ? SequenceSelectionMode.Random
-                : SequenceSelectionMode.Sequence;
-
             sequenceSelected = _sequence.SelectNext(
                 workspace,
                 workspace.Document.Timelines.ToList(),
-                mode,
+                workspace.SequenceMode,
                 System.DateTime.UtcNow);
 
             return sequenceSelected == null
@@ -83,7 +87,8 @@ public partial class MainWindow
             workspace,
             workspace.Document.Timelines.ToList(),
             sequenceSelected,
-            System.DateTime.UtcNow);
+            System.DateTime.UtcNow,
+            workspace.SequenceMode);
 
         if (ReferenceEquals(workspace, _activeWorkspace))
             RefreshTimelineHeaderStatuses();

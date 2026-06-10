@@ -296,6 +296,7 @@ public static class MacroStateStore
                 GetPersistedDelayMs(persistedWorkspace.BaseDelayMs)),
             LoopCount = Math.Max(0, persistedWorkspace.LoopCount),
             LoopMode = GetPersistedLoopMode(persistedWorkspace),
+            SequenceMode = GetPersistedSequenceMode(persistedWorkspace),
             TimerMs = GetPersistedTimerMs(persistedWorkspace),
             BaseDelayMs = GetPersistedDelayMs(persistedWorkspace.BaseDelayMs),
             ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(persistedWorkspace.ShortcutTriggerBehavior),
@@ -659,6 +660,7 @@ public static class MacroStateStore
                 Math.Max(0, workspace.Document.Timelines.Count - 1)),
             LoopCount = Math.Max(0, workspace.LoopCount),
             LoopMode = workspace.LoopMode,
+            SequenceMode = workspace.SequenceMode,
             TimerMs = GetPersistedDelayMs(workspace.TimerMs),
             BaseDelayMs = GetPersistedDelayMs(workspace.BaseDelayMs),
             ShortcutTriggerBehavior = GetSafeShortcutTriggerBehavior(workspace.ShortcutTriggerBehavior),
@@ -885,10 +887,26 @@ public static class MacroStateStore
         }
     }
 
+    // Old files stored Random as a top-level loop mode (enum value 5). It now maps to
+    // Sequence + SequenceMode.Random.
+    private const int LegacyRandomLoopModeValue = 5;
+
     private static MacroLoopMode GetPersistedLoopMode(PersistedWorkspace persistedWorkspace)
     {
         var loopMode = persistedWorkspace.LoopType ?? persistedWorkspace.LoopMode;
+        if ((int)loopMode == LegacyRandomLoopModeValue)
+            return MacroLoopMode.Sequence;
         return Enum.IsDefined(loopMode) ? loopMode : MacroLoopMode.Async;
+    }
+
+    private static SequenceMode GetPersistedSequenceMode(PersistedWorkspace persistedWorkspace)
+    {
+        var loopMode = persistedWorkspace.LoopType ?? persistedWorkspace.LoopMode;
+        if ((int)loopMode == LegacyRandomLoopModeValue)
+            return SequenceMode.Random;
+        return Enum.IsDefined(persistedWorkspace.SequenceMode)
+            ? persistedWorkspace.SequenceMode
+            : SequenceMode.Ordered;
     }
 
     private static ShortcutTriggerBehavior GetSafeShortcutTriggerBehavior(ShortcutTriggerBehavior behavior) =>
@@ -998,6 +1016,7 @@ public static class MacroStateStore
         public MacroLoopMode LoopMode { get; set; } = MacroLoopMode.Async;
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public MacroLoopMode? LoopType { get; set; }
+        public SequenceMode SequenceMode { get; set; } = SequenceMode.Ordered;
         public int TimerMinutes { get; set; }
         public int TimerMs { get; set; }
         public int BaseDelayMs { get; set; } = 50;

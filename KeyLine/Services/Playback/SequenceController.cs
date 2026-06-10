@@ -2,14 +2,8 @@ using KeyLine.Domain;
 
 namespace KeyLine.Services.Playback;
 
-public enum SequenceSelectionMode
-{
-    Sequence,
-    Random
-}
-
 /// <summary>
-/// Session-only runtime state for the Sequence/Random loop modes: a per-workspace "next timeline"
+/// Session-only runtime state for the Sequence loop mode: a per-workspace "next timeline"
 /// pointer and a map of active cooldown end-times keyed by timeline. None of this is persisted;
 /// it resets when KeyLine restarts. The configured cooldown value lives on the timeline itself
 /// (<see cref="MacroTimeline.CooldownMs"/>) and is never cleared by this controller.
@@ -70,39 +64,61 @@ public sealed class SequenceController
 
     /// <summary>
     /// Picks the timeline to play for this trigger, or null when nothing is ready (every timeline is
-    /// empty or on cooldown, or there are no normal timelines). Sequence scans from the pointer with
-    /// wrap-around; Random picks uniformly from the ready set.
+    /// empty, disabled, or on cooldown, or there are no normal timelines). This is the single place
+    /// the three Sequence sub-modes are resolved:
+    /// <list type="bullet">
+    /// <item>Ordered scans from the rotating pointer with wrap-around.</item>
+    /// <item>Priority always scans from index 0 (earlier timelines win); no pointer.</item>
+    /// <item>Random picks uniformly from the ready set; no pointer.</item>
+    /// </list>
     /// </summary>
     public MacroTimeline? SelectNext(
         MacroWorkspace workspace,
         IReadOnlyList<MacroTimeline> normalTimelines,
-        SequenceSelectionMode mode,
+        SequenceMode mode,
         DateTime nowUtc)
     {
         if (normalTimelines.Count == 0)
             return null;
 
-        if (mode == SequenceSelectionMode.Random)
+        switch (mode)
         {
-            var ready = new List<MacroTimeline>();
-            foreach (var timeline in normalTimelines)
+            case SequenceMode.Random:
             {
-                if (IsReady(workspace, timeline, nowUtc))
-                    ready.Add(timeline);
+                var ready = new List<MacroTimeline>();
+                foreach (var timeline in normalTimelines)
+                {
+                    if (IsReady(workspace, timeline, nowUtc))
+                        ready.Add(timeline);
+                }
+
+                return ready.Count == 0 ? null : ready[_random.Next(ready.Count)];
             }
 
-            return ready.Count == 0 ? null : ready[_random.Next(ready.Count)];
-        }
+            case SequenceMode.Priority:
+            {
+                foreach (var timeline in normalTimelines)
+                {
+                    if (IsReady(workspace, timeline, nowUtc))
+                        return timeline;
+                }
 
-        var start = GetNextIndex(workspace, normalTimelines.Count);
-        for (var offset = 0; offset < normalTimelines.Count; offset++)
-        {
-            var timeline = normalTimelines[(start + offset) % normalTimelines.Count];
-            if (IsReady(workspace, timeline, nowUtc))
-                return timeline;
-        }
+                return null;
+            }
 
-        return null;
+            default: // Ordered
+            {
+                var start = GetNextIndex(workspace, normalTimelines.Count);
+                for (var offset = 0; offset < normalTimelines.Count; offset++)
+                {
+                    var timeline = normalTimelines[(start + offset) % normalTimelines.Count];
+                    if (IsReady(workspace, timeline, nowUtc))
+                        return timeline;
+                }
+
+                return null;
+            }
+        }
     }
 
     private bool IsReady(MacroWorkspace workspace, MacroTimeline timeline, DateTime nowUtc) =>
@@ -110,13 +126,15 @@ public sealed class SequenceController
 
     /// <summary>
     /// Records that <paramref name="played"/> was just played: puts it on active cooldown using its
-    /// configured value and advances the Sequence pointer to the timeline after it.
+    /// configured value. Only Ordered advances the rotating pointer to the timeline after it; Priority
+    /// and Random never touch the pointer, so an Ordered run can resume cleanly after a mode switch.
     /// </summary>
     public void MarkPlayed(
         MacroWorkspace workspace,
         IReadOnlyList<MacroTimeline> normalTimelines,
         MacroTimeline played,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        SequenceMode mode = SequenceMode.Ordered)
     {
         var state = GetState(workspace);
 
@@ -127,6 +145,9 @@ public sealed class SequenceController
             state.CooldownUntilUtc.Remove(played);
 
         state.LastPlayed = played;
+
+        if (mode != SequenceMode.Ordered)
+            return;
 
         var playedIndex = IndexOf(normalTimelines, played);
         if (playedIndex >= 0 && normalTimelines.Count > 0)

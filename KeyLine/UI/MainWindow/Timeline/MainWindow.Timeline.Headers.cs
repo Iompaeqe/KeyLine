@@ -202,9 +202,9 @@ public partial class MainWindow
             return true;
         }
 
-        // For Sequence, mark the timeline the pointer will check next.
+        // Only Ordered uses the rotating pointer, so the "Next" marker only applies there.
         var normals = _activeWorkspace.Document.Timelines;
-        var isNext = _activeWorkspace.LoopMode == MacroLoopMode.Sequence &&
+        var isNext = _activeWorkspace.SequenceMode == SequenceMode.Ordered &&
                      normals.Count > 0 &&
                      ReferenceEquals(timeline, normals[_sequence.GetNextIndex(_activeWorkspace, normals.Count)]);
 
