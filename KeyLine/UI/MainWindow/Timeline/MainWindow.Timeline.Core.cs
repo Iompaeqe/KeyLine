@@ -38,8 +38,7 @@ public partial class MainWindow
     private static double TimelineHeaderBottomExtra => TimelineUi.HeaderBottomExtra;
 
     private readonly Dictionary<MacroTimeline, TimelineRowRenderState> _timelineRowRenderStates = new();
-    private readonly Dictionary<MacroTimeline, TextBlock> _timelineHeaderStatusTextBlocks = new();
-    private readonly Dictionary<MacroTimeline, Border> _timelineHeaderStatusDots = new();
+    private readonly Dictionary<MacroTimeline, TimelineHeader> _timelineHeaderControls = new();
 
     // The ordered timelines shown in the strip: enabled Start hook, normal timelines, enabled End hook.
     // Rendering uses this list; logic (playback selection, reorder, delete) uses Document.Timelines.
@@ -64,6 +63,17 @@ public partial class MainWindow
     private void ToggleTimelineCollapsed(MacroTimeline timeline)
     {
         timeline.IsCollapsed = !timeline.IsCollapsed;
+        RefreshTimeline();
+        ScheduleSaveState();
+    }
+
+    private void ToggleTimelineDisabled(MacroTimeline timeline)
+    {
+        if (!_isTimelineEditingEnabled || IsHookTimeline(timeline))
+            return;
+
+        timeline.IsDisabled = !timeline.IsDisabled;
+        ResetTimelineDeleteConfirmation();
         RefreshTimeline();
         ScheduleSaveState();
     }
@@ -170,8 +180,7 @@ public partial class MainWindow
     {
         TimelineHeaderGrid.Children.Clear();
         TimelineHeaderGrid.RowDefinitions.Clear();
-        _timelineHeaderStatusTextBlocks.Clear();
-        _timelineHeaderStatusDots.Clear();
+        _timelineHeaderControls.Clear();
 
         var displayTimelines = GetDisplayTimelines();
         var displayCount = displayTimelines.Count;

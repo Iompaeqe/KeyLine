@@ -1,0 +1,174 @@
+<UserControl x:Class="KeyLine.UI.Timeline.TimelineHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/UI/Common/Styles/ControlPreviewResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
+    <Border x:Name="CardBorder"
+            Margin="4,0,4,0"
+            CornerRadius="9"
+            BorderThickness="1"
+            Cursor="SizeAll"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Status-colored accent spine on the inner edge, ties the card to its row visually. -->
+            <Border x:Name="Accent"
+                    Grid.Column="0"
+                    Width="3"
+                    CornerRadius="2"
+                    Margin="0,13,0,13"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    IsHitTestVisible="False" />
+
+            <!-- Expanded: chevron + name + dot, then a metadata line, then a live status word. -->
+            <StackPanel x:Name="ExpandedBody"
+                        Grid.Column="1"
+                        Orientation="Vertical"
+                        VerticalAlignment="Center"
+                        Margin="6,0,9,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Tag="collapse-toggle"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Padding="0,0,4,0"
+                            ToolTip="Collapse timeline">
+                        <TextBlock Text="&#x25BE;"
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   IsHitTestVisible="False"
+                                   Foreground="#8CA0B6" />
+                    </Border>
+
+                    <TextBlock x:Name="ExpandedName"
+                               Grid.Column="1"
+                               FontWeight="Bold"
+                               FontSize="12.5"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap"
+                               VerticalAlignment="Center" />
+
+                    <Border x:Name="ExpandedDot"
+                            Grid.Column="2"
+                            Width="7"
+                            Height="7"
+                            CornerRadius="3.5"
+                            Margin="5,0,0,0"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Background="#64748B"
+                            IsHitTestVisible="False" />
+                </Grid>
+
+                <TextBlock x:Name="MetaText"
+                           FontSize="9.5"
+                           FontWeight="SemiBold"
+                           Margin="2,3,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap"
+                           Foreground="#7A8A9C" />
+
+                <TextBlock x:Name="ExpandedStatus"
+                           Margin="2,2,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap" />
+            </StackPanel>
+
+            <!-- Collapsed: one compact line that still surfaces status (dot) and name. -->
+            <Grid x:Name="CollapsedBody"
+                  Grid.Column="1"
+                  VerticalAlignment="Center"
+                  Margin="4,0,9,0"
+                  Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Tag="collapse-toggle"
+                        Background="Transparent"
+                        Cursor="Hand"
+                        VerticalAlignment="Center"
+                        Padding="0,0,4,0"
+                        ToolTip="Expand timeline">
+                    <TextBlock Text="&#x25B8;"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               IsHitTestVisible="False"
+                               Foreground="#8CA0B6" />
+                </Border>
+
+                <Border x:Name="CollapsedDot"
+                        Grid.Column="1"
+                        Width="7"
+                        Height="7"
+                        CornerRadius="3.5"
+                        Margin="2,0,6,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Background="#64748B"
+                        IsHitTestVisible="False" />
+
+                <TextBlock x:Name="CollapsedName"
+                           Grid.Column="2"
+                           FontWeight="Bold"
+                           FontSize="11.5"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap"
+                           VerticalAlignment="Center" />
+
+                <TextBlock x:Name="CollapsedStatus"
+                           Grid.Column="3"
+                           Margin="6,0,0,0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap" />
+            </Grid>
+
+            <!-- Pending delete confirmation. -->
+            <StackPanel x:Name="PendingDeleteBody"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed"
+                        ToolTip="Left-click or middle-click to confirm delete.">
+                <TextBlock x:Name="PendingDeleteName"
+                           FontWeight="Black"
+                           FontSize="13"
+                           MaxWidth="120"
+                           TextTrimming="CharacterEllipsis"
+                           TextAlignment="Center"
+                           Foreground="#FECACA" />
+                <TextBlock Text="Confirm delete"
+                           FontWeight="SemiBold"
+                           FontSize="8"
+                           TextAlignment="Center"
+                           Foreground="#FECACA" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

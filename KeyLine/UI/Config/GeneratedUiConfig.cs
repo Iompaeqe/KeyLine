@@ -17,7 +17,7 @@ public static class GeneratedUiConfig
 public sealed class TimelineUiConfig
 {
     public double RowHeight { get; init; } = 72;
-    public double RowGap { get; init; } = 30;
+    public double RowGap { get; init; } = 16;
     public double HeaderWidth { get; init; } = 140;
 
     public double FirstItemLeft { get; init; } = 12;
@@ -27,8 +27,8 @@ public sealed class TimelineUiConfig
     public double ConnectorY { get; init; } = 36;
     public double ConnectorThickness { get; init; } = 2;
 
-    public double HeaderTopExtra { get; init; } = 28;
-    public double HeaderBottomExtra { get; init; } = 30;
+    public double HeaderTopExtra { get; init; } = 8;
+    public double HeaderBottomExtra { get; init; } = 8;
 }
 
 public sealed class KeyStepUiConfig

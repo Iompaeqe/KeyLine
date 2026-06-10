@@ -223,7 +223,7 @@
                                       Grid.Column="1"
                                       HorizontalScrollBarVisibility="Hidden"
                                       VerticalScrollBarVisibility="Disabled"
-                                      Padding="16,0,10,16"
+                                      Padding="16,0,10,8"
                                       Background="Transparent"
                                       Loaded="TimelineScrollViewer_Loaded"
                                       ScrollChanged="TimelineScrollViewer_ScrollChanged"
