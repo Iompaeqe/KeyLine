@@ -86,6 +86,20 @@ public sealed class InspectorCommitService
         _scheduleSaveState();
     }
 
+    // Applies a change to every selected timeline inside a single undo step (batch timeline edit).
+    public void CommitTimelinesChange(IReadOnlyList<MacroTimeline> timelines, Action<MacroTimeline> change)
+    {
+        if (!_canEdit() || timelines.Count == 0)
+            return;
+
+        _saveUndoSnapshot();
+        foreach (var timeline in timelines)
+            change(timeline);
+        _refreshTimeline();
+        _refreshInspector();
+        _scheduleSaveState();
+    }
+
     public bool CommitTimelineName(MacroTimeline timeline, string name)
     {
         if (_isCommittingTimelineName || !_canEdit())

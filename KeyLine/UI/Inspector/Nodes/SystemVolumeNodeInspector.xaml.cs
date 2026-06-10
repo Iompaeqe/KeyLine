@@ -1,9 +1,11 @@
-﻿using System.Windows;
+﻿using System.Collections.Generic;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
 using KeyLine.UI.Common.EntryBlocks;
+using KeyLine.UI.Inspector.Batch;
 using KeyLine.UI.Timeline;
 
 namespace KeyLine.UI.Inspector.Nodes;
@@ -49,6 +51,83 @@ public partial class SystemVolumeNodeInspector
             isEnabled: policy.CanEditVolumeControl);
 
         RefreshDynamicState(node);
+    }
+
+    public void BindBatch(NodeInspectorContext context, IReadOnlyList<MacroNode> nodes)
+    {
+        BindBatchActionCombo(context, nodes);
+
+        BatchEntryBinder.BindNumber(
+            entry: VolumeEntry,
+            context: context,
+            read: () => BatchValues.Read(nodes, node => Math.Clamp(node.SystemVolumePercent, 0, 100)),
+            apply: value => context.CommitNodeChange(() =>
+            {
+                foreach (var node in nodes)
+                    node.SystemVolumePercent = Math.Clamp(value, 0, 100);
+            }),
+            min: 0,
+            max: 100,
+            tooltip: "Set the system output volume percentage.",
+            isEnabled: true);
+
+        // The volume % row only makes sense when every selected node uses Set Volume %.
+        VolumeRow.Visibility = nodes.All(node => node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    // Sentinel "Mixed" row shown as the dropdown's selected item when the nodes' actions differ.
+    private static readonly VolumeActionOption MixedActionOption =
+        new(BatchUi.IndicatorText, (SystemVolumeAction)(-1));
+
+    private void BindBatchActionCombo(NodeInspectorContext context, IReadOnlyList<MacroNode> nodes)
+    {
+        var canEdit = context.CanEditOption(true);
+        ActionCombo.IsEnabled = canEdit;
+
+        var batch = BatchValues.Read(nodes, node => node.SystemVolumeAction);
+        if (batch.HasMixedValue)
+        {
+            var items = new List<VolumeActionOption> { MixedActionOption };
+            items.AddRange(VolumeActionOptions);
+            ActionCombo.ItemsSource = items;
+            ActionCombo.SelectedItem = MixedActionOption;
+            ActionCombo.ToolTip = "Mixed — choose an action to apply it to all selected nodes.";
+        }
+        else
+        {
+            ActionCombo.ItemsSource = VolumeActionOptions;
+            ActionCombo.SelectedValue = batch.Value;
+            ActionCombo.ToolTip = null;
+        }
+
+        ActionCombo.SelectionChanged += (_, _) =>
+        {
+            if (context.IsRefreshing())
+                return;
+
+            if (ActionCombo.SelectedItem is not VolumeActionOption option || ReferenceEquals(option, MixedActionOption))
+                return;
+
+            var current = BatchValues.Read(nodes, node => node.SystemVolumeAction);
+            if (!current.HasMixedValue && current.Value == option.Value)
+                return;
+
+            var selectedAction = option.Value;
+
+            // Defer: committing rebuilds the inspector (replacing this ComboBox). Doing that inside the
+            // ComboBox's own SelectionChanged drops the pick, so let the selection settle first.
+            Dispatcher.BeginInvoke(new Action(() =>
+                context.CommitNodeChange(() =>
+                {
+                    foreach (var node in nodes)
+                    {
+                        node.SystemVolumeAction = selectedAction;
+                        node.SystemVolumePercent = Math.Clamp(node.SystemVolumePercent, 0, 100);
+                    }
+                })));
+        };
     }
 
     private void BindActionCombo(

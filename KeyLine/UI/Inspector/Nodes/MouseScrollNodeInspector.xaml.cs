@@ -1,6 +1,8 @@
-﻿using System.Windows.Input;
+﻿using System.Collections.Generic;
+using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.UI.Common.EntryBlocks;
+using KeyLine.UI.Inspector.Batch;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -13,6 +15,26 @@ public partial class MouseScrollNodeInspector
     {
         InitializeComponent();
     }
+
+    public void BindBatch(NodeInspectorContext context, IReadOnlyList<MacroNode> nodes)
+    {
+        BatchEntryBinder.BindNumber(
+            entry: AmountEntry,
+            context: context,
+            read: () => BatchValues.Read(nodes, GetScrollAmount),
+            apply: value => context.CommitNodeChange(() =>
+            {
+                foreach (var node in nodes)
+                    node.MouseScrollAmount = Math.Clamp(value, 1, 100);
+            }),
+            min: 1,
+            max: 100,
+            tooltip: "How many scroll notches this node sends.",
+            isEnabled: true);
+    }
+
+    private static int GetScrollAmount(MacroNode node) =>
+        Math.Clamp(node.MouseScrollAmount <= 0 ? 1 : node.MouseScrollAmount, 1, 100);
 
     public void Bind(NodeInspectorContext context, MacroNode node, NodeInspectorPolicy policy)
     {

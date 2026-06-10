@@ -73,6 +73,9 @@ public sealed class NodeInspectorBuilder
             if (TryGetSelectedConditionBlock(timeline, out var conditionStart, out blockNodeCount))
                 return CreateConditionBlockInspector(conditionStart, blockNodeCount);
 
+            if (TryBuildBatchNodeInspector(timeline, out var batchInspector))
+                return batchInspector;
+
             return CreateReadonlySectionContent(("Selected", _selection.SelectedNodes.Count.ToString()));
         }
 
@@ -196,6 +199,59 @@ public sealed class NodeInspectorBuilder
             }
         }
 
+        return section;
+    }
+
+    // Builds a batch inspector when several nodes of the same editable type are selected. Returns false
+    // for mixed types (the caller falls back to the "X selected" summary) or unsupported types.
+    private bool TryBuildBatchNodeInspector(MacroTimeline timeline, out UIElement? inspectorUi)
+    {
+        inspectorUi = null;
+
+        if (!ReferenceEquals(_selection.SelectedTimeline, timeline))
+            return false;
+
+        var nodes = _selection.SelectedNodes;
+        if (nodes.Count < 2 || nodes.Any(node => node.IsSyntheticDisplayNode))
+            return false;
+
+        // Delay group: Delay and RandomDelay are one unified node, so a set with differing min/max is
+        // still batch-editable.
+        if (nodes.All(node => node.Type is MacroNodeType.Delay or MacroNodeType.RandomDelay))
+        {
+            var inspector = new DelayNodeInspector();
+            inspectorUi = CreateBatchSection($"{nodes.Count} Delay nodes", inspector,
+                () => inspector.BindBatch(_context, nodes.ToList()));
+            return true;
+        }
+
+        if (nodes.All(node => node.Type is MacroNodeType.MouseScrollUp or MacroNodeType.MouseScrollDown
+                or MacroNodeType.MouseScrollLeft or MacroNodeType.MouseScrollRight))
+        {
+            var inspector = new MouseScrollNodeInspector();
+            inspectorUi = CreateBatchSection($"{nodes.Count} Scroll nodes", inspector,
+                () => inspector.BindBatch(_context, nodes.ToList()));
+            return true;
+        }
+
+        if (nodes.All(node => node.Type == MacroNodeType.SystemVolumeControl))
+        {
+            var inspector = new SystemVolumeNodeInspector();
+            inspectorUi = CreateBatchSection($"{nodes.Count} Volume nodes", inspector,
+                () => inspector.BindBatch(_context, nodes.ToList()));
+            return true;
+        }
+
+        return false;
+    }
+
+    // Wraps a batch inspector with the shared "Type" summary row, then binds it.
+    private UIElement CreateBatchSection(string typeSummary, UIElement inspector, Action bind)
+    {
+        var section = CreateSection();
+        section.Children.Add(CreateReadonlyRow("Type", typeSummary));
+        bind();
+        section.Children.Add(inspector);
         return section;
     }
 

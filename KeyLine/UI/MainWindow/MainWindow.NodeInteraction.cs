@@ -592,6 +592,9 @@ public partial class MainWindow
             _drag.EndStepDrag();
             _drag.EndTimelineHeaderDrag();
             _drag.EndTimelinePan();
+            _timelineDragBaseOrder = null;
+            _timelineDragGroup = null;
+            _pendingTimelineClick = null;
 
             if (Mouse.Captured != null)
                 Mouse.Capture(null);

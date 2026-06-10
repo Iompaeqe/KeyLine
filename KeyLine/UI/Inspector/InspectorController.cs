@@ -1,6 +1,8 @@
 using System.Windows;
 using KeyLine.Domain;
+using KeyLine.Services.Timeline;
 using KeyLine.State;
+using KeyLine.UI.Inspector.Batch;
 
 namespace KeyLine.UI.Inspector;
 
@@ -79,6 +81,37 @@ public sealed class InspectorController
                 workspace.LoopMode is MacroLoopMode.Sequence &&
                 !workspace.IsHookTimeline(timeline);
 
+            if (TryGetBatchTimelines(out var batch))
+            {
+                var rep = batch.Contains(timeline) ? timeline : batch[0];
+
+                _window.SetTimelineState(new TimelineInspectorState(
+                    TimelineName: $"{batch.Count} timelines",
+                    IsNameEditing: false,
+                    IsCollapsed: _isTimelineCollapsed,
+                    IsEditingEnabled: _canEdit(),
+                    LoopCount: Math.Max(0, rep.LoopCount),
+                    LoopDelayMs: Math.Max(0, rep.BaseDelayMs),
+                    UseTextInputMode: rep.UseTextInputMode,
+                    UseStandardDelay: rep.UseStandardDelay,
+                    StandardDelayMs: Math.Max(0, rep.StandardDelayMs),
+                    ShowKeyUpDown: rep.ShowKeyUpDown,
+                    CooldownMs: Math.Max(0, rep.CooldownMs),
+                    ShowCooldown: showCooldown,
+                    IsNameReadOnly: true,
+                    SelectedCount: batch.Count,
+                    LoopCountMixed: IsMixed(batch, t => Math.Max(0, t.LoopCount)),
+                    LoopDelayMixed: IsMixed(batch, t => DelayFormatter.ClampMilliseconds(t.BaseDelayMs)),
+                    CooldownMixed: IsMixed(batch, t => DelayFormatter.ClampMilliseconds(t.CooldownMs)),
+                    StandardDelayMixed: IsMixed(batch, t => DelayFormatter.ClampMilliseconds(t.StandardDelayMs)),
+                    UseStandardDelayMixed: IsMixed(batch, t => t.UseStandardDelay),
+                    ShowKeyUpDownMixed: IsMixed(batch, t => t.ShowKeyUpDown),
+                    UseTextInputModeMixed: IsMixed(batch, t => t.UseTextInputMode)));
+
+                _window.SetNodeContent(null, false, _isNodeCollapsed);
+                return;
+            }
+
             _window.SetTimelineState(new TimelineInspectorState(
                 TimelineName: timeline.Name,
                 IsNameEditing: ReferenceEquals(_editingTimelineName, timeline),
@@ -102,6 +135,27 @@ public sealed class InspectorController
             _isRefreshing = false;
         }
     }
+
+    // True when multiple normal timelines are selected — the inspector then batch-edits all of them.
+    private bool TryGetBatchTimelines(out IReadOnlyList<MacroTimeline> timelines)
+    {
+        if (_selection.HasMultipleTimelineSelection)
+        {
+            var workspace = _getActiveWorkspace();
+            var list = _selection.SelectedTimelines.Where(t => !workspace.IsHookTimeline(t)).ToList();
+            if (list.Count > 1)
+            {
+                timelines = list;
+                return true;
+            }
+        }
+
+        timelines = Array.Empty<MacroTimeline>();
+        return false;
+    }
+
+    private static bool IsMixed<T>(IReadOnlyList<MacroTimeline> timelines, Func<MacroTimeline, T> selector) =>
+        BatchValues.Read(timelines, selector).HasMixedValue;
 
     public void BeginTimelineNameEdit(MacroTimeline timeline)
     {
@@ -162,6 +216,12 @@ public sealed class InspectorController
 
     private void CommitLoopCount(int value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t => t.LoopCount = value);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.LoopCount = value);
         Refresh();
@@ -169,18 +229,38 @@ public sealed class InspectorController
 
     private void CommitLoopDelay(int value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t => t.BaseDelayMs = value);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineValueChange(timeline, () => timeline.BaseDelayMs = value);
     }
 
     private void CommitCooldown(int value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t => t.CooldownMs = value);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineValueChange(timeline, () => timeline.CooldownMs = value);
     }
 
     private void ToggleInputType()
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            var rep = batch.Contains(_getCurrentTimeline()) ? _getCurrentTimeline() : batch[0];
+            var newValue = !rep.UseTextInputMode;
+            _commitService.CommitTimelinesChange(batch, t => t.UseTextInputMode = newValue);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.UseTextInputMode = !timeline.UseTextInputMode);
         Refresh();
@@ -188,6 +268,17 @@ public sealed class InspectorController
 
     private void SetStandardDelayEnabled(bool value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t =>
+            {
+                t.UseStandardDelay = value;
+                if (!t.UseStandardDelay)
+                    t.ShowKeyUpDown = true;
+            });
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () =>
         {
@@ -200,12 +291,24 @@ public sealed class InspectorController
 
     private void CommitStandardDelay(int value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t => t.StandardDelayMs = value);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineValueChange(timeline, () => timeline.StandardDelayMs = value);
     }
 
     private void SetShowKeyUpDown(bool value)
     {
+        if (TryGetBatchTimelines(out var batch))
+        {
+            _commitService.CommitTimelinesChange(batch, t => t.ShowKeyUpDown = value);
+            return;
+        }
+
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.ShowKeyUpDown = value);
         Refresh();
