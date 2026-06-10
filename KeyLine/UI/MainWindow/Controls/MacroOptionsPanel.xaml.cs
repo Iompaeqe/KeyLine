@@ -19,10 +19,9 @@ public partial class MacroOptionsPanel : UserControl
     public TextBlock ShortcutRemapText => ShortcutRemapPill.TextElement;
     public ComboBox LoopModeSelector => LoopModeComboBox;
 
-    public OptionsPillBlock HooksPillControl => HooksPill;
+    public System.Windows.Controls.Primitives.ToggleButton HooksToggleControl => HooksToggle;
     public System.Windows.Controls.Primitives.Popup HooksPopupControl => HooksPopup;
     public CheckBox StartHookCheckBoxControl => StartHookCheckBox;
     public CheckBox EndHookCheckBoxControl => EndHookCheckBox;
     public OptionsPillBlock ResetPillControl => ResetPill;
-    public OptionsPillBlock ResetShortcutPillControl => ResetShortcutPill;
 }

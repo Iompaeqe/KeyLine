@@ -70,7 +70,7 @@
                     </TextBlock>
 
                     <ComboBox x:Name="LoopModeComboBox"
-                              Width="82"
+                              Width="85"
                               Height="22">
                         <ComboBox.ToolTip>
                             <TextBlock>
@@ -88,16 +88,17 @@
                         </ComboBox.ToolTip>
                     </ComboBox>
 
-                    <entryBlocks:OptionsPillBlock x:Name="HooksPill"
-                                                  Text="Hooks"
-                                                  Margin="6,0,0,0"
-                                                  ToolTip="Macro Hooks: optional Start/End timelines that wrap macro execution." />
+                    <ToggleButton x:Name="HooksToggle"
+                                  Style="{DynamicResource OptionsDropdownToggle}"
+                                  Content="Hooks"
+                                  ToolTip="Macro Hooks: optional Start/End timelines that wrap macro execution." />
 
                     <Popup x:Name="HooksPopup"
-                           PlacementTarget="{Binding ElementName=HooksPill}"
+                           PlacementTarget="{Binding ElementName=HooksToggle}"
                            Placement="Bottom"
                            StaysOpen="False"
                            AllowsTransparency="True"
+                           IsOpen="{Binding IsChecked, ElementName=HooksToggle, Mode=TwoWay}"
                            HorizontalOffset="0"
                            VerticalOffset="4">
                         <Border Background="{DynamicResource Surface}"
@@ -114,28 +115,26 @@
                                            Margin="0,0,0,6" />
                                 <CheckBox x:Name="StartHookCheckBox"
                                           Content="Start"
+                                          Foreground="#E2E8F0"
                                           Margin="0,0,0,4"
                                           ToolTip="Run the Start timeline before the macro body." />
                                 <CheckBox x:Name="EndHookCheckBox"
                                           Content="End"
+                                          Foreground="#E2E8F0"
                                           ToolTip="Run the End timeline after the macro body (skipped on hard stops)." />
                             </StackPanel>
                         </Border>
                     </Popup>
-
-                    <entryBlocks:OptionsPillBlock x:Name="ResetPill"
-                                                  Text="Reset"
-                                                  Margin="6,0,0,0"
-                                                  Visibility="Collapsed"
-                                                  ToolTip="Reset the Sequence/Random pointer and clear active cooldowns." />
-
-                    <entryBlocks:OptionsPillBlock x:Name="ResetShortcutPill"
-                                                  Text="no reset key"
-                                                  Margin="6,0,0,0"
-                                                  Visibility="Collapsed"
-                                                  Focusable="True"
-                                                  ToolTip="Click to assign a shortcut that resets the sequence. Right-click to clear." />
                 </StackPanel>
+
+                <entryBlocks:OptionsPillBlock x:Name="ResetPill"
+                                              Grid.Row="0"
+                                              Text="Reset"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Top"
+                                              Visibility="Visible"
+                                              Focusable="True"
+                                              ToolTip="Left-click: reset the Sequence/Random pointer and cooldowns now.&#10;Right-click: assign a reset shortcut.&#10;Middle-click: clear the reset shortcut." />
             </Grid>
         </StackPanel>
     </Border>

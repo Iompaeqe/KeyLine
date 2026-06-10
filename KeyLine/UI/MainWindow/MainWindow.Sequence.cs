@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Media;
 using System.Windows.Threading;
 using KeyLine.Domain;
 using KeyLine.Services.Playback;
@@ -106,25 +107,35 @@ public partial class MainWindow
 
     private void InitializeResetUi()
     {
+        // One merged control: left-click resets now, right-click assigns a reset shortcut, and
+        // middle-click clears it. The bound key is shown inline in the pill text.
         ResetPill.MouseLeftButtonDown += (_, e) =>
         {
+            if (_isCapturingResetShortcut)
+                return;
+
             ResetSequenceState(_activeWorkspace);
             e.Handled = true;
         };
 
-        ResetShortcutPill.MouseLeftButtonDown += (_, e) =>
+        ResetPill.MouseRightButtonDown += (_, e) =>
         {
             BeginResetShortcutCapture();
             e.Handled = true;
         };
-        ResetShortcutPill.MouseRightButtonDown += (_, e) =>
+
+        ResetPill.MouseDown += (_, e) =>
         {
+            if (e.ChangedButton != System.Windows.Input.MouseButton.Middle)
+                return;
+
             CommitResetShortcut(System.Array.Empty<int>());
             e.Handled = true;
         };
-        ResetShortcutPill.PreviewKeyDown += ResetShortcutPill_PreviewKeyDown;
-        ResetShortcutPill.PreviewKeyUp += ResetShortcutPill_PreviewKeyUp;
-        ResetShortcutPill.LostKeyboardFocus += (_, _) =>
+
+        ResetPill.PreviewKeyDown += ResetShortcutPill_PreviewKeyDown;
+        ResetPill.PreviewKeyUp += ResetShortcutPill_PreviewKeyUp;
+        ResetPill.LostKeyboardFocus += (_, _) =>
         {
             if (_isCapturingResetShortcut)
                 CancelResetShortcutCapture();
@@ -134,9 +145,7 @@ public partial class MainWindow
     private void UpdateResetOptionVisibility()
     {
         var show = IsSequenceMode(_activeWorkspace);
-        var visibility = show ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
-        ResetPill.Visibility = visibility;
-        ResetShortcutPill.Visibility = visibility;
+        ResetPill.Visibility = show ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
 
         if (!show && _isCapturingResetShortcut)
             CancelResetShortcutCapture();
@@ -149,10 +158,14 @@ public partial class MainWindow
         if (_isCapturingResetShortcut)
             return;
 
+        // Capture sets a local Cyan foreground on the text; clear it so the OptionsShortcutText style
+        // (and its hover/focus triggers) drives the color again once recording is over.
+        ResetPill.DisplayTextBlock.ClearValue(System.Windows.Controls.TextBlock.ForegroundProperty);
+
         var keys = _activeWorkspace.ResetShortcutKeys;
-        ResetShortcutPill.Text = string.IsNullOrWhiteSpace(keys)
-            ? "no reset key"
-            : KeyLine.Services.Input.ShortcutGesture.Format(keys);
+        ResetPill.Text = string.IsNullOrWhiteSpace(keys)
+            ? "Reset"
+            : $"{KeyLine.Services.Input.ShortcutGesture.Format(keys)}  ·  Reset";
     }
 
     private void BeginResetShortcutCapture()
@@ -160,9 +173,25 @@ public partial class MainWindow
         _isCapturingResetShortcut = true;
         _capturedResetKeys.Clear();
         _resetCaptureDownKeys.Clear();
-        ResetShortcutPill.Text = "press reset key";
-        ResetShortcutPill.Focus();
-        System.Windows.Input.Keyboard.Focus(ResetShortcutPill);
+        ResetPill.Text = "press reset key…";
+        ResetPill.DisplayTextBlock.Foreground = (SolidColorBrush)FindResource("Cyan");
+        ResetPill.Focus();
+        System.Windows.Input.Keyboard.Focus(ResetPill);
+
+        // LostKeyboardFocus only fires when the click lands on a focusable element (e.g. the timeline).
+        // Watch all mouse-downs at the window level so clicking anywhere outside the pill also stops it.
+        // Remove first so re-entering capture never double-subscribes.
+        PreviewMouseDown -= ResetCaptureWindowMouseDown;
+        PreviewMouseDown += ResetCaptureWindowMouseDown;
+    }
+
+    // Stops reset-shortcut recording when the user clicks anywhere outside the ResetPill.
+    private void ResetCaptureWindowMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_isCapturingResetShortcut || ResetPill.IsMouseOver)
+            return;
+
+        CancelResetShortcutCapture();
     }
 
     private void CancelResetShortcutCapture()
@@ -170,6 +199,7 @@ public partial class MainWindow
         _isCapturingResetShortcut = false;
         _capturedResetKeys.Clear();
         _resetCaptureDownKeys.Clear();
+        PreviewMouseDown -= ResetCaptureWindowMouseDown;
         UpdateResetShortcutText();
     }
 
@@ -203,7 +233,7 @@ public partial class MainWindow
             _capturedResetKeys.Add(virtualKey);
         }
 
-        ResetShortcutPill.Text = KeyLine.Services.Input.ShortcutGesture.Format(_capturedResetKeys);
+        ResetPill.Text = $"{KeyLine.Services.Input.ShortcutGesture.Format(_capturedResetKeys)} * Reset";
     }
 
     private void ResetShortcutPill_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
@@ -233,6 +263,7 @@ public partial class MainWindow
         _isCapturingResetShortcut = false;
         _capturedResetKeys.Clear();
         _resetCaptureDownKeys.Clear();
+        PreviewMouseDown -= ResetCaptureWindowMouseDown;
 
         _activeWorkspace.ResetShortcutKeys = keys.Length > 0
             ? KeyLine.Services.Input.ShortcutGesture.Serialize(keys)

@@ -85,17 +85,12 @@ public partial class MainWindow
     private void InitializeHooksUi()
     {
         InitializeResetUi();
-        HooksPill.MouseLeftButtonDown += HooksPill_MouseLeftButtonDown;
+        // The Hooks dropdown opens via the ToggleButton (its IsChecked is two-way bound to the
+        // popup's IsOpen in XAML), so the popup stays open while the Start/End checkboxes are used.
         StartHookCheckBox.Checked += (_, _) => OnHookToggled(isStart: true, enabled: true);
         StartHookCheckBox.Unchecked += (_, _) => OnHookToggled(isStart: true, enabled: false);
         EndHookCheckBox.Checked += (_, _) => OnHookToggled(isStart: false, enabled: true);
         EndHookCheckBox.Unchecked += (_, _) => OnHookToggled(isStart: false, enabled: false);
-    }
-
-    private void HooksPill_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        HooksPopup.IsOpen = !HooksPopup.IsOpen;
-        e.Handled = true;
     }
 
     private void ApplyHookOptionsFromWorkspace(MacroWorkspace workspace)
@@ -154,12 +149,14 @@ public partial class MainWindow
         var start = _activeWorkspace.StartHookEnabled;
         var end = _activeWorkspace.EndHookEnabled;
 
-        HooksPill.Text = (start, end) switch
+        var label = (start, end) switch
         {
             (true, true) => "Hooks: S+E",
             (true, false) => "Hooks: S",
             (false, true) => "Hooks: E",
             _ => "Hooks"
         };
+
+        HooksToggle.Content = label;
     }
 }

@@ -48,12 +48,11 @@ public partial class MainWindow
         private TextBlock ShortcutToggleTextBlock => MacroOptionsPanel.ShortcutToggleText;
         private TextBlock ShortcutRemapTextBlock => MacroOptionsPanel.ShortcutRemapText;
         private ComboBox LoopModeComboBox => MacroOptionsPanel.LoopModeSelector;
-        private OptionsPillBlock HooksPill => MacroOptionsPanel.HooksPillControl;
+        private ToggleButton HooksToggle => MacroOptionsPanel.HooksToggleControl;
         private System.Windows.Controls.Primitives.Popup HooksPopup => MacroOptionsPanel.HooksPopupControl;
         private CheckBox StartHookCheckBox => MacroOptionsPanel.StartHookCheckBoxControl;
         private CheckBox EndHookCheckBox => MacroOptionsPanel.EndHookCheckBoxControl;
         private OptionsPillBlock ResetPill => MacroOptionsPanel.ResetPillControl;
-        private OptionsPillBlock ResetShortcutPill => MacroOptionsPanel.ResetShortcutPillControl;
 
         private OptionsPillBlock TargetWindowSearchPill => TargetWindowPanel.SearchPill;
         private TextBox TargetWindowSearchTextBox => TargetWindowPanel.SearchTextBox;
