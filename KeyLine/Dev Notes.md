@@ -14,7 +14,6 @@
 - better timeline header
 - fix reset button
 - fix loops delay on non-loop timelines
-- fix name change focus
 
 2.0
 - add controller support
@@ -32,7 +31,6 @@
 
 
 3.0???
-![img.png](img.png)
 
 After KeyLine 2.0 mouse/gamepad updates, start a major Logic Editor update.
 This update should be a large UI-focused push, not a small inspector feature.
