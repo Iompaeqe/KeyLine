@@ -13,10 +13,10 @@
         <NoWarn>$(NoWarn);WFO0003</NoWarn>
         <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
         <ApplicationManifest>app.manifest</ApplicationManifest>
-        <Version>1.8.0</Version>
-        <AssemblyVersion>1.8.0.0</AssemblyVersion>
-        <FileVersion>1.8.0.0</FileVersion>
-        <InformationalVersion>1.8.0</InformationalVersion>
+        <Version>1.9.0</Version>
+        <AssemblyVersion>1.9.0.0</AssemblyVersion>
+        <FileVersion>1.9.0.0</FileVersion>
+        <InformationalVersion>1.9.0</InformationalVersion>
     </PropertyGroup>
 
     <ItemGroup>

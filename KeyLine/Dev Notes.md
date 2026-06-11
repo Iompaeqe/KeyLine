@@ -9,12 +9,6 @@
 
 # To Do
 
-1.9
-- add Disable timeline that will allow removing the timeline from macro without deleting it. so they can be activated later.
-- better timeline header
-- fix reset button
-- fix loops delay on non-loop timelines
-
 2.0
 - add controller support
 - update mouse recording and playback for foreground mouse actions.
