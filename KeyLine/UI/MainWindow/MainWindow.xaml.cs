@@ -25,7 +25,6 @@ public partial class MainWindow : Window
     private readonly FeatureGate _featureGate = new(new FeatureConfig());
     private readonly MacroFeatureValidator _macroFeatureValidator;
 
-    private readonly Dictionary<object, Point> _timelineVisualPositions = new();
     private ProfileDropdownController? _profileDropdown;
 
     private readonly TimelineSelectionState _selection = new();
@@ -68,6 +67,7 @@ public partial class MainWindow : Window
         _document = _activeWorkspace.Document;
 
         InitializeComponent();
+        InitializeTimelineRenderer();
         TimelineAddMenu.ActionRequested += TimelineAddMenu_ActionRequested;
         ApplySavedMainWindowWidth(savedState?.MainWindowWidth ?? 0);
         InitializeWorkspaceTabs();

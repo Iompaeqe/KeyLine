@@ -1,25 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using KeyLine.Domain;
-using KeyLine.Services.Macro;
-using KeyLine.Services.Playback;
 using KeyLine.Services.Timeline;
-using KeyLine.State;
-using KeyLine.UI.Config;
-using KeyLine.UI.Nodes;
-using KeyLine.UI.Timeline;
 
-namespace KeyLine;
+namespace KeyLine.UI.Timeline;
 
-public partial class MainWindow
+public sealed partial class TimelineRenderer
 {
     private void AddBlockBackgrounds(
         Canvas canvas,
@@ -102,7 +93,7 @@ public partial class MainWindow
             var startLabel = CreateBlockLabel(
                 timeline,
                 range.Start,
-                NodeDisplayFormatter.GetBlockTimelineLabel(range.Start, ResolveActiveProfileMacroName),
+                NodeDisplayFormatter.GetBlockTimelineLabel(range.Start, _context.ResolveMacroName),
                 horizontalPadding: 7);
             Canvas.SetLeft(startLabel, left + 12);
             Canvas.SetTop(startLabel, labelTop);
@@ -163,7 +154,7 @@ public partial class MainWindow
             }
         };
 
-        AttachBlockLabelMouseHandlers(label, timeline, node);
+        _context.AttachBlockLabelMouseHandlers(label, timeline, node);
 
         return label;
     }
@@ -176,9 +167,17 @@ public partial class MainWindow
         var firstCenterX = visualItems[0].CenterX;
         var lastCenterX = visualItems[^1].CenterX;
 
+        return CreateConnectorBar(firstCenterX, lastCenterX - firstCenterX);
+    }
+
+    // The horizontal bar linking the first and last node centers. Top offset and z-order are
+    // fixed; the caller supplies the left edge and width from the current item centers. Shared by
+    // the initial row build (CreateTimelineConnector) and the incremental update (UpdateRowConnector).
+    private static Border CreateConnectorBar(double left, double width)
+    {
         var connector = new Border
         {
-            Width = Math.Max(0, lastCenterX - firstCenterX),
+            Width = Math.Max(0, width),
             Height = TimelineConnectorThickness,
             CornerRadius = new CornerRadius(TimelineConnectorThickness / 2.0),
             Background = new SolidColorBrush(Color.FromRgb(31, 48, 66)),
@@ -186,7 +185,7 @@ public partial class MainWindow
             IsHitTestVisible = false
         };
 
-        Canvas.SetLeft(connector, firstCenterX);
+        Canvas.SetLeft(connector, left);
         Canvas.SetTop(
             connector,
             TimelineLayoutCalculator.GetConnectorTop(TimelineConnectorY, TimelineConnectorThickness));
@@ -196,7 +195,7 @@ public partial class MainWindow
     }
 
     private void RegisterTimelineRowState(MacroTimeline timeline, Canvas canvas, Border? connector,
-        IReadOnlyList<TimelineVisualItem> visualItems)
+        IReadOnlyList<TimelineVisualItem> visualItems, Grid rowContainer, FrameworkElement collapsedSummary)
     {
         if (visualItems.Count == 0)
             return;
@@ -207,6 +206,8 @@ public partial class MainWindow
         {
             Timeline = timeline,
             Canvas = canvas,
+            RowContainer = rowContainer,
+            CollapsedSummary = collapsedSummary,
             Connector = connector,
             AddButton = addItem.Element as FrameworkElement,
             NextLeft = addItem.Left,

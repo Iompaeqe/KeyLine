@@ -30,8 +30,7 @@ public sealed class InspectorController
         Func<IReadOnlyList<MacroWorkspace>> getActiveProfileWorkspaces,
         Func<bool> canEdit,
         Action saveDocumentUndoSnapshot,
-        Action refreshTimeline,
-        Action refreshTimelineWithoutInspector,
+        InspectorTimelineRefresh timelineRefresh,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
@@ -48,8 +47,7 @@ public sealed class InspectorController
             selection: selection,
             canEdit: canEdit,
             saveDocumentUndoSnapshot: saveDocumentUndoSnapshot,
-            refreshTimeline: refreshTimeline,
-            refreshTimelineWithoutInspector: refreshTimelineWithoutInspector,
+            refresh: timelineRefresh,
             refreshInspector: Refresh,
             scheduleSaveState: scheduleSaveState,
             selectTimeline: selectTimeline);
@@ -224,20 +222,19 @@ public sealed class InspectorController
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t => t.LoopCount = value);
+            _commitService.CommitTimelinesHeaderChange(batch, t => t.LoopCount = value);
             return;
         }
 
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.LoopCount = value);
-        Refresh();
     }
 
     private void CommitLoopDelay(int value)
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t => t.BaseDelayMs = value);
+            _commitService.CommitTimelinesHeaderChange(batch, t => t.BaseDelayMs = value);
             return;
         }
 
@@ -249,7 +246,7 @@ public sealed class InspectorController
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t => t.CooldownMs = value);
+            _commitService.CommitTimelinesHeaderChange(batch, t => t.CooldownMs = value);
             return;
         }
 
@@ -263,20 +260,19 @@ public sealed class InspectorController
         {
             var rep = batch.Contains(_getCurrentTimeline()) ? _getCurrentTimeline() : batch[0];
             var newValue = !rep.UseTextInputMode;
-            _commitService.CommitTimelinesChange(batch, t => t.UseTextInputMode = newValue);
+            _commitService.CommitTimelinesDisplayChange(batch, t => t.UseTextInputMode = newValue);
             return;
         }
 
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.UseTextInputMode = !timeline.UseTextInputMode);
-        Refresh();
     }
 
     private void SetStandardDelayEnabled(bool value)
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t =>
+            _commitService.CommitTimelinesDisplayChange(batch, t =>
             {
                 t.UseStandardDelay = value;
                 if (!t.UseStandardDelay)
@@ -292,14 +288,13 @@ public sealed class InspectorController
             if (!timeline.UseStandardDelay)
                 timeline.ShowKeyUpDown = true;
         });
-        Refresh();
     }
 
     private void CommitStandardDelay(int value)
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t => t.StandardDelayMs = value);
+            _commitService.CommitTimelinesHeaderChange(batch, t => t.StandardDelayMs = value);
             return;
         }
 
@@ -311,12 +306,11 @@ public sealed class InspectorController
     {
         if (TryGetBatchTimelines(out var batch))
         {
-            _commitService.CommitTimelinesChange(batch, t => t.ShowKeyUpDown = value);
+            _commitService.CommitTimelinesDisplayChange(batch, t => t.ShowKeyUpDown = value);
             return;
         }
 
         var timeline = _getCurrentTimeline();
         _commitService.CommitTimelineChange(timeline, () => timeline.ShowKeyUpDown = value);
-        Refresh();
     }
 }

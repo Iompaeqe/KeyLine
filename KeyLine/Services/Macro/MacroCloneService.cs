@@ -78,7 +78,8 @@ public static class MacroCloneService
             LoopCount = source.LoopCount,
             BaseDelayMs = source.BaseDelayMs,
             CooldownMs = source.CooldownMs,
-            IsCollapsed = source.IsCollapsed
+            IsCollapsed = source.IsCollapsed,
+            IsDisabled = source.IsDisabled
         };
 
         foreach (var step in CloneSteps(source.Nodes.Where(step => !step.IsSyntheticDisplayNode), macroIdMap))

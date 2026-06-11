@@ -696,29 +696,10 @@ public partial class MainWindow
                 return;
             }
 
-            var draggedRawItemSet = draggedRawItems.ToHashSet();
-            var droppedPosition = NodeDragGhost.LastDroppedRowsPanelPosition.Value;
-            var currentLeft = droppedPosition.X;
-
-            var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-                timeline.Nodes.ToList(),
-                timeline.UseStandardDelay,
-                timeline.ShowKeyUpDown);
-
-            foreach (var visibleStep in visibleSteps)
-            {
-                var rawItems = TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, visibleStep);
-                if (!rawItems.Any(draggedRawItemSet.Contains))
-                    continue;
-
-                var animationKey = GetTimelineAnimationKey(timeline, visibleStep);
-                var top = TimelineLayoutCalculator.GetItemTop(
-                    TimelineConnectorY,
-                    MeasureTimelineItem(CreateNode(timeline, visibleStep)).Height);
-
-                _timelineVisualPositions[animationKey] = new Point(currentLeft, top);
-                currentLeft += GetCachedNodePreviewWidth(timeline, visibleStep) + TimelineItemGap;
-            }
+            _timelineRenderer.SeedDroppedNodeAnimation(
+                timeline,
+                draggedRawItems,
+                NodeDragGhost.LastDroppedRowsPanelPosition.Value);
         }
 
     // From MainWindow.NodeReordering.cs
@@ -868,7 +849,7 @@ public partial class MainWindow
             MergeAdjacentDelayNodesIfEnabled(timeline);
             _selection.Clear();
             SelectTimeline(timeline);
-            RefreshTimeline();
+            RefreshTimelineRowAndHeaders(timeline);
             ScheduleSaveState();
         }
 
@@ -900,7 +881,7 @@ public partial class MainWindow
             MergeAdjacentDelayNodesIfEnabled(timeline);
             _selection.Clear();
             SelectTimeline(timeline);
-            RefreshTimeline();
+            RefreshTimelineRowAndHeaders(timeline);
             ScheduleSaveState();
         }
 
@@ -915,7 +896,7 @@ public partial class MainWindow
             SaveDocumentUndoSnapshot();
             node.Text = dialog.ResultText;
             SelectTimeline(timeline);
-            RefreshTimeline();
+            RefreshTimelineRowAndHeaders(timeline);
             ScheduleSaveState();
         }
 
@@ -998,7 +979,7 @@ public partial class MainWindow
                 _selection.Clear();
 
             SelectTimeline(timeline);
-            RefreshTimeline();
+            RefreshTimelineRowAndHeaders(timeline);
             ScheduleSaveState();
         }
 

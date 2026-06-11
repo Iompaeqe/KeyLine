@@ -87,8 +87,10 @@ public partial class MainWindow
             if (!_isTimelineEditingEnabled || IsHookTimeline(timeline))
             {
                 // Hook timelines cannot be deleted; middle-click just selects them.
+                var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
                 SelectTimeline(timeline);
                 _selection.SelectTimeline(timeline);
+                RefreshTimelineSelectionVisuals(previousNodeTimeline);
                 RefreshInspector();
                 e.Handled = true;
                 return;
@@ -136,12 +138,13 @@ public partial class MainWindow
             EndTimelineHeaderDrag(element);
 
             // A plain click on an already-selected member of a multi-selection defers the collapse
-            // to here, so a drag could use the whole group. No drag happened, so collapse now.
+            // to here, so a drag could use the whole group. No drag happened, so finalize now.
+            // (SelectSingleTimelineFromHeader applies its own targeted visual refresh; a real drag
+            // already refreshed during the move, so no full rebuild is needed here.)
             if (!wasDragging && _pendingTimelineClick != null)
                 SelectSingleTimelineFromHeader(_pendingTimelineClick);
 
             _pendingTimelineClick = null;
-            RefreshTimeline();
 
             e.Handled = true;
         };
@@ -155,15 +158,15 @@ public partial class MainWindow
         element.PreviewMouseRightButtonDown += (_, e) =>
         {
             CancelTimelineDragState();
-            var clearedPendingDelete = ResetTimelineDeleteConfirmation();
+            ResetTimelineDeleteConfirmation();
+            var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
 
             SelectTimeline(timeline);
             _selection.SelectTimeline(timeline);
 
-            if (clearedPendingDelete)
-                RefreshTimeline();
-            else
-                RefreshInspector();
+            // Targeted header re-skin also clears any pending-delete styling that was just reset.
+            RefreshTimelineSelectionVisuals(previousNodeTimeline);
+            RefreshInspector();
         };
     }
 
@@ -173,11 +176,13 @@ public partial class MainWindow
     {
         _pendingTimelineClick = null;
         var isHook = IsHookTimeline(timeline);
+        var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
 
         if (!isHook && modifiers.HasFlag(ModifierKeys.Control))
         {
             _selection.ToggleTimelineSelection(timeline);
             SyncActiveTimelineToSelection(timeline);
+            RefreshTimelineSelectionVisuals(previousNodeTimeline);
             RefreshInspector();
             return;
         }
@@ -187,6 +192,7 @@ public partial class MainWindow
         {
             SelectTimelineRange(_selection.AnchorTimeline, timeline);
             SyncActiveTimelineToSelection(timeline);
+            RefreshTimelineSelectionVisuals(previousNodeTimeline);
             RefreshInspector();
             return;
         }
@@ -197,6 +203,7 @@ public partial class MainWindow
         {
             _pendingTimelineClick = timeline;
             SelectTimeline(timeline, refreshInspector: false);
+            RefreshTimelineSelectionVisuals(previousNodeTimeline);
             RefreshInspector();
             return;
         }
@@ -206,8 +213,12 @@ public partial class MainWindow
 
     private void SelectSingleTimelineFromHeader(MacroTimeline timeline)
     {
+        var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
         _selection.SelectTimeline(timeline);
         SelectTimeline(timeline, refreshInspector: false);
+        // Timeline selection is a visual-state change: re-skin headers + clear node highlights,
+        // never a full timeline/node rebuild.
+        RefreshTimelineSelectionVisuals(previousNodeTimeline);
         RefreshInspector();
     }
 
@@ -354,9 +365,10 @@ public partial class MainWindow
             return;
 
         ResetTimelineDeleteConfirmation();
+        var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
         SelectTimeline(timeline);
         _selection.SelectTimeline(timeline);
-        RefreshTimeline();
+        RefreshTimelineSelectionVisuals(previousNodeTimeline);
         BeginTimelineNameEditFromHeader(timeline);
     }
 
@@ -365,12 +377,14 @@ public partial class MainWindow
         if (_document.Timelines.Count <= 1 || IsHookTimeline(timeline))
             return;
 
+        var previousNodeTimeline = _selection.HasNodeSelection ? _selection.SelectedTimeline : null;
         SelectTimeline(timeline);
         _selection.SelectTimeline(timeline);
-        RefreshInspector();
 
         _pendingDeleteTimeline = timeline;
-        RefreshTimeline();
+        // Targeted header re-skin shows the pending-delete styling (set above) without a rebuild.
+        RefreshTimelineSelectionVisuals(previousNodeTimeline);
+        RefreshInspector();
     }
 
     private void ConfirmTimelineDelete(MacroTimeline timeline)

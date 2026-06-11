@@ -242,9 +242,12 @@ public partial class MainWindow
         if (!_selection.HasNodeSelection)
             return;
 
+        var previousTimeline = _selection.SelectedTimeline;
         Keyboard.ClearFocus();
         _selection.Clear();
-        RefreshTimeline();
+        // Clearing a node selection only changes which nodes read as selected — a visual-state
+        // update on the affected row, not a full rebuild.
+        UpdateSelectionVisuals(previousTimeline, null);
     }
     private bool IsInsideScrollableTimelineContent(Point positionInTimelineGrid)
     {

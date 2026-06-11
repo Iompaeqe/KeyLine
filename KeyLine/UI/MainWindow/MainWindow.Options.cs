@@ -29,8 +29,12 @@ public partial class MainWindow
                 getActiveProfileWorkspaces: GetActiveProfileWorkspaces,
                 canEdit: () => _isTimelineEditingEnabled,
                 saveDocumentUndoSnapshot: SaveDocumentUndoSnapshot,
-                refreshTimeline: () => RefreshTimeline(),
-                refreshTimelineWithoutInspector: RefreshTimelineWithoutInspector,
+                timelineRefresh: new InspectorTimelineRefresh
+                {
+                    Row = RefreshTimelineRow,
+                    HeaderStates = RefreshTimelineHeaderActiveStates,
+                    Full = () => RefreshTimeline()
+                },
                 scheduleSaveState: ScheduleSaveState,
                 selectTimeline: timeline => SelectTimeline(timeline),
                 pickMouseCoordinatesForNodeAsync: PickMouseCoordinatesForNodeAsync,

@@ -1,25 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
-using KeyLine.Services.Playback;
 using KeyLine.Services.Timeline;
-using KeyLine.State;
-using KeyLine.UI.Config;
 using KeyLine.UI.Nodes;
-using KeyLine.UI.Timeline;
 
-namespace KeyLine;
+namespace KeyLine.UI.Timeline;
 
-public partial class MainWindow
+public sealed partial class TimelineRenderer
 {
     private List<TimelineRowVisualModel> BuildTimelineRowVisualModels()
     {
@@ -30,7 +23,7 @@ public partial class MainWindow
         {
             var timeline = displayTimelines[i];
             var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-                GetTimelineRenderRawSteps(timeline).ToList(),
+                _context.GetRenderRawSteps(timeline).ToList(),
                 timeline.UseStandardDelay,
                 timeline.ShowKeyUpDown);
 
@@ -69,11 +62,11 @@ public partial class MainWindow
     private UIElement CreateTimelineRow(MacroTimeline timeline, IReadOnlyList<TimelineVisualItem> visualItems,
         double canvasWidth, bool isFirstRow, bool isLastRow)
     {
-        var rowHeight = GetDisplayRowHeight(timeline);
+        var collapsed = IsEffectivelyCollapsed(timeline);
 
         var row = new Grid
         {
-            Height = rowHeight,
+            Height = GetDisplayRowHeight(timeline),
             Margin = new Thickness(
                 0,
                 0,
@@ -83,23 +76,19 @@ public partial class MainWindow
             VerticalAlignment = VerticalAlignment.Top
         };
 
+        // The node canvas is always built at full height; collapsing just hides it (and shows the
+        // summary overlay), so expand/collapse toggles visibility instead of rebuilding node visuals.
         var canvas = new Canvas
         {
             Width = canvasWidth,
-            Height = rowHeight,
+            Height = TimelineRowHeight,
             Background = Brushes.Transparent,
             Tag = timeline,
-            VerticalAlignment = VerticalAlignment.Top
+            VerticalAlignment = VerticalAlignment.Top,
+            Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible
         };
 
         row.Children.Add(canvas);
-
-        if (IsEffectivelyCollapsed(timeline))
-        {
-            AddCollapsedRowSummary(canvas, timeline, rowHeight);
-            RegisterTimelineRowState(timeline, canvas, connector: null, visualItems);
-            return row;
-        }
 
         AddBlockBackgrounds(canvas, timeline, visualItems, isFirstRow);
 
@@ -110,27 +99,41 @@ public partial class MainWindow
         foreach (var item in visualItems)
             AddTimelineItem(canvas, item);
 
-        RegisterTimelineRowState(timeline, canvas, connector, visualItems);
+        var summary = CreateCollapsedRowSummary(timeline);
+        summary.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        row.Children.Add(summary);
+
+        RegisterTimelineRowState(timeline, canvas, connector, visualItems, row, summary);
 
         return row;
     }
 
-    // A collapsed row hides its nodes and shows a faint node-count summary instead.
-    private void AddCollapsedRowSummary(Canvas canvas, MacroTimeline timeline, double rowHeight)
+    // Faint "N nodes" overlay shown in place of the node canvas while a timeline is collapsed.
+    private TextBlock CreateCollapsedRowSummary(MacroTimeline timeline)
     {
-        var nodeCount = timeline.Nodes.Count(node => !node.IsSyntheticDisplayNode);
         var summary = new TextBlock
         {
-            Text = nodeCount == 1 ? "1 node" : $"{nodeCount} nodes",
             FontSize = 10,
             FontWeight = FontWeights.SemiBold,
             Foreground = new SolidColorBrush(Color.FromRgb(94, 113, 137)),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(TimelineFirstItemLeft, 0, 0, 0),
+            IsHitTestVisible = false
         };
 
-        Canvas.SetLeft(summary, TimelineFirstItemLeft);
-        Canvas.SetTop(summary, (rowHeight - 16) / 2.0);
-        canvas.Children.Add(summary);
+        UpdateCollapsedSummaryText(summary, timeline);
+        return summary;
+    }
+
+    // Refreshes the collapsed summary's node count (used when a timeline is collapsed after edits).
+    private static void UpdateCollapsedSummaryText(FrameworkElement summary, MacroTimeline timeline)
+    {
+        if (summary is not TextBlock text)
+            return;
+
+        var nodeCount = timeline.Nodes.Count(node => !node.IsSyntheticDisplayNode);
+        text.Text = nodeCount == 1 ? "1 node" : $"{nodeCount} nodes";
     }
 
     private List<TimelineVisualItem> BuildTimelineVisualItems(MacroTimeline timeline,
@@ -138,10 +141,8 @@ public partial class MainWindow
     {
         var visualItems = new List<TimelineVisualItem>();
 
-        // Collapsed timelines render no node items (a summary is drawn by the row builder).
-        if (IsEffectivelyCollapsed(timeline))
-            return visualItems;
-
+        // Node items are built even for collapsed rows: the row builder hides the canvas rather
+        // than dropping the visuals, so a later expand can reuse them without a rebuild.
         var currentLeft = TimelineFirstItemLeft;
 
         var isDraggingThisTimeline =
@@ -151,7 +152,7 @@ public partial class MainWindow
 
         var placeholderCount = 0;
         var previewSlots = isDraggingThisTimeline
-            ? GetTimelineRenderPreviewSlots(timeline)
+            ? _context.GetRenderPreviewSlots(timeline)
             : Array.Empty<NodePreviewSlot>();
 
         if (isDraggingThisTimeline && previewSlots.Count > 0)
@@ -205,6 +206,14 @@ public partial class MainWindow
         MacroTimeline timeline,
         MacroNode step)
     {
+        visualItems.Add(BuildNodeVisualItem(timeline, step, ref currentLeft));
+    }
+
+    // Creates the control for a node, measures it, and packages it as a positioned visual item,
+    // advancing the running left edge by the item width + gap. Shared by the full row build and
+    // the append-only recording path so node-item construction lives in exactly one place.
+    private TimelineVisualItem BuildNodeVisualItem(MacroTimeline timeline, MacroNode step, ref double currentLeft)
+    {
         var block = CreateNode(timeline, step);
 
         if (block is FrameworkElement element)
@@ -212,16 +221,17 @@ public partial class MainWindow
 
         var size = MeasureTimelineItem(block);
 
-        visualItems.Add(new TimelineVisualItem
+        var item = new TimelineVisualItem
         {
             Node = step,
             Element = block,
             Left = currentLeft,
             Size = size,
             AnimationKey = GetTimelineAnimationKey(timeline, step)
-        });
+        };
 
         currentLeft += size.Width + TimelineItemGap;
+        return item;
     }
 
     private void AddBlockAddVisualItem(
@@ -260,7 +270,7 @@ public partial class MainWindow
         return (timeline, "block-add", rawInsertAnchor);
     }
 
-    private void RemoveDropPlaceholderAnimationKeys(MacroTimeline timeline)
+    public void RemoveDropPlaceholderAnimationKeys(MacroTimeline timeline)
     {
         var keysToRemove = _timelineVisualPositions.Keys
             .Where(key => IsDropPlaceholderAnimationKeyForTimeline(key, timeline))
@@ -323,7 +333,7 @@ public partial class MainWindow
         currentLeft += draggedSize.Width + TimelineItemGap;
     }
 
-    private object GetTimelineAnimationKey(MacroTimeline timeline, MacroNode node)
+    public object GetTimelineAnimationKey(MacroTimeline timeline, MacroNode node)
     {
         var rawItems = TimelineNodeMutationService.GetRawStepsForDisplayStep(timeline, node);
 
@@ -333,7 +343,7 @@ public partial class MainWindow
         return rawItems[0];
     }
 
-    private double GetCachedNodePreviewWidth(MacroTimeline timeline, MacroNode node)
+    public double GetCachedNodePreviewWidth(MacroTimeline timeline, MacroNode node)
     {
         var animationKey = GetTimelineAnimationKey(timeline, node);
         if (_timelineRowRenderStates.TryGetValue(timeline, out var state) &&
@@ -345,7 +355,7 @@ public partial class MainWindow
         return GetStableNodePreviewWidth(node, MeasureTimelineItem(CreateNode(timeline, node)).Width);
     }
 
-    private double GetLeadingNodePreviewWidth(MacroTimeline timeline, MacroNode node)
+    public double GetLeadingNodePreviewWidth(MacroTimeline timeline, MacroNode node)
     {
         if (!ShouldShowBlockAddButton(timeline, node))
             return 0;

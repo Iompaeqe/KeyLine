@@ -1,27 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
-using KeyLine.Services.Playback;
-using KeyLine.Services.Timeline;
-using KeyLine.State;
-using KeyLine.UI.Config;
 using KeyLine.UI.Nodes;
-using KeyLine.UI.Timeline;
 
-namespace KeyLine;
+namespace KeyLine.UI.Timeline;
 
-public partial class MainWindow
+public sealed partial class TimelineRenderer
 {
-    private void RefreshTimelineRow(MacroTimeline timeline)
+    public void RefreshTimelineRow(MacroTimeline timeline)
     {
         if (TimelineRowsPanel == null)
             return;
@@ -35,7 +27,7 @@ public partial class MainWindow
         }
 
         var visibleSteps = MacroTimelineBuilder.BuildVisibleSteps(
-            GetTimelineRenderRawSteps(timeline).ToList(),
+            _context.GetRenderRawSteps(timeline).ToList(),
             timeline.UseStandardDelay,
             timeline.ShowKeyUpDown);
 
@@ -52,10 +44,87 @@ public partial class MainWindow
         TimelineRowsPanel.Children.Insert(rowIndex, replacementRow);
 
         FitTimelineCanvasWidthToCurrentContent();
-        Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
+        Dispatcher.BeginInvoke(new Action(_context.UpdateScrollIndicator));
     }
 
-    private void UpdateSelectionVisuals(MacroTimeline? previousTimeline, MacroTimeline? currentTimeline)
+    // Timeline-level refresh that also re-syncs header highlights. Editing one timeline's nodes
+    // (add/delete/clear/edit) typically calls SelectTimeline first, so the active timeline — and
+    // thus other rows' header highlight — may have changed even though only one row's nodes did.
+    public void RefreshTimelineRowAndHeaders(MacroTimeline timeline)
+    {
+        RefreshTimelineRow(timeline);
+        UpdateTimelineHeaderActiveStates();
+    }
+
+    // Collapse tier: toggle the existing row's container — hide/show the node canvas, swap in the
+    // summary overlay, resize the row — and resize/re-skin the headers. No node visuals are rebuilt,
+    // and unrelated timelines are untouched. Falls back to a single-row rebuild only if this row
+    // has no reusable container yet.
+    public void RefreshTimelineCollapse(MacroTimeline timeline)
+    {
+        if (!_timelineRowRenderStates.TryGetValue(timeline, out var state) ||
+            state.RowContainer == null || state.CollapsedSummary == null)
+        {
+            RefreshTimelineRow(timeline);
+            RefreshTimelineHeaders();
+            _context.UpdateWindowHeight();
+            return;
+        }
+
+        var collapsed = IsEffectivelyCollapsed(timeline);
+
+        state.Canvas.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (collapsed)
+            UpdateCollapsedSummaryText(state.CollapsedSummary, timeline);
+        state.CollapsedSummary.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+
+        var displayTimelines = GetDisplayTimelines();
+        var rowIndex = displayTimelines.IndexOf(timeline);
+        var isLastRow = rowIndex == displayTimelines.Count - 1;
+
+        state.RowContainer.Height = GetDisplayRowHeight(timeline);
+        state.RowContainer.Margin = new Thickness(
+            0, 0, 0, TimelineLayoutCalculator.GetRowBottomMargin(isLastRow, GetDisplayRowGap(timeline)));
+
+        // Resize the matching header rows + re-skin headers (collapsed body/chevron), reusing the
+        // existing header controls rather than rebuilding them.
+        UpdateHeaderGridRowHeights();
+        UpdateTimelineHeaderActiveStates();
+
+        _context.UpdateWindowHeight();
+    }
+
+    // Node-level refresh: one node's value changed in place (same instance). Re-renders the
+    // existing control without recreating it. If the edit changed the node's footprint, a
+    // single-row rebuild reflows the row (and keeps block backgrounds aligned) — still far
+    // cheaper than a full timeline teardown. Falls back to a row rebuild if the node has no
+    // live visual (e.g. collapsed row, combo display).
+    public void RefreshTimelineNode(MacroTimeline timeline, MacroNode node)
+    {
+        if (TimelineRowsPanel == null ||
+            !_timelineRowRenderStates.TryGetValue(timeline, out var state))
+        {
+            RefreshTimelineRow(timeline);
+            return;
+        }
+
+        var animationKey = GetTimelineAnimationKey(timeline, node);
+        if (!state.VisualItemsByAnimationKey.TryGetValue(animationKey, out var item) ||
+            item.Element is not NodeBase nodeControl)
+        {
+            RefreshTimelineRow(timeline);
+            return;
+        }
+
+        nodeControl.IsSelected = IsStepSelected(timeline, node);
+        nodeControl.RefreshVisual();
+
+        var newSize = MeasureTimelineItem(nodeControl);
+        if (Math.Abs(newSize.Width - item.Width) > 0.5)
+            RefreshTimelineRow(timeline);
+    }
+
+    public void UpdateSelectionVisuals(MacroTimeline? previousTimeline, MacroTimeline? currentTimeline)
     {
         UpdateSelectionVisualsForTimeline(previousTimeline);
 
@@ -80,7 +149,7 @@ public partial class MainWindow
         }
     }
 
-    private void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroNode> addedRawSteps)
+    public void AppendRecordedStepsToTimelineRow(MacroTimeline timeline, IReadOnlyList<MacroNode> addedRawSteps)
     {
         if (addedRawSteps.Count == 0)
             return;
@@ -119,29 +188,13 @@ public partial class MainWindow
 
         foreach (var step in visibleSteps)
         {
-            var block = CreateNode(timeline, step);
-
-            if (block is FrameworkElement element)
-                element.Tag = step;
-
-            var size = MeasureTimelineItem(block);
-
-            var item = new TimelineVisualItem
-            {
-                Node = step,
-                Element = block,
-                Left = currentLeft,
-                Size = size,
-                AnimationKey = GetTimelineAnimationKey(timeline, step)
-            };
+            var item = BuildNodeVisualItem(timeline, step, ref currentLeft);
 
             AddTimelineItem(state.Canvas, item);
             state.VisualItems.Add(item);
             if (item.AnimationKey != null)
                 state.VisualItemsByAnimationKey[item.AnimationKey] = item;
             UpdateRowConnectorBounds(state, item);
-
-            currentLeft += size.Width + TimelineItemGap;
         }
 
         var addBlock = CreateAddNode(timeline);
@@ -169,7 +222,7 @@ public partial class MainWindow
 
         UpdateRowConnector(state);
 
-        Dispatcher.BeginInvoke(new Action(UpdateTimelineScrollIndicator));
+        Dispatcher.BeginInvoke(new Action(_context.UpdateScrollIndicator));
     }
 
     private void UpdateRowConnectorBounds(TimelineRowRenderState state, TimelineVisualItem item)
@@ -202,20 +255,7 @@ public partial class MainWindow
 
         if (state.Connector == null)
         {
-            state.Connector = new Border
-            {
-                Height = TimelineConnectorThickness,
-                CornerRadius = new CornerRadius(TimelineConnectorThickness / 2.0),
-                Background = new SolidColorBrush(Color.FromRgb(31, 48, 66)),
-                Opacity = 0.85,
-                IsHitTestVisible = false
-            };
-
-            Canvas.SetLeft(state.Connector, firstCenterX);
-            Canvas.SetTop(
-                state.Connector,
-                TimelineLayoutCalculator.GetConnectorTop(TimelineConnectorY, TimelineConnectorThickness));
-            Panel.SetZIndex(state.Connector, -10);
+            state.Connector = CreateConnectorBar(firstCenterX, lastCenterX - firstCenterX);
             state.Canvas.Children.Insert(0, state.Connector);
         }
 
@@ -248,7 +288,7 @@ public partial class MainWindow
         }
     }
 
-    private void EnsureTimelineCanvasWidthForAllRows(double requiredWidth)
+    public void EnsureTimelineCanvasWidthForAllRows(double requiredWidth)
     {
         if (TimelineRowsPanel == null)
             return;
@@ -295,7 +335,7 @@ public partial class MainWindow
         return maxWidth;
     }
 
-    private double GetMinimumTimelineCanvasWidth()
+    public double GetMinimumTimelineCanvasWidth()
     {
         var viewportWidth = GetTimelineLayoutViewportWidth();
         var horizontalPadding = GetTimelineScrollViewerHorizontalPadding();

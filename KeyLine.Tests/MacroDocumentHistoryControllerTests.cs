@@ -172,6 +172,46 @@ public sealed class MacroDocumentHistoryControllerTests
         Assert.Equal("edited", workspace.Document.ActiveTimeline.Nodes[1].Text);
     }
 
+    [Fact]
+    public void UndoRedoRoundTripsTimelineDisabledState()
+    {
+        var workspace = CreateWorkspace("Macro", "Timeline");
+        var timeline = workspace.Document.ActiveTimeline;
+        timeline.IsDisabled = false;
+        timeline.IsCollapsed = true;
+
+        var history = new MacroDocumentHistoryController();
+        history.SaveSnapshot(workspace);
+
+        timeline.IsDisabled = true;
+
+        Assert.True(history.TryUndo(workspace, out var undoSnapshot));
+        workspace.Document = MacroCloneService.CloneDocument(undoSnapshot);
+        Assert.False(workspace.Document.ActiveTimeline.IsDisabled);
+        Assert.True(workspace.Document.ActiveTimeline.IsCollapsed);
+
+        Assert.True(history.TryRedo(workspace, out var redoSnapshot));
+        workspace.Document = MacroCloneService.CloneDocument(redoSnapshot);
+        Assert.True(workspace.Document.ActiveTimeline.IsDisabled);
+    }
+
+    [Fact]
+    public void CloneTimelinePreservesDisabledAndCollapsedState()
+    {
+        var source = new MacroTimeline
+        {
+            Name = "Source",
+            IsDisabled = true,
+            IsCollapsed = true
+        };
+
+        var clone = MacroCloneService.CloneTimeline(source);
+
+        Assert.True(clone.IsDisabled);
+        Assert.True(clone.IsCollapsed);
+        Assert.Equal("Source", clone.Name);
+    }
+
     private static MacroWorkspace CreateWorkspace(string name, string timelineName)
     {
         var workspace = new MacroWorkspace

@@ -1,27 +1,16 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
 using KeyLine.Domain;
-using KeyLine.Services.Macro;
-using KeyLine.Services.Playback;
-using KeyLine.Services.Timeline;
 using KeyLine.State;
-using KeyLine.UI.Config;
 using KeyLine.UI.Nodes;
-using KeyLine.UI.Timeline;
 
-namespace KeyLine;
+namespace KeyLine.UI.Timeline;
 
-public partial class MainWindow
+public sealed partial class TimelineRenderer
 {
-    private UIElement CreateNode(MacroTimeline timeline, MacroNode node)
+    public UIElement CreateNode(MacroTimeline timeline, MacroNode node)
     {
         return node.Type switch
         {
@@ -59,7 +48,7 @@ public partial class MainWindow
             Tag = node
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -72,7 +61,7 @@ public partial class MainWindow
             Tag = node
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -87,11 +76,11 @@ public partial class MainWindow
 
         control.DelayCommitted += (_, _) =>
         {
-            RefreshInspector();
-            ScheduleSaveState();
+            _context.RefreshInspector();
+            _context.ScheduleSaveState();
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -104,7 +93,7 @@ public partial class MainWindow
             Tag = node
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -119,19 +108,19 @@ public partial class MainWindow
 
         control.CoordinateCommitted += (_, _) =>
         {
-            RefreshTimeline();
-            ScheduleSaveState();
+            RefreshTimelineNode(timeline, node);
+            _context.ScheduleSaveState();
         };
 
         control.TargetPickRequested += async (_, _) =>
         {
-            SaveDocumentUndoSnapshot();
-            SelectTimeline(timeline);
+            _context.SaveUndoSnapshot();
+            _context.SelectTimeline(timeline);
             _selection.SelectNode(timeline, node);
-            await PickMouseCoordinatesForNodeAsync(node);
+            await _context.PickMouseCoordinatesForNodeAsync(node);
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -141,11 +130,11 @@ public partial class MainWindow
         {
             Node = node,
             IsSelected = IsStepSelected(timeline, node),
-            ResolveMacroName = ResolveActiveProfileMacroName,
+            ResolveMacroName = _context.ResolveMacroName,
             Tag = node
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -158,7 +147,7 @@ public partial class MainWindow
             Tag = node
         };
 
-        AttachNodeMouseHandlers(control, timeline, node);
+        _context.AttachNodeMouseHandlers(control, timeline, node);
         return control;
     }
 
@@ -175,7 +164,7 @@ public partial class MainWindow
                 }
         };
 
-        control.AddClicked += AddButton_Click;
+        control.AddClicked += _context.AddButtonClick;
         return control;
     }
 
@@ -190,22 +179,10 @@ public partial class MainWindow
         if (!node.IsSyntheticDisplayNode)
             return _selection.IsNodeSelected(timeline, node);
 
-        return _selection.SelectedNodes.Any(selectedStep => IsSameSelectedStep(node, selectedStep));
+        return _selection.SelectedNodes.Any(selectedStep => TimelineSelectionState.IsSameSelectionNode(node, selectedStep));
     }
 
-    private static bool IsSameSelectedStep(MacroNode node, MacroNode selectedNode)
-    {
-        if (ReferenceEquals(node, selectedNode))
-            return true;
-
-        if (node.IsSyntheticDisplayNode)
-            return node.SourceNodes.Contains(selectedNode) ||
-                   (selectedNode.IsSyntheticDisplayNode && node.SourceNodes.SequenceEqual(selectedNode.SourceNodes));
-
-        return selectedNode.IsSyntheticDisplayNode && selectedNode.SourceNodes.Contains(node);
-    }
-
-    private static Size MeasureTimelineItem(UIElement element)
+    public static Size MeasureTimelineItem(UIElement element)
     {
         element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
 

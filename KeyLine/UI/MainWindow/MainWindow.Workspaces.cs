@@ -151,7 +151,7 @@ public partial class MainWindow
                 _document = _activeWorkspace.Document;
 
                 _selection.Clear();
-                _timelineVisualPositions.Clear();
+                _timelineRenderer.ClearAnimationCache();
                 ResetClearConfirmation();
 
                 ApplyMacroOptionsFromWorkspace(_activeWorkspace);

@@ -172,9 +172,8 @@ public partial class MainWindow
         if (viewportWidth <= 0)
             return TimelineScrollViewer.HorizontalOffset;
 
-        var rowWidth = _timelineRowRenderStates.TryGetValue(timeline, out var state)
-            ? state.RowWidth
-            : GetMinimumTimelineCanvasWidth();
+        var followState = _timelineRenderer.GetRowRenderState(timeline);
+        var rowWidth = followState?.RowWidth ?? GetMinimumTimelineCanvasWidth();
 
         var contentEnd = TimelineScrollViewer.Padding.Left + rowWidth + RecordingFollowRightOverscan;
         var targetOffset = Math.Max(0, contentEnd - viewportWidth);
@@ -195,7 +194,8 @@ public partial class MainWindow
         if (viewportWidth <= 0)
             return TimelineScrollViewer.HorizontalOffset;
 
-        if (!_timelineRowRenderStates.TryGetValue(timeline, out var state))
+        var state = _timelineRenderer.GetRowRenderState(timeline);
+        if (state == null)
             return TimelineScrollViewer.HorizontalOffset;
 
         foreach (var step in addedSteps.Reverse())

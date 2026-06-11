@@ -3,17 +3,12 @@ using KeyLine.Domain;
 using KeyLine.Services.Features;
 using KeyLine.Services.Timeline;
 using KeyLine.UI.MainWindow.Controls;
+using KeyLine.UI.Timeline;
 
 namespace KeyLine;
 
 public partial class MainWindow
 {
-    private sealed class AddNodeContext
-    {
-        public required MacroTimeline Timeline { get; init; }
-        public MacroNode? RawInsertAnchor { get; init; }
-    }
-
     private void AddTimelineButton_Click(object sender, RoutedEventArgs e)
     {
         SaveDocumentUndoSnapshot();
@@ -215,7 +210,7 @@ public partial class MainWindow
         timeline.UseStandardDelay = false;
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         ScheduleSaveState();
     }
 
@@ -241,7 +236,7 @@ public partial class MainWindow
 
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         ScheduleSaveState();
     }
 
@@ -259,7 +254,7 @@ public partial class MainWindow
 
         SelectTimeline(timeline, refreshInspector: false);
         _selection.SelectNodes(timeline, new[] { repeatStart, repeatEnd }, repeatStart);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         RefreshInspector();
         ScheduleSaveState();
     }
@@ -278,7 +273,7 @@ public partial class MainWindow
 
         SelectTimeline(timeline, refreshInspector: false);
         _selection.SelectNodes(timeline, new[] { conditionStart, conditionEnd }, conditionStart);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         RefreshInspector();
         ScheduleSaveState();
     }
@@ -299,7 +294,7 @@ public partial class MainWindow
         InsertPopupSteps(timeline, new[] { step });
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         ScheduleSaveState();
     }
 
@@ -316,7 +311,7 @@ public partial class MainWindow
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline, refreshInspector: false);
         _selection.SelectNode(timeline, step);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         OpenInspectorFromSelection();
         ScheduleSaveState();
     }
@@ -339,7 +334,7 @@ public partial class MainWindow
 
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         ScheduleSaveState();
     }
 
@@ -369,7 +364,7 @@ public partial class MainWindow
         MergeAdjacentDelayNodesIfEnabled(timeline);
         SelectTimeline(timeline, refreshInspector: false);
         _selection.SelectNode(timeline, step);
-        RefreshTimeline();
+        RefreshTimelineRowAndHeaders(timeline);
         OpenInspectorFromSelection();
         ScheduleSaveState();
     }

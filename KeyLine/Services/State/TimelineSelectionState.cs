@@ -150,7 +150,7 @@ public sealed class TimelineSelectionState
         AnchorTimeline = null;
     }
 
-    private static bool IsSameSelectionNode(MacroNode node, MacroNode selectedNode)
+    public static bool IsSameSelectionNode(MacroNode node, MacroNode selectedNode)
     {
         if (ReferenceEquals(node, selectedNode))
             return true;

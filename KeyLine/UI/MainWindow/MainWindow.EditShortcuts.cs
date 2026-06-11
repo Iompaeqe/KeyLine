@@ -282,17 +282,21 @@ public partial class MainWindow
             case EditClipboardKind.Nodes:
                 SaveDocumentUndoSnapshot();
                 PasteSteps(clipboard.Nodes);
+                // Nodes paste into a single timeline: refresh only that row (+ headers) once,
+                // not the whole editor, however many nodes were pasted.
+                RefreshTimelineRowAndHeaders(_selection.SelectedTimeline ?? _document.ActiveTimeline);
                 break;
             case EditClipboardKind.Timelines:
                 SaveDocumentUndoSnapshot();
                 PasteTimelines(clipboard.Timelines);
+                RefreshTimeline(); // timeline-list structure changed
                 break;
             case EditClipboardKind.Workspaces:
                 PasteWorkspaces(clipboard.Workspaces);
+                RefreshTimeline(); // active workspace/document changed
                 break;
         }
 
-        RefreshTimeline();
         RefreshMacroTabs();
         ScheduleSaveState();
     }

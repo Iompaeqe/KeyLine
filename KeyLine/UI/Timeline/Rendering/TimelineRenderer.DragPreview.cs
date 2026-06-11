@@ -1,27 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
 using KeyLine.Domain;
-using KeyLine.Services.Macro;
-using KeyLine.Services.Playback;
-using KeyLine.Services.Timeline;
-using KeyLine.State;
-using KeyLine.UI.Config;
-using KeyLine.UI.Nodes;
-using KeyLine.UI.Timeline;
 
-namespace KeyLine;
+namespace KeyLine.UI.Timeline;
 
-public partial class MainWindow
+public sealed partial class TimelineRenderer
 {
-    private void RefreshTimelineDragPreview()
+    public void RefreshTimelineDragPreview()
     {
         if (TimelineRowsPanel == null)
             return;
@@ -55,7 +43,7 @@ public partial class MainWindow
                 return;
             }
 
-            var previewSlots = GetTimelineRenderPreviewSlots(timeline);
+            var previewSlots = _context.GetRenderPreviewSlots(timeline);
 
             // Re-calculate positions for all items including the placeholder.
             var currentLeft = TimelineFirstItemLeft;

@@ -43,6 +43,13 @@ public abstract class NodeBase : UserControl
         }
     }
 
+    /// <summary>
+    /// Forces a re-render after the bound <see cref="Node"/> was mutated in place (same reference).
+    /// The <see cref="Node"/> setter only re-renders on a reference change, so node-level refreshes
+    /// that edit the existing node instance call this instead.
+    /// </summary>
+    public void RefreshVisual() => UpdateVisual();
+
     public virtual InlineEditorActivationMode GetInlineEditorActivationMode(DependencyObject? source) => InlineEditorActivationMode.None;
 
     public virtual void FocusInlineEditor(DependencyObject? source = null)

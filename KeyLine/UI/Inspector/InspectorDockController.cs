@@ -17,8 +17,7 @@ public sealed class InspectorDockController
     private readonly Func<IReadOnlyList<MacroWorkspace>> _getActiveProfileWorkspaces;
     private readonly Func<bool> _canEdit;
     private readonly Action _saveUndoSnapshot;
-    private readonly Action _refreshTimeline;
-    private readonly Action _refreshTimelineWithoutInspector;
+    private readonly InspectorTimelineRefresh _timelineRefresh;
     private readonly Action _scheduleSaveState;
     private readonly Action<MacroTimeline> _selectTimeline;
     private readonly Func<MacroNode, Task> _pickMouseCoordinatesForNodeAsync;
@@ -38,8 +37,7 @@ public sealed class InspectorDockController
         Func<IReadOnlyList<MacroWorkspace>> getActiveProfileWorkspaces,
         Func<bool> canEdit,
         Action saveDocumentUndoSnapshot,
-        Action refreshTimeline,
-        Action refreshTimelineWithoutInspector,
+        InspectorTimelineRefresh timelineRefresh,
         Action scheduleSaveState,
         Action<MacroTimeline> selectTimeline,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
@@ -52,8 +50,7 @@ public sealed class InspectorDockController
         _getActiveProfileWorkspaces = getActiveProfileWorkspaces;
         _canEdit = canEdit;
         _saveUndoSnapshot = saveDocumentUndoSnapshot;
-        _refreshTimeline = refreshTimeline;
-        _refreshTimelineWithoutInspector = refreshTimelineWithoutInspector;
+        _timelineRefresh = timelineRefresh;
         _scheduleSaveState = scheduleSaveState;
         _selectTimeline = selectTimeline;
         _pickMouseCoordinatesForNodeAsync = pickMouseCoordinatesForNodeAsync;
@@ -200,8 +197,7 @@ public sealed class InspectorDockController
             getActiveProfileWorkspaces: _getActiveProfileWorkspaces,
             canEdit: _canEdit,
             saveDocumentUndoSnapshot: _saveUndoSnapshot,
-            refreshTimeline: _refreshTimeline,
-            refreshTimelineWithoutInspector: _refreshTimelineWithoutInspector,
+            timelineRefresh: _timelineRefresh,
             scheduleSaveState: _scheduleSaveState,
             selectTimeline: _selectTimeline,
             pickMouseCoordinatesForNodeAsync: _pickMouseCoordinatesForNodeAsync,
