@@ -1,6 +1,6 @@
-﻿using System.Windows.Input;
-using KeyLine.Domain;
+﻿using KeyLine.Domain;
 using KeyLine.UI.Common.EntryBlocks;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -69,11 +69,11 @@ public partial class PixelColorConditionInspector
             canEdit,
             TooltipNotes.ConditionPixelColor);
 
-        BindNumberEntry(
-            entry: ToleranceEntry,
-            context: context,
-            value: Math.Clamp(node.ConditionPixelTolerance, 0, 255),
-            commit: value => context.CommitNodeValueChange(() =>
+        InspectorFieldBinder.BindNumber(
+            context.FieldHost,
+            ToleranceEntry,
+            read: InspectorFieldBinder.SingleInt(() => Math.Clamp(node.ConditionPixelTolerance, 0, 255)),
+            apply: value => context.CommitNodeValueChange(() =>
                 node.ConditionPixelTolerance = Math.Clamp(value, 0, 255)),
             min: 0,
             max: 255,
@@ -86,81 +86,6 @@ public partial class PixelColorConditionInspector
             context.SaveUndoSnapshot();
             await context.PickConditionPixelAsync(node);
             context.RefreshInspector();
-        };
-    }
-
-    private static void BindNumberEntry(
-        NumberEntryBlock entry,
-        NodeInspectorContext context,
-        int value,
-        Action<int> commit,
-        int min,
-        int? max,
-        string tooltip,
-        bool isEnabled)
-    {
-        var canEdit = context.CanEditOption(isEnabled);
-
-        entry.IsEnabled = canEdit;
-        entry.ToolTip = tooltip;
-
-        var textBox = entry.TextBox;
-        textBox.Text = value.ToString();
-        textBox.IsEnabled = canEdit;
-
-        var committedValue = value;
-        var isCommittingText = false;
-
-        void CommitText()
-        {
-            if (isCommittingText)
-                return;
-
-            isCommittingText = true;
-            try
-            {
-                committedValue = InspectorCommitService.CommitNumberText(
-                    textBox,
-                    committedValue,
-                    commit,
-                    min,
-                    max,
-                    context.IsRefreshing());
-            }
-            finally
-            {
-                isCommittingText = false;
-            }
-        }
-
-        textBox.PreviewTextInput += (_, e) =>
-        {
-            e.Handled = !e.Text.All(char.IsDigit);
-        };
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
         };
     }
 }

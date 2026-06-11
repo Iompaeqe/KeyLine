@@ -1,0 +1,46 @@
+<!--
+    Inspector-owned TextBox style. The inspector no longer depends on the app-wide TextBox style so its
+    fields cannot break when a global style changes. The cyan focus border is driven by IsKeyboardFocused
+    (real keyboard focus) — the field's focus visual always matches actual focus, which is the root fix for
+    the "stuck cyan border" bug together with the inspector's defocus-to-sink behavior.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style TargetType="TextBox">
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Background" Value="#111827" />
+        <Setter Property="Foreground" Value="{StaticResource Text}" />
+        <Setter Property="BorderBrush" Value="#2A3547" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="#38BDF8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Focus visual is bound to real keyboard focus, not stale local state. -->
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="#38BDF8" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

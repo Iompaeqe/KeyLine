@@ -1,6 +1,7 @@
 ﻿using System.Windows.Controls;
 using KeyLine.Domain;
 using KeyLine.Services.Input;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -39,26 +40,14 @@ public partial class KeyToggleNodeInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-        var currentValue = GetToggleKeyMode(node);
-
         ToggleModeCombo.ItemsSource = ToggleKeyModeOptions;
-        ToggleModeCombo.SelectedValue = currentValue;
-        ToggleModeCombo.IsEnabled = canEdit;
 
-        ToggleModeCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (ToggleModeCombo.SelectedItem is not ToggleModeOption option)
-                return;
-
-            if (option.Value == GetToggleKeyMode(node))
-                return;
-
-            context.CommitNodeChange(() => SetToggleKeyMode(node, option.Value));
-        };
+        InspectorFieldBinder.BindCombo<ToggleKeyMode>(
+            context.FieldHost,
+            ToggleModeCombo,
+            read: InspectorFieldBinder.SingleValue(() => GetToggleKeyMode(node)),
+            apply: value => context.CommitNodeChange(() => SetToggleKeyMode(node, value)),
+            isEnabled: isEnabled);
     }
 
     private static ToggleKeyMode GetToggleKeyMode(MacroNode node)

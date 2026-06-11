@@ -1,5 +1,6 @@
 ﻿using System.Windows.Controls;
 using KeyLine.Domain;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -15,33 +16,17 @@ public partial class MacroRunningConditionInspector
 
     public void Bind(NodeInspectorContext context, MacroNode node, bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
         var selectedId = node.ConditionMacroId?.Trim() ?? "";
 
         MacroCombo.ItemsSource = GetMacroOptions(context, selectedId, excludeActiveWorkspace: true);
-        MacroCombo.SelectedValue = selectedId;
-        MacroCombo.IsEnabled = canEdit;
 
-        MacroCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (MacroCombo.SelectedValue is not string value)
-                return;
-
-            value = value.Trim();
-
-            if (string.Equals(
-                    value,
-                    node.ConditionMacroId?.Trim() ?? "",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            context.CommitNodeChange(() => node.ConditionMacroId = value);
-        };
+        InspectorFieldBinder.BindCombo<string>(
+            context.FieldHost,
+            MacroCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.ConditionMacroId?.Trim() ?? ""),
+            apply: value => context.CommitNodeChange(() => node.ConditionMacroId = value.Trim()),
+            isEnabled: isEnabled,
+            comparer: StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<MacroOption> GetMacroOptions(

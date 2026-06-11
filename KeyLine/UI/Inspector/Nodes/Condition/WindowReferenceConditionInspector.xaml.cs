@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using KeyLine.Domain;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -37,34 +37,20 @@ public partial class WindowReferenceConditionInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-        var reference = node.GetEffectiveWindowReference();
-
         WindowSourceCombo.ItemsSource = WindowReferenceTypeOptions;
-        WindowSourceCombo.SelectedValue = reference.Type;
-        WindowSourceCombo.IsEnabled = canEdit;
 
-        WindowSourceCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (WindowSourceCombo.SelectedItem is not WindowReferenceTypeOption option)
-                return;
-
-            if (option.Value == node.GetEffectiveWindowReference().Type)
-                return;
-
-            context.CommitNodeChange(() =>
+        InspectorFieldBinder.BindCombo<WindowReferenceType>(
+            context.FieldHost,
+            WindowSourceCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.GetEffectiveWindowReference().Type),
+            apply: value => context.CommitNodeChange(() =>
             {
                 var updated = node.GetEffectiveWindowReference();
-                updated.Type = option.Value;
+                updated.Type = value;
                 node.WindowReference = updated;
                 node.NormalizeWindowReference();
-            });
-
-            RefreshDynamicState(node);
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void BindCustomTitleTextBox(
@@ -72,47 +58,16 @@ public partial class WindowReferenceConditionInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-        var reference = node.GetEffectiveWindowReference();
-
-        CustomTitleTextBox.Text = reference.CustomTitle;
-        CustomTitleTextBox.IsEnabled = canEdit;
-
-        void CommitWindowText()
-        {
-            if (context.IsRefreshing())
-                return;
-
-            var title = CustomTitleTextBox.Text.Trim();
-
-            if (string.Equals(
-                    title,
-                    node.GetEffectiveWindowReference().CustomTitle,
-                    StringComparison.Ordinal))
+        InspectorFieldBinder.BindText(
+            context.FieldHost,
+            CustomTitleTextBox,
+            read: InspectorFieldBinder.SingleText(() => node.GetEffectiveWindowReference().CustomTitle),
+            apply: value => context.CommitNodeChange(() =>
             {
-                return;
-            }
-
-            context.CommitNodeChange(() =>
-            {
-                node.WindowReference = WindowReference.Custom(title);
+                node.WindowReference = WindowReference.Custom(value.Trim());
                 node.NormalizeWindowReference();
-            });
-
-            RefreshDynamicState(node);
-        }
-
-        CustomTitleTextBox.LostFocus += (_, _) => CommitWindowText();
-
-        CustomTitleTextBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitWindowText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void RefreshDynamicState(MacroNode node)

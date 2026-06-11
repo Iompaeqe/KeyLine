@@ -1,8 +1,5 @@
-using System.Windows.Controls;
 using KeyLine.Domain;
-using KeyLine.Services.Timeline;
 using KeyLine.State;
-using KeyLine.UI.Common.EntryBlocks;
 
 namespace KeyLine.UI.Inspector;
 
@@ -124,44 +121,5 @@ public sealed class InspectorCommitService
         {
             _isCommittingTimelineName = false;
         }
-    }
-
-    public static int CommitNumberText(
-        TextBox textBox,
-        int originalValue,
-        Action<int> commit,
-        int min,
-        int? max,
-        bool isRefreshing)
-    {
-        if (isRefreshing)
-            return originalValue;
-
-        if (!int.TryParse(textBox.Text, out var value))
-            value = min;
-
-        value = Math.Max(min, value);
-        if (max.HasValue)
-            value = Math.Min(max.Value, value);
-
-        var normalizedText = value.ToString();
-        if (textBox.Text != normalizedText)
-            textBox.Text = normalizedText;
-
-        if (value != originalValue)
-            commit(value);
-
-        return value;
-    }
-
-    public static void CommitDelayText(TimeEntryBlock entry, int originalValue, Action<int> commit)
-    {
-        var textBox = entry.TextBox;
-        if (!long.TryParse(textBox.Text, out var value))
-            value = string.IsNullOrWhiteSpace(textBox.Text) ? 0 : DelayFormatter.MaxMilliseconds;
-
-        var clampedValue = DelayFormatter.ClampMilliseconds(value);
-        if (clampedValue != originalValue)
-            commit(clampedValue);
     }
 }

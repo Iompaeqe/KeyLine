@@ -1,9 +1,9 @@
 ﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
+using KeyLine.UI.Inspector.Fields;
 using KeyLine.UI.Timeline;
 using Microsoft.Win32;
 
@@ -40,31 +40,18 @@ public partial class SystemLaunchNodeInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-
         KindCombo.ItemsSource = LaunchKindOptions;
-        KindCombo.SelectedValue = node.SystemLaunchKind;
-        KindCombo.IsEnabled = canEdit;
 
-        KindCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (KindCombo.SelectedItem is not LaunchKindOption option)
-                return;
-
-            if (option.Value == node.SystemLaunchKind)
-                return;
-
-            context.CommitNodeChange(() =>
+        InspectorFieldBinder.BindCombo<SystemLaunchKind>(
+            context.FieldHost,
+            KindCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.SystemLaunchKind),
+            apply: value => context.CommitNodeChange(() =>
             {
-                node.SystemLaunchKind = option.Value;
+                node.SystemLaunchKind = value;
                 node.SystemLaunchTarget = node.SystemLaunchTarget?.Trim() ?? "";
-            });
-
-            RefreshDynamicState(node);
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void BindTargetTextBox(
@@ -72,36 +59,12 @@ public partial class SystemLaunchNodeInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-
-        TargetTextBox.Text = node.SystemLaunchTarget;
-        TargetTextBox.IsEnabled = canEdit;
-
-        void CommitTargetText()
-        {
-            if (context.IsRefreshing())
-                return;
-
-            var target = TargetTextBox.Text.Trim();
-
-            if (string.Equals(target, node.SystemLaunchTarget, StringComparison.Ordinal))
-                return;
-
-            context.CommitNodeChange(() => node.SystemLaunchTarget = target);
-            RefreshDynamicState(node);
-        }
-
-        TargetTextBox.LostFocus += (_, _) => CommitTargetText();
-
-        TargetTextBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitTargetText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
+        InspectorFieldBinder.BindText(
+            context.FieldHost,
+            TargetTextBox,
+            read: InspectorFieldBinder.SingleText(() => node.SystemLaunchTarget),
+            apply: value => context.CommitNodeChange(() => node.SystemLaunchTarget = value.Trim()),
+            isEnabled: isEnabled);
     }
 
     private void BindBrowseButton(

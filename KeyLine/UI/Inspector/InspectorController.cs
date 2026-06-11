@@ -54,6 +54,8 @@ public sealed class InspectorController
             scheduleSaveState: scheduleSaveState,
             selectTimeline: selectTimeline);
 
+        var nodeFieldHost = window.CreateNodeFieldHost(() => _isRefreshing, canEdit);
+
         _nodeInspectorBuilder = new NodeInspectorBuilder(
             selection: selection,
             getActiveWorkspace: _getActiveWorkspace,
@@ -65,7 +67,8 @@ public sealed class InspectorController
             commitNodeValueChange: _commitService.CommitNodeValueChange,
             refreshInspector: Refresh,
             pickMouseCoordinatesForNodeAsync: pickMouseCoordinatesForNodeAsync,
-            pickConditionPixelAsync: pickConditionPixelAsync);
+            pickConditionPixelAsync: pickConditionPixelAsync,
+            fieldHost: nodeFieldHost);
 
         WireWindowEvents();
     }
@@ -75,6 +78,9 @@ public sealed class InspectorController
         _isRefreshing = true;
         try
         {
+            // Drop stale node-field registrations; the node build below re-registers fresh fields.
+            _window.ClearNodeFields();
+
             var timeline = _getCurrentTimeline();
             var workspace = _getActiveWorkspace();
             var showCooldown =

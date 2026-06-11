@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
 using KeyLine.UI.Common.EntryBlocks;
 using KeyLine.UI.Inspector.Batch;
+using KeyLine.UI.Inspector.Fields;
 using KeyLine.UI.Timeline;
 
 namespace KeyLine.UI.Inspector.Nodes;
@@ -39,11 +39,11 @@ public partial class SystemVolumeNodeInspector
     {
         BindActionCombo(context, node, policy.CanEditVolumeControl);
 
-        BindNumberEntry(
-            entry: VolumeEntry,
-            context: context,
-            value: Math.Clamp(node.SystemVolumePercent, 0, 100),
-            commit: value => context.CommitNodeValueChange(() =>
+        InspectorFieldBinder.BindNumber(
+            context.FieldHost,
+            VolumeEntry,
+            read: InspectorFieldBinder.SingleInt(() => Math.Clamp(node.SystemVolumePercent, 0, 100)),
+            apply: value => context.CommitNodeValueChange(() =>
                 node.SystemVolumePercent = Math.Clamp(value, 0, 100)),
             min: 0,
             max: 100,
@@ -57,9 +57,9 @@ public partial class SystemVolumeNodeInspector
     {
         BindBatchActionCombo(context, nodes);
 
-        BatchEntryBinder.BindNumber(
-            entry: VolumeEntry,
-            context: context,
+        InspectorFieldBinder.BindNumber(
+            context.FieldHost,
+            VolumeEntry,
             read: () => BatchValues.Read(nodes, node => Math.Clamp(node.SystemVolumePercent, 0, 100)),
             apply: value => context.CommitNodeChange(() =>
             {
@@ -68,7 +68,7 @@ public partial class SystemVolumeNodeInspector
             }),
             min: 0,
             max: 100,
-            tooltip: "Set the system output volume percentage.",
+            tooltip: "Set the system output volume percentage. Applies to all selected nodes.",
             isEnabled: true);
 
         // The volume % row only makes sense when every selected node uses Set Volume %.
@@ -167,81 +167,6 @@ public partial class SystemVolumeNodeInspector
         VolumeRow.Visibility = node.SystemVolumeAction == SystemVolumeAction.SetVolumePercent
             ? Visibility.Visible
             : Visibility.Collapsed;
-    }
-
-    private static void BindNumberEntry(
-        NumberEntryBlock entry,
-        NodeInspectorContext context,
-        int value,
-        Action<int> commit,
-        int min,
-        int? max,
-        string tooltip,
-        bool isEnabled)
-    {
-        var canEdit = context.CanEditOption(isEnabled);
-
-        entry.IsEnabled = canEdit;
-        entry.ToolTip = tooltip;
-
-        var textBox = entry.TextBox;
-        textBox.Text = value.ToString();
-        textBox.IsEnabled = canEdit;
-
-        var committedValue = value;
-        var isCommittingText = false;
-
-        void CommitText()
-        {
-            if (isCommittingText)
-                return;
-
-            isCommittingText = true;
-            try
-            {
-                committedValue = InspectorCommitService.CommitNumberText(
-                    textBox,
-                    committedValue,
-                    commit,
-                    min,
-                    max,
-                    context.IsRefreshing());
-            }
-            finally
-            {
-                isCommittingText = false;
-            }
-        }
-
-        textBox.PreviewTextInput += (_, e) =>
-        {
-            e.Handled = !e.Text.All(char.IsDigit);
-        };
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
     }
 
     private sealed record VolumeActionOption(string Label, SystemVolumeAction Value)

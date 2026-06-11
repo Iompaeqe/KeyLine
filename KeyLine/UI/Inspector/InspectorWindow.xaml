@@ -14,38 +14,9 @@
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="../Common/Styles/Colors.xaml" />
-                <ResourceDictionary Source="../Common/Styles/TextBlocks.xaml" />
-                <ResourceDictionary Source="../Common/Styles/Buttons.xaml" />
-                <ResourceDictionary Source="../Common/Styles/TextBoxes.xaml" />
-                <ResourceDictionary Source="../Common/Styles/CheckBoxes.xaml" />
-                <ResourceDictionary Source="../Common/Styles/ComboBoxes.xaml" />
-                <ResourceDictionary Source="../Common/Styles/ScrollBars.xaml" />
-                <ResourceDictionary Source="../Common/Styles/ToolTips.xaml" />
+                <!-- Single inspector-owned dictionary: shared brushes + inspector input/field styles. -->
+                <ResourceDictionary Source="Styles/Inspector.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <Style x:Key="InspectorLabel" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#8EA0B6" />
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="0,0,10,0" />
-            </Style>
-
-            <Style x:Key="InspectorGroupLabel" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#5E7189" />
-                <Setter Property="FontSize" Value="10" />
-                <Setter Property="FontWeight" Value="Bold" />
-                <Setter Property="Margin" Value="0,4,0,3" />
-            </Style>
-            
-            <Style x:Key="InspectorValue" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#E2E8F0" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-            </Style>
-
         </ResourceDictionary>
     </Window.Resources>
 

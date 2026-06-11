@@ -4,6 +4,8 @@ using KeyLine.Domain;
 using KeyLine.Interop;
 using KeyLine.Services.Input;
 using KeyLine.Services.Macro;
+using KeyLine.UI.Inspector.Batch;
+using KeyLine.UI.Inspector.Fields;
 using KeyLine.UI.Timeline;
 
 namespace KeyLine.UI.Inspector.Nodes;
@@ -84,63 +86,38 @@ public partial class ConditionBlockInspector
         if (_context == null || _node == null)
             return;
 
-        var canEdit = _context.CanEditOption(true);
         var canInvert = MacroConditionDefinitions.CanInvert(_node.ConditionType);
+        var node = _node;
+        var context = _context;
 
         ConditionTypeCombo.ItemsSource = ConditionTypeOptions;
-        ConditionTypeCombo.SelectedValue = _node.ConditionType;
         ConditionTypeCombo.Width = canInvert ? 136 : 176;
-        ConditionTypeCombo.IsEnabled = canEdit;
 
-        NotToggle.Visibility = canInvert
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
-        NotToggle.IsChecked = _node.ConditionIsInverted;
-        NotToggle.IsEnabled = canEdit;
-
-        ConditionTypeCombo.SelectionChanged += (_, _) =>
-        {
-            if (_context.IsRefreshing())
-                return;
-
-            if (ConditionTypeCombo.SelectedItem is not ConditionTypeOption option)
-                return;
-
-            if (option.Value == _node.ConditionType)
-                return;
-
-            _context.CommitNodeChange(() =>
+        InspectorFieldBinder.BindCombo<MacroConditionType>(
+            context.FieldHost,
+            ConditionTypeCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.ConditionType),
+            apply: value => context.CommitNodeChange(() =>
             {
-                _node.ConditionType = option.Value;
-                NormalizeConditionDefaults(_node);
-            });
-
-            BindOverview();
-            RefreshConditionTypeRowOnly();
-            RebuildDetails();
-        };
-
-        NotToggle.Checked += (_, _) => CommitConditionInversion(true);
-        NotToggle.Unchecked += (_, _) => CommitConditionInversion(false);
-    }
-
-    private void RefreshConditionTypeRowOnly()
-    {
-        if (_context == null || _node == null)
-            return;
-
-        var canEdit = _context.CanEditOption(true);
-        var canInvert = MacroConditionDefinitions.CanInvert(_node.ConditionType);
-
-        ConditionTypeCombo.Width = canInvert ? 136 : 176;
+                node.ConditionType = value;
+                NormalizeConditionDefaults(node);
+            }),
+            isEnabled: true);
 
         NotToggle.Visibility = canInvert
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        NotToggle.IsChecked = _node.ConditionIsInverted;
-        NotToggle.IsEnabled = canEdit;
+        InspectorFieldBinder.BindCheckBox(
+            context.FieldHost,
+            NotToggle,
+            read: () => BatchValue<bool>.Common(node.ConditionIsInverted),
+            apply: value =>
+            {
+                if (MacroConditionDefinitions.CanInvert(node.ConditionType))
+                    context.CommitNodeChange(() => node.ConditionIsInverted = value);
+            },
+            isEnabled: true);
     }
 
     private void RebuildDetails()
@@ -150,20 +127,6 @@ public partial class ConditionBlockInspector
 
         DetailsHost.Children.Clear();
         _buildDetails(DetailsHost, _node, true);
-    }
-
-    private void CommitConditionInversion(bool isInverted)
-    {
-        if (_context == null ||
-            _node == null ||
-            _context.IsRefreshing() ||
-            _node.ConditionIsInverted == isInverted ||
-            !MacroConditionDefinitions.CanInvert(_node.ConditionType))
-        {
-            return;
-        }
-
-        _context.CommitNodeChange(() => _node.ConditionIsInverted = isInverted);
     }
 
     private string? ResolveMacroName(string macroId)

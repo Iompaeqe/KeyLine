@@ -1,8 +1,8 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.UI.Common.EntryBlocks;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector.Nodes;
 
@@ -39,11 +39,11 @@ public partial class LoopContextConditionInspector
     {
         BindModeCombo(context, node, isEnabled);
 
-        BindNumberEntry(
-            entry: IntervalEntry,
-            context: context,
-            value: Math.Max(1, node.ConditionLoopInterval),
-            commit: value => context.CommitNodeValueChange(() =>
+        InspectorFieldBinder.BindNumber(
+            context.FieldHost,
+            IntervalEntry,
+            read: InspectorFieldBinder.SingleInt(() => Math.Max(1, node.ConditionLoopInterval)),
+            apply: value => context.CommitNodeValueChange(() =>
                 node.ConditionLoopInterval = Math.Max(1, value)),
             min: 1,
             max: null,
@@ -58,31 +58,18 @@ public partial class LoopContextConditionInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-
         ModeCombo.ItemsSource = LoopModeOptions;
-        ModeCombo.SelectedValue = node.ConditionLoopMode;
-        ModeCombo.IsEnabled = canEdit;
 
-        ModeCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (ModeCombo.SelectedItem is not LoopModeOption option)
-                return;
-
-            if (option.Value == node.ConditionLoopMode)
-                return;
-
-            context.CommitNodeChange(() =>
+        InspectorFieldBinder.BindCombo<MacroConditionLoopMode>(
+            context.FieldHost,
+            ModeCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.ConditionLoopMode),
+            apply: value => context.CommitNodeChange(() =>
             {
-                node.ConditionLoopMode = option.Value;
+                node.ConditionLoopMode = value;
                 node.ConditionLoopInterval = Math.Max(1, node.ConditionLoopInterval);
-            });
-
-            RefreshDynamicState(node);
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void RefreshDynamicState(MacroNode node)
@@ -100,81 +87,6 @@ public partial class LoopContextConditionInspector
     {
         return mode is MacroConditionLoopMode.EveryNLoops
             or MacroConditionLoopMode.EveryNRepeats;
-    }
-
-    private static void BindNumberEntry(
-        NumberEntryBlock entry,
-        NodeInspectorContext context,
-        int value,
-        Action<int> commit,
-        int min,
-        int? max,
-        string tooltip,
-        bool isEnabled)
-    {
-        var canEdit = context.CanEditOption(isEnabled);
-
-        entry.IsEnabled = canEdit;
-        entry.ToolTip = tooltip;
-
-        var textBox = entry.TextBox;
-        textBox.Text = value.ToString();
-        textBox.IsEnabled = canEdit;
-
-        var committedValue = value;
-        var isCommittingText = false;
-
-        void CommitText()
-        {
-            if (isCommittingText)
-                return;
-
-            isCommittingText = true;
-            try
-            {
-                committedValue = InspectorCommitService.CommitNumberText(
-                    textBox,
-                    committedValue,
-                    commit,
-                    min,
-                    max,
-                    context.IsRefreshing());
-            }
-            finally
-            {
-                isCommittingText = false;
-            }
-        }
-
-        textBox.PreviewTextInput += (_, e) =>
-        {
-            e.Handled = !e.Text.All(char.IsDigit);
-        };
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            CommitText();
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
     }
 
     private sealed record LoopModeOption(string Label, MacroConditionLoopMode Value)

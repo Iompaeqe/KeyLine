@@ -37,7 +37,8 @@ public sealed class NodeInspectorBuilder
         Action<Action> commitNodeValueChange,
         Action refreshInspector,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
-        Func<MacroNode, Task> pickConditionPixelAsync)
+        Func<MacroNode, Task> pickConditionPixelAsync,
+        Fields.InspectorFieldHost fieldHost)
     {
         _selection = selection;
         _getActiveWorkspace = getActiveWorkspace;
@@ -60,7 +61,8 @@ public sealed class NodeInspectorBuilder
             commitNodeValueChange: _commitNodeValueChange,
             refreshInspector: _refreshInspector,
             pickMouseCoordinatesForNodeAsync: _pickMouseCoordinatesForNodeAsync,
-            pickConditionPixelAsync: _pickConditionPixelAsync);
+            pickConditionPixelAsync: _pickConditionPixelAsync,
+            fieldHost: fieldHost);
     }
 
     public UIElement? Build(MacroTimeline timeline)

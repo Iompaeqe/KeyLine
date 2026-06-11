@@ -1,10 +1,9 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using KeyLine.Domain;
 using KeyLine.Services.Macro;
-using KeyLine.Services.Timeline;
 using KeyLine.UI.Common.EntryBlocks;
+using KeyLine.UI.Inspector.Fields;
 using KeyLine.UI.Timeline;
 
 namespace KeyLine.UI.Inspector.Nodes;
@@ -52,14 +51,14 @@ public partial class SystemWindowReferenceNodeInspector
         BindWindowSourceCombo(context, node, canEdit);
         BindCustomTitleTextBox(context, node, canEdit);
 
-        BindDelayEntry(
-            entry: IntervalEntry,
-            context: context,
-            currentValue: () => Math.Clamp(
+        InspectorFieldBinder.BindDelay(
+            context.FieldHost,
+            IntervalEntry,
+            read: InspectorFieldBinder.SingleInt(() => Math.Clamp(
                 node.SystemWaitPollIntervalMs <= 0 ? 250 : node.SystemWaitPollIntervalMs,
                 50,
-                10_000),
-            commit: value => context.CommitNodeValueChange(() =>
+                10_000)),
+            apply: value => context.CommitNodeValueChange(() =>
                 node.SystemWaitPollIntervalMs = Math.Clamp(value, 50, 10_000)),
             tooltip: "How often KeyLine checks for the window title.",
             isEnabled: canEdit);
@@ -72,34 +71,20 @@ public partial class SystemWindowReferenceNodeInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-        var reference = node.GetEffectiveWindowReference();
-
         WindowSourceCombo.ItemsSource = WindowReferenceTypeOptions;
-        WindowSourceCombo.SelectedValue = reference.Type;
-        WindowSourceCombo.IsEnabled = canEdit;
 
-        WindowSourceCombo.SelectionChanged += (_, _) =>
-        {
-            if (context.IsRefreshing())
-                return;
-
-            if (WindowSourceCombo.SelectedItem is not WindowReferenceTypeOption option)
-                return;
-
-            if (option.Value == node.GetEffectiveWindowReference().Type)
-                return;
-
-            context.CommitNodeChange(() =>
+        InspectorFieldBinder.BindCombo<WindowReferenceType>(
+            context.FieldHost,
+            WindowSourceCombo,
+            read: InspectorFieldBinder.SingleValue(() => node.GetEffectiveWindowReference().Type),
+            apply: value => context.CommitNodeChange(() =>
             {
                 var updated = node.GetEffectiveWindowReference();
-                updated.Type = option.Value;
+                updated.Type = value;
                 node.WindowReference = updated;
                 node.NormalizeWindowReference();
-            });
-
-            RefreshDynamicState(node, null);
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void BindCustomTitleTextBox(
@@ -107,47 +92,16 @@ public partial class SystemWindowReferenceNodeInspector
         MacroNode node,
         bool isEnabled)
     {
-        var canEdit = context.CanEditOption(isEnabled);
-        var reference = node.GetEffectiveWindowReference();
-
-        CustomTitleTextBox.Text = reference.CustomTitle;
-        CustomTitleTextBox.IsEnabled = canEdit;
-
-        void CommitWindowText()
-        {
-            if (context.IsRefreshing())
-                return;
-
-            var title = CustomTitleTextBox.Text.Trim();
-
-            if (string.Equals(
-                    title,
-                    node.GetEffectiveWindowReference().CustomTitle,
-                    StringComparison.Ordinal))
+        InspectorFieldBinder.BindText(
+            context.FieldHost,
+            CustomTitleTextBox,
+            read: InspectorFieldBinder.SingleText(() => node.GetEffectiveWindowReference().CustomTitle),
+            apply: value => context.CommitNodeChange(() =>
             {
-                return;
-            }
-
-            context.CommitNodeChange(() =>
-            {
-                node.WindowReference = WindowReference.Custom(title);
+                node.WindowReference = WindowReference.Custom(value.Trim());
                 node.NormalizeWindowReference();
-            });
-
-            RefreshDynamicState(node, null);
-        }
-
-        CustomTitleTextBox.LostFocus += (_, _) => CommitWindowText();
-
-        CustomTitleTextBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            CommitWindowText();
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
+            }),
+            isEnabled: isEnabled);
     }
 
     private void RefreshDynamicState(
@@ -166,92 +120,6 @@ public partial class SystemWindowReferenceNodeInspector
                     ? Visibility.Visible
                     : Visibility.Collapsed;
         }
-    }
-
-    private static void BindDelayEntry(
-        TimeEntryBlock entry,
-        NodeInspectorContext context,
-        Func<int> currentValue,
-        Action<int> commit,
-        string tooltip,
-        bool isEnabled)
-    {
-        var canEdit = context.CanEditOption(isEnabled);
-
-        entry.ToolTip = $"{tooltip} Click to edit in milliseconds.";
-        entry.IsEnabled = canEdit;
-        entry.TextBox.IsEnabled = canEdit;
-        entry.SetDisplay(DelayFormatter.ClampMilliseconds(currentValue()));
-
-        var textBox = entry.TextBox;
-        var isEditing = false;
-        var isSettingText = false;
-
-        void SetEditText(int editValue)
-        {
-            isSettingText = true;
-            try
-            {
-                textBox.Text = DelayFormatter.ClampMilliseconds(editValue).ToString();
-                entry.UnitText.Text = "ms";
-            }
-            finally
-            {
-                isSettingText = false;
-            }
-        }
-
-        void SetDisplayText(int displayValue)
-        {
-            isSettingText = true;
-            try
-            {
-                entry.SetDisplay(DelayFormatter.ClampMilliseconds(displayValue));
-            }
-            finally
-            {
-                isSettingText = false;
-            }
-        }
-
-        textBox.PreviewTextInput += (_, e) =>
-        {
-            e.Handled = !e.Text.All(char.IsDigit);
-        };
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            isEditing = true;
-            SetEditText(currentValue());
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
-            isEditing = false;
-            SetDisplayText(currentValue());
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            if (!isEditing || isSettingText || context.IsRefreshing())
-                return;
-
-            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            InspectorCommitService.CommitDelayText(entry, currentValue(), commit);
-            isEditing = false;
-            SetDisplayText(currentValue());
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        };
     }
 
     private static string GetWindowSourceTooltip(SystemWindowReferenceInspectorMode mode) =>

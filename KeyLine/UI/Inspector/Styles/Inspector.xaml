@@ -1,0 +1,27 @@
+<!--
+    Master inspector resource dictionary. InspectorWindow.xaml merges only this file. Shared app resources
+    (colors, text-block styles, buttons, scrollbars, tooltips) are referenced from Common; the behavior-
+    sensitive input controls (TextBox, ComboBox, CheckBox, ToggleButton) and field-row chrome are
+    inspector-owned so the inspector cannot break when a global input style changes elsewhere in the app.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <!-- Shared, non-input app resources (brushes, text blocks, buttons, scrollbars, tooltips). -->
+        <ResourceDictionary Source="../../Common/Styles/Colors.xaml" />
+        <ResourceDictionary Source="../../Common/Styles/TextBlocks.xaml" />
+        <ResourceDictionary Source="../../Common/Styles/Buttons.xaml" />
+        <ResourceDictionary Source="../../Common/Styles/ScrollBars.xaml" />
+        <ResourceDictionary Source="../../Common/Styles/ToolTips.xaml" />
+
+        <!-- Inspector-owned input control styles. -->
+        <ResourceDictionary Source="InspectorTextBox.xaml" />
+        <ResourceDictionary Source="InspectorComboBox.xaml" />
+        <ResourceDictionary Source="InspectorCheckBox.xaml" />
+        <ResourceDictionary Source="InspectorToggleButton.xaml" />
+        <ResourceDictionary Source="InspectorFieldRow.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>

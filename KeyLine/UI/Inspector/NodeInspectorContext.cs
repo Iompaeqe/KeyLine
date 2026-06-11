@@ -1,4 +1,5 @@
 ﻿using KeyLine.Domain;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector;
 
@@ -14,7 +15,8 @@ public sealed class NodeInspectorContext
         Action<Action> commitNodeValueChange,
         Action refreshInspector,
         Func<MacroNode, Task> pickMouseCoordinatesForNodeAsync,
-        Func<MacroNode, Task> pickConditionPixelAsync)
+        Func<MacroNode, Task> pickConditionPixelAsync,
+        InspectorFieldHost fieldHost)
     {
         GetActiveWorkspace = getActiveWorkspace;
         GetActiveProfileWorkspaces = getActiveProfileWorkspaces;
@@ -26,7 +28,11 @@ public sealed class NodeInspectorContext
         RefreshInspector = refreshInspector;
         PickMouseCoordinatesForNodeAsync = pickMouseCoordinatesForNodeAsync;
         PickConditionPixelAsync = pickConditionPixelAsync;
+        FieldHost = fieldHost;
     }
+
+    /// <summary>The shared field host node inspectors pass to <see cref="InspectorFieldBinder"/>.</summary>
+    public InspectorFieldHost FieldHost { get; }
 
     public Func<MacroWorkspace> GetActiveWorkspace { get; }
     public Func<IReadOnlyList<MacroWorkspace>> GetActiveProfileWorkspaces { get; }

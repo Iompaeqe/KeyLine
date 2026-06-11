@@ -1,18 +1,17 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using KeyLine.Services.Timeline;
-using KeyLine.UI.Common.EntryBlocks;
 using KeyLine.UI.Inspector.Batch;
+using KeyLine.UI.Inspector.Fields;
 
 namespace KeyLine.UI.Inspector;
 
 public partial class InspectorWindow
 {
-    private readonly List<Action> _finishInspectorEditActions = new();
     private bool _isFinishingInspectorEdits;
-    
+
     private bool _isSettingTimelineState;
     private bool _isEditingEnabled = true;
     private bool _isNameReadOnly;
@@ -29,6 +28,18 @@ public partial class InspectorWindow
     private bool _loopDelayMixed;
     private bool _cooldownMixed;
     private bool _standardDelayMixed;
+    private bool _useStandardDelay;
+    private bool _useStandardDelayMixed;
+    private bool _showKeyUpDown;
+    private bool _showKeyUpDownMixed;
+
+    // Persistent timeline fields, refreshed (not re-wired) on every selection change.
+    private IInspectorField _loopCountField = null!;
+    private IInspectorField _loopDelayField = null!;
+    private IInspectorField _standardDelayField = null!;
+    private IInspectorField _cooldownField = null!;
+    private IInspectorField _useStandardDelayField = null!;
+    private IInspectorField _showKeyUpDownField = null!;
 
     private const string MixedIndicator = BatchUi.IndicatorText;
 
@@ -47,6 +58,10 @@ public partial class InspectorWindow
         _loopDelayMixed = state.LoopDelayMixed;
         _cooldownMixed = state.CooldownMixed;
         _standardDelayMixed = state.StandardDelayMixed;
+        _useStandardDelay = state.UseStandardDelay;
+        _useStandardDelayMixed = state.UseStandardDelayMixed;
+        _showKeyUpDown = state.ShowKeyUpDown;
+        _showKeyUpDownMixed = state.ShowKeyUpDownMixed;
 
         ApplyTimelineCollapsedState(state.IsCollapsed);
         ApplyTimelineNameState(state.TimelineName, state.IsNameEditing);
@@ -86,13 +101,13 @@ public partial class InspectorWindow
             if (e.Key == Key.Enter)
             {
                 CommitTimelineNameEdit();
-                DefocusInspectorField(TimelineNameEditTextBox);
+                DefocusActiveField(TimelineNameEditTextBox);
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape)
             {
                 CancelTimelineNameEdit();
-                DefocusInspectorField(TimelineNameEditTextBox);
+                DefocusActiveField(TimelineNameEditTextBox);
                 e.Handled = true;
             }
         };
@@ -103,62 +118,89 @@ public partial class InspectorWindow
                 CommitTimelineNameEdit();
         };
 
-        WireNumberTextBox(
-            TimelineLoopsEntry.TextBox,
-            () => _loopCount,
-            value => TimelineLoopsCommitted?.Invoke(value),
-            () => _loopCountMixed);
+        _loopCountField = InspectorFieldBinder.BindNumber(
+            _timelineFieldHost,
+            TimelineLoopsEntry,
+            read: MixedOrInt(() => _loopCountMixed, () => _loopCount),
+            apply: value => TimelineLoopsCommitted?.Invoke(value),
+            min: 0,
+            max: null,
+            tooltip: TooltipNotes.TimelineLoops,
+            isEnabled: true);
 
-        WireDelayTextBox(
+        _loopDelayField = InspectorFieldBinder.BindDelay(
+            _timelineFieldHost,
             TimelineLoopDelayEntry,
-            () => _loopDelayMs,
-            value =>
+            read: MixedOrInt(() => _loopDelayMixed, () => _loopDelayMs),
+            apply: value =>
             {
                 _loopDelayMs = value;
                 TimelineLoopDelayCommitted?.Invoke(value);
             },
-            () => _loopDelayMixed);
+            tooltip: TooltipNotes.TimelineLoopDelayEdit,
+            isEnabled: true);
 
-        WireDelayTextBox(
+        _standardDelayField = InspectorFieldBinder.BindDelay(
+            _timelineFieldHost,
             TimelineStandardDelayEntry,
-            () => _standardDelayMs,
-            value =>
+            read: MixedOrInt(() => _standardDelayMixed, () => _standardDelayMs),
+            apply: value =>
             {
                 _standardDelayMs = value;
                 TimelineStandardDelayCommitted?.Invoke(value);
             },
-            () => _standardDelayMixed);
+            tooltip: TooltipNotes.TimelineStandardDelayEdit,
+            isEnabled: true);
 
-        WireDelayTextBox(
+        _cooldownField = InspectorFieldBinder.BindDelay(
+            _timelineFieldHost,
             TimelineCooldownEntry,
-            () => _cooldownMs,
-            value =>
+            read: MixedOrInt(() => _cooldownMixed, () => _cooldownMs),
+            apply: value =>
             {
                 _cooldownMs = value;
                 TimelineCooldownCommitted?.Invoke(value);
             },
-            () => _cooldownMixed);
-        
-        Deactivated += (_, _) =>
-        {
-            if (_isTimelineNameEditing)
-                CommitTimelineNameEdit();
-        };
-        
+            tooltip: "Cooldown before this timeline can be picked again by Sequence/Random.",
+            isEnabled: true);
+
+        _useStandardDelayField = InspectorFieldBinder.BindCheckBox(
+            _timelineFieldHost,
+            TimelineStandardDelayCheckBox,
+            read: () => _useStandardDelayMixed
+                ? BatchValue<bool>.Mixed()
+                : BatchValue<bool>.Common(_useStandardDelay),
+            apply: value => TimelineStandardDelayChanged?.Invoke(value),
+            isEnabled: true);
+
+        _showKeyUpDownField = InspectorFieldBinder.BindCheckBox(
+            _timelineFieldHost,
+            TimelineShowKeyUpDownCheckBox,
+            read: () => _showKeyUpDownMixed
+                ? BatchValue<bool>.Mixed()
+                : BatchValue<bool>.Common(_showKeyUpDown),
+            apply: value => TimelineShowKeyUpDownChanged?.Invoke(value),
+            isEnabled: true);
+
         InputManager.Current.PreProcessInput += OnApplicationPreProcessInput;
         Closed += (_, _) =>
         {
             InputManager.Current.PreProcessInput -= OnApplicationPreProcessInput;
         };
 
+        Deactivated += (_, _) =>
+        {
+            if (_isTimelineNameEditing)
+                CommitTimelineNameEdit();
+
+            FieldRegistry.FinishAll();
+        };
+
         InputTypePager.PageRequested += (_, _) => RequestInputTypeChange();
-
-        TimelineStandardDelayCheckBox.Checked += (_, _) => RaiseStandardDelayChanged(true);
-        TimelineStandardDelayCheckBox.Unchecked += (_, _) => RaiseStandardDelayChanged(false);
-
-        TimelineShowKeyUpDownCheckBox.Checked += (_, _) => RaiseShowKeyUpDownChanged(true);
-        TimelineShowKeyUpDownCheckBox.Unchecked += (_, _) => RaiseShowKeyUpDownChanged(false);
     }
+
+    private static Func<BatchValue<int>> MixedOrInt(Func<bool> isMixed, Func<int> value) =>
+        () => isMixed() ? BatchValue<int>.Mixed() : BatchValue<int>.Common(value());
 
     private void ApplyTimelineCollapsedState(bool isCollapsed)
     {
@@ -185,54 +227,23 @@ public partial class InspectorWindow
 
     private void ApplyTimelineValueState(TimelineInspectorState state)
     {
-        SetNumberDisplayOrMixed(TimelineLoopsEntry.TextBox, _loopCount, _loopCountMixed);
-        SetDelayDisplayOrMixed(TimelineLoopDelayEntry, _loopDelayMs, _loopDelayMixed);
+        _loopCountField.LoadFromModel();
+        _loopDelayField.LoadFromModel();
 
         InputTypePager.Text = state.UseTextInputModeMixed
             ? MixedIndicator
             : state.UseTextInputMode ? "Text" : "Key";
 
-        TimelineStandardDelayCheckBox.IsThreeState = state.UseStandardDelayMixed;
-        TimelineStandardDelayCheckBox.IsChecked = state.UseStandardDelayMixed ? null : state.UseStandardDelay;
-        TimelineStandardDelayCheckBox.ToolTip = state.UseStandardDelayMixed ? "Mixed values" : null;
+        _useStandardDelayField.LoadFromModel();
         StandardDelayDetailsPanel.Visibility = state.UseStandardDelay || state.UseStandardDelayMixed
             ? Visibility.Visible
             : Visibility.Collapsed;
-        SetDelayDisplayOrMixed(TimelineStandardDelayEntry, _standardDelayMs, _standardDelayMixed);
+        _standardDelayField.LoadFromModel();
 
-        TimelineShowKeyUpDownCheckBox.IsThreeState = state.ShowKeyUpDownMixed;
-        TimelineShowKeyUpDownCheckBox.IsChecked = state.ShowKeyUpDownMixed ? null : state.ShowKeyUpDown;
-        TimelineShowKeyUpDownCheckBox.ToolTip = state.ShowKeyUpDownMixed ? "Mixed values" : null;
+        _showKeyUpDownField.LoadFromModel();
 
         TimelineCooldownRow.Visibility = state.ShowCooldown ? Visibility.Visible : Visibility.Collapsed;
-        SetDelayDisplayOrMixed(TimelineCooldownEntry, _cooldownMs, _cooldownMixed);
-    }
-
-    private static void SetNumberDisplayOrMixed(TextBox textBox, int value, bool mixed)
-    {
-        if (mixed)
-        {
-            BatchUi.ShowMixed(textBox);
-        }
-        else
-        {
-            BatchUi.ClearMixedStyle(textBox);
-            textBox.Text = value.ToString();
-        }
-    }
-
-    private static void SetDelayDisplayOrMixed(TimeEntryBlock entry, int value, bool mixed)
-    {
-        if (mixed)
-        {
-            BatchUi.ShowMixed(entry.TextBox);
-            entry.UnitText.Text = string.Empty;
-        }
-        else
-        {
-            BatchUi.ClearMixedStyle(entry.TextBox);
-            entry.SetDisplay(value);
-        }
+        _cooldownField.LoadFromModel();
     }
 
     private void SetTimelineControlsEnabled(bool isEditingEnabled)
@@ -304,264 +315,26 @@ public partial class InspectorWindow
         TimelineNameTextBlock.ToolTip = displayName;
     }
 
-    private void WireNumberTextBox(TextBox textBox, Func<int> currentValue, Action<int> commit, Func<bool> isMixed)
-    {
-        var isEditing = false;
-
-        void FinishNumberEdit()
-        {
-            if (!isEditing)
-                return;
-
-            var committed = CommitNumberText(textBox, currentValue(), commit, isMixed());
-            isEditing = false;
-
-            // Restore the display when nothing was written (e.g. a mixed field left untouched), since
-            // a successful commit rebuilds the inspector anyway.
-            if (!committed)
-                SetNumberDisplayOrMixed(textBox, currentValue(), isMixed());
-        }
-
-        _finishInspectorEditActions.Add(FinishNumberEdit);
-
-        textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            isEditing = true;
-            if (isMixed())
-            {
-                // Never treat the "Mixed" indicator as a real value; clear it to a normal empty field.
-                BatchUi.ClearMixedStyle(textBox);
-                textBox.Text = string.Empty;
-            }
-
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            FinishNumberEdit();
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            if (!isEditing || _isBatch)
-                return; // batch fields commit once on finish, to keep a single undo step
-
-            CommitNumberText(textBox, currentValue(), commit, isMixed());
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            FinishNumberEdit();
-            DefocusInspectorField(textBox);
-            e.Handled = true;
-        };
-    }
-
-    private void WireDelayTextBox(TimeEntryBlock entry, Func<int> currentValue, Action<int> commit, Func<bool> isMixed)
-    {
-        var textBox = entry.TextBox;
-        var isEditing = false;
-        var isSettingText = false;
-
-        void SetEditText(int value)
-        {
-            isSettingText = true;
-            try
-            {
-                BatchUi.ClearMixedStyle(textBox);
-                textBox.Text = DelayFormatter.ClampMilliseconds(value).ToString();
-                entry.UnitText.Text = "ms";
-            }
-            finally
-            {
-                isSettingText = false;
-            }
-        }
-
-        void SetDisplayText(int value)
-        {
-            isSettingText = true;
-            try
-            {
-                BatchUi.ClearMixedStyle(textBox);
-                entry.SetDisplay(DelayFormatter.ClampMilliseconds(value));
-            }
-            finally
-            {
-                isSettingText = false;
-            }
-        }
-
-        void SetMixedText()
-        {
-            isSettingText = true;
-            try
-            {
-                BatchUi.ShowMixed(textBox);
-                entry.UnitText.Text = string.Empty;
-            }
-            finally
-            {
-                isSettingText = false;
-            }
-        }
-
-        void FinishDelayEdit()
-        {
-            if (!isEditing)
-                return;
-
-            var committed = CommitDelayText(entry, currentValue(), commit, isMixed());
-            isEditing = false;
-
-            if (committed)
-                return; // a successful commit rebuilds the inspector
-
-            if (isMixed())
-                SetMixedText();
-            else
-                SetDisplayText(currentValue());
-        }
-
-        _finishInspectorEditActions.Add(FinishDelayEdit);
-
-        textBox.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
-
-        textBox.GotKeyboardFocus += (_, _) =>
-        {
-            isEditing = true;
-            if (isMixed())
-            {
-                isSettingText = true;
-                try
-                {
-                    BatchUi.ClearMixedStyle(textBox);
-                    textBox.Text = string.Empty;
-                    entry.UnitText.Text = "ms";
-                }
-                finally
-                {
-                    isSettingText = false;
-                }
-            }
-            else
-            {
-                SetEditText(currentValue());
-            }
-
-            textBox.SelectAll();
-        };
-
-        textBox.LostFocus += (_, _) =>
-        {
-            FinishDelayEdit();
-        };
-
-        textBox.TextChanged += (_, _) =>
-        {
-            if (!isEditing || isSettingText || _isBatch)
-                return; // batch fields commit once on finish, to keep a single undo step
-
-            CommitDelayText(entry, currentValue(), commit, isMixed());
-        };
-
-        textBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter)
-                return;
-
-            FinishDelayEdit();
-            DefocusInspectorField(textBox);
-            e.Handled = true;
-        };
-
-        Deactivated += (_, _) =>
-        {
-            FinishDelayEdit();
-        };
-    }
-
-    // Returns true when a value was written.
-    private bool CommitNumberText(TextBox textBox, int originalValue, Action<int> commit, bool mixed)
-    {
-        if (_isSettingTimelineState || !_isEditingEnabled)
-            return false;
-
-        if (!int.TryParse(textBox.Text, out var value))
-        {
-            if (mixed)
-                return false; // empty / "Mixed" left untouched — do not write
-
-            value = 0;
-        }
-
-        value = Math.Max(0, value);
-        if (!mixed)
-            textBox.Text = value.ToString();
-
-        if (!mixed && value == originalValue)
-            return false;
-
-        commit(value);
-        return true;
-    }
-
-    // Returns true when a value was written.
-    private bool CommitDelayText(TimeEntryBlock entry, int originalValue, Action<int> commit, bool mixed)
-    {
-        if (_isSettingTimelineState || !_isEditingEnabled)
-            return false;
-
-        var textBox = entry.TextBox;
-        if (!long.TryParse(textBox.Text, out var value))
-        {
-            if (mixed)
-                return false; // empty / "Mixed" left untouched — do not write
-
-            value = string.IsNullOrWhiteSpace(textBox.Text) ? 0 : DelayFormatter.MaxMilliseconds;
-        }
-
-        var clampedValue = DelayFormatter.ClampMilliseconds(value);
-        if (!mixed && clampedValue == originalValue)
-            return false;
-
-        commit(clampedValue);
-        return true;
-    }
-
     private void RequestInputTypeChange()
     {
         if (_isEditingEnabled)
             TimelineInputTypeChangeRequested?.Invoke();
     }
 
-    private void RaiseStandardDelayChanged(bool value)
-    {
-        if (!_isSettingTimelineState && _isEditingEnabled)
-            TimelineStandardDelayChanged?.Invoke(value);
-    }
-
-    private void RaiseShowKeyUpDownChanged(bool value)
-    {
-        if (!_isSettingTimelineState && _isEditingEnabled)
-            TimelineShowKeyUpDownChanged?.Invoke(value);
-    }
-    
-    private void DefocusInspectorField(TextBox? sourceTextBox = null)
+    /// <summary>
+    /// Moves keyboard focus to the inspector's invisible sink so the active field's focus visual (the cyan
+    /// border) clears and its LostFocus commit runs. Used by every inspector field on Enter/Escape and by
+    /// the click-outside handler — the single, reliable way to defocus inside a WPF window.
+    /// </summary>
+    public void DefocusActiveField(DependencyObject? source = null)
     {
         Dispatcher.BeginInvoke(
             DispatcherPriority.ContextIdle,
             new Action(() =>
             {
-                if (sourceTextBox != null)
+                if (source != null)
                 {
-                    var sourceScope = FocusManager.GetFocusScope(sourceTextBox);
+                    var sourceScope = FocusManager.GetFocusScope(source);
                     FocusManager.SetFocusedElement(sourceScope, InspectorFocusSink);
                 }
 
@@ -573,7 +346,7 @@ public partial class InspectorWindow
                 Keyboard.Focus(InspectorFocusSink);
             }));
     }
-    
+
     private void OnApplicationPreProcessInput(object sender, PreProcessInputEventArgs e)
     {
         if (_isFinishingInspectorEdits)
@@ -589,8 +362,6 @@ public partial class InspectorWindow
         // A ComboBox dropdown is its own popup window, so clicking an item looks like an "outside"
         // click here. Finishing edits / clearing focus would close the dropdown before the selection
         // commits (the pick is lost). While any inspector dropdown is open, leave input alone.
-        // (At pre-process time OriginalSource is the popup root, not the item, so checking the open
-        // dropdown state is more reliable than walking the click source.)
         if (HasOpenComboBox(this))
             return;
 
@@ -616,7 +387,7 @@ public partial class InspectorWindow
         for (var i = 0; i < count; i++)
         {
             var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
-            if (child is System.Windows.Controls.ComboBox { IsDropDownOpen: true })
+            if (child is ComboBox { IsDropDownOpen: true })
                 return true;
 
             if (HasOpenComboBox(child))
@@ -625,7 +396,7 @@ public partial class InspectorWindow
 
         return false;
     }
-    
+
     private void FinishInspectorEditsFromOutsideClick()
     {
         if (_isFinishingInspectorEdits)
@@ -638,8 +409,8 @@ public partial class InspectorWindow
             if (_isTimelineNameEditing)
                 CommitTimelineNameEdit();
 
-            foreach (var finishEdit in _finishInspectorEditActions.ToArray())
-                finishEdit();
+            // Commits the focused field (timeline or node) and restores any untouched mixed field.
+            FieldRegistry.FinishAll();
 
             if (Keyboard.FocusedElement is DependencyObject focusedElement)
             {
