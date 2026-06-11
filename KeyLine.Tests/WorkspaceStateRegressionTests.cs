@@ -705,6 +705,42 @@ public sealed class WorkspaceStateRegressionTests : IDisposable
     }
 
     [Fact]
+    public void Load_FallsBackToLegacyStateDirectoryWhenCurrentIsEmpty()
+    {
+        // Simulate upgrading from an older-named release: the current state folder has no
+        // state.json yet, but the legacy folder does. The old macros must still load.
+        Assert.False(File.Exists(Path.Combine(MacroStateStore.StateDirectory, "state.json")));
+        var legacyDirectory = Path.Combine(_appDataRoot, "LegacyMacroSpammer");
+        Directory.CreateDirectory(legacyDirectory);
+        File.WriteAllText(
+            Path.Combine(legacyDirectory, "state.json"),
+            """
+            {
+              "Version": 3,
+              "ActiveWorkspaceIndex": 0,
+              "ShortcutsEnabled": false,
+              "Settings": {},
+              "Workspaces": [
+                {
+                  "Name": "Imported From Older Version",
+                  "ActiveTimelineIndex": 0,
+                  "LoopMode": 0,
+                  "TimerMs": 0,
+                  "BaseDelayMs": 50,
+                  "Timelines": [ { "Name": "T1", "LoopCount": 0, "BaseDelayMs": 50, "Nodes": [] } ]
+                }
+              ]
+            }
+            """);
+
+        var snapshot = MacroStateStore.Load();
+
+        Assert.NotNull(snapshot);
+        Assert.Single(snapshot.Workspaces);
+        Assert.Equal("Imported From Older Version", snapshot.Workspaces[0].Name);
+    }
+
+    [Fact]
     public void Load_AcceptsLegacyLoopTypeFields()
     {
         Directory.CreateDirectory(MacroStateStore.StateDirectory);

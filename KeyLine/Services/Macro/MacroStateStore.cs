@@ -37,11 +37,11 @@ public static class MacroStateStore
 
     public static string BackupsDirectory => Path.Combine(StateDirectory, "Backups");
 
-    private static string LegacyStateDirectory => StateDirectoryOverride == null
-        ? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "KeyLine")
-        : Path.Combine(StateDirectoryOverride, "LegacyMacroSpammer");
+    // Older releases shipped under different product names ("MacroSpammer", then "KeySpammer")
+    // and stored their state in a matching %APPDATA% folder. We read (never write) those so a
+    // user upgrading to KeyLine keeps the macros they authored under the old name. Most recent
+    // legacy name first; the first one that exists wins. See StateDirectory for the active path.
+    private static readonly string[] LegacyAppDataFolderNames = { "MacroSpammer", "KeySpammer" };
 
     private static string? StateDirectoryOverride
     {
@@ -54,7 +54,21 @@ public static class MacroStateStore
 
     private static string StatePath => Path.Combine(StateDirectory, "state.json");
 
-    private static string LegacyStatePath => Path.Combine(LegacyStateDirectory, "state.json");
+    private static IEnumerable<string> LegacyStatePaths
+    {
+        get
+        {
+            if (StateDirectoryOverride != null)
+            {
+                yield return Path.Combine(StateDirectoryOverride, "LegacyMacroSpammer", "state.json");
+                yield break;
+            }
+
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            foreach (var folderName in LegacyAppDataFolderNames)
+                yield return Path.Combine(appData, folderName, "state.json");
+        }
+    }
 
     public static MacroStateSnapshot? Load()
     {
@@ -62,9 +76,9 @@ public static class MacroStateStore
         {
             var statePath = File.Exists(StatePath)
                 ? StatePath
-                : LegacyStatePath;
+                : LegacyStatePaths.FirstOrDefault(File.Exists);
 
-            if (!File.Exists(statePath))
+            if (statePath == null || !File.Exists(statePath))
                 return null;
 
             var json = File.ReadAllText(statePath);
